@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" type="text/css" href="mission.css"
+    <title>Mission — Gamify your tasks</title>
+</head>
+
+<body class="container">
+    <br>
+
+    <div class="container2">
+<h1>Objectives for today:</h1>
+
+Add objectives: <input type="text" id="addMission">
+<button id="addMissionButton"> Add Mission</button>
+<button id="resetButton">  Wipe memory </button>
+
+<p><span id="errorMessage"></span></p>
+</div>
+
+<div class="missions-grid" >
+
+    <div class="grid-item-1"> <h2>Stored missions</h2>  </div>
+
+    <div class="grid-item-2"> <ul id="missionList"></ul> </div>
+
+</div>
+
+
+
+<script src="mission.js"></script>
+</body>
+</html>
