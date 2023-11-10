@@ -68,7 +68,7 @@ function displayRandomMessage() {
     const randomMessage = motivationalMessages[Math.floor(Math.random() * motivationalMessages.length)];
     const messageElement = document.createElement("div");
     messageElement.textContent = randomMessage;
-    messageElement.classList.add("motivational-message"); // Add a class for styling (optional)
+    messageElement.classList.add("motivational-message"); // Add a class for styling 
 
     // Add the message element to the DOM
     document.body.appendChild(messageElement);
@@ -91,7 +91,7 @@ function addMission(sanitizedInput) {
     // Add click function for deletion + save
     newEl.addEventListener('click', function (e) {
         e.target.remove();
-        displayRandomMessage()
+        displayRandomMessage() 
 
         // Apply the 'active' class with a slight delay
         setTimeout(() => {
@@ -139,9 +139,10 @@ function loadMissions() {
 
             // Add click function for deletion + save
             newEl.addEventListener('click', function (e) {   // Anonymous 
-             e.target.remove()} );
+             e.target.remove()
              displayRandomMessage();
-
+            } );
+        
             // Apply the 'active' class with a slight delay
             setTimeout(() => {
                 newEl.classList.add("active");
