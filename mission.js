@@ -38,6 +38,21 @@ missionButtonEl.addEventListener('mousedown', function(){
     const sanitizedInput = sanitizeInput(input);         // SanitizedInput declared as the cleaned text after the sanitizeInput function has run 
     addMission(sanitizedInput); });                       // After which the addMission function will be called with the sanitized text
 
+
+    // Special Event listener for ENTER to sanitize inputfield
+
+    inputEl.addEventListener('keypress', function(e) { 
+        if (e.key === 'Enter') {
+            const input = inputEl.value;                          // input equals the value of the textfield
+            const sanitizedInput = sanitizeInput(input);         // SanitizedInput declared as the cleaned text after the sanitizeInput function has run 
+            addMission(sanitizedInput);                       // After which the addMission function will be called with the sanitized text
+        
+      }
+    });
+    
+        
+
+
 // Event listeners
 
 missionButtonEl.addEventListener('mouseup', clearTextField);
