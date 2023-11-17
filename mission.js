@@ -41,7 +41,7 @@ missionButtonEl.addEventListener('mousedown', function(){
 
     // Special Event listener for ENTER + sanitize inputfield
 
-    inputEl.addEventListener('keypress', function(e) { 
+    inputEl.addEventListener('keypress',e => { 
         if (e.key === 'Enter') {
             const input = inputEl.value;                          // input equals the value of the textfield
             const sanitizedInput = sanitizeInput(input);         // SanitizedInput declared as the cleaned text after the sanitizeInput function has run 
