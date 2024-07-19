@@ -7,6 +7,9 @@ const missionButtonEl = document.getElementById("addMissionButton");
 const missionListEl = document.getElementById('missionList');
 const resetButtonEl = document.getElementById('resetButton');
 const errorMessageEl = document.getElementById('errorMessage');
+const xpMeterEl = document.getElementById('xp-meter'); // Get the element for the XP meter
+const streakBonusEl = document.getElementById('streak-bonus'); // Get the element for streak bonus
+
 const input = inputEl.value;
 
 // Deactivate add mission-button
@@ -67,14 +70,27 @@ function sanitizeInput(input) {
 } 
 
 const motivationalMessages = [  
-"Great Job!",
-"Way to go!",
-"You deserve a small break soon!",
-"Excellent!",
-"You'll be done in no time!",
-"Success!",
-"You're unstoppable!",
-"Yay!"];
+    "Great Job! 🎉",
+    "Way to go! 👍",
+    "You deserve a small break soon! ☕",
+    "Excellent! 🌟",
+    "You'll be done in no time! ⏳",
+    "Success! 🏆",
+    "You're unstoppable! 🚀",
+    "Yay! 🎊",
+    "Keep up the great work! 💪",
+    "You're doing amazing! 🌈",
+    "Almost there, keep pushing! 💪",
+    "Fantastic effort! 👏",
+    "You're on the right track! 🛤️",
+    "Stay focused, you're doing great! 🧠",
+    "Believe in yourself! 🌠",
+    "You're capable of amazing things! 🏅",
+    "Keep the momentum going! 🔄",
+    "You're making a difference! 🌍",
+    "One step at a time! 👣",
+    "Stay positive and keep going! 😊",
+    "You got this! ✊",];
 
 
 
@@ -98,15 +114,25 @@ function displayRandomMessage() {
 // Adds mission
 
 function addMission(sanitizedInput) {
+    let xpValue = parseInt(prompt(`Enter XP for "${sanitizedInput}"`)); // Prompt to enter XP value
+    while (isNaN(xpValue)) {
+        xpValue = parseInt(prompt("Please enter a valid number for XP")); // Prompt again if invalid input
+    }
+
     const newEl = document.createElement("li");
-    const newTextNode = document.createTextNode(sanitizedInput);
+    const newTextNode = document.createTextNode(`${sanitizedInput} — ${xpValue} XP`); // Create a text node with the mission name and XP
     newEl.appendChild(newTextNode);
     newEl.className = "mission";
+    newEl.dataset.xp = xpValue; // Store the XP value in a data attribute
+
 
     // Add click function for deletion + save
     newEl.addEventListener('click', function (e) {
+        const xp = parseInt(e.target.dataset.xp); // Get the XP value from the data attribute
+                addXp(xp); // Add the XP to the meter
         e.target.remove();
         displayRandomMessage() 
+        updateStreak(); // Update the streak
 
         // Apply the 'active' class with a slight delay
         setTimeout(() => {
@@ -135,8 +161,8 @@ function saveMissions() {
     const missionsEl = document.getElementsByClassName("mission");
     const tempArray = Array.from(missionsEl).map(missionEl => missionEl.innerHTML);
 
-    let jsonStringify = JSON.stringify(tempArray);
-    localStorage.setItem("missions", jsonStringify);
+    let jsonStringify = JSON.stringify(tempArray);   // Convert the array to a JSON string
+    localStorage.setItem("missions", jsonStringify);  // Save the JSON string to local storage
 }
 
 // Load Missions
@@ -150,12 +176,18 @@ function loadMissions() {
             const newTextNode = document.createTextNode(mission);
             newEl.appendChild(newTextNode);
             newEl.className = "mission";
+            newEl.dataset.xp = mission.xp; // Store the XP value in a data attribute
+
             missionListEl.appendChild(newEl);
 
             // Add click function for deletion + save
             newEl.addEventListener('click', function (e) {   // Anonymous 
+                const xp = parseInt(e.target.dataset.xp); // Get the XP value from the data attribute
+                addXp(xp); // Add the XP to the meter
              e.target.remove()
              displayRandomMessage();
+             updateStreak(); // Update the streak
+
             } );
         
             // Apply the 'active' class with a slight delay
@@ -169,8 +201,9 @@ function loadMissions() {
 // Clear data
 
 function clearData() {
-    localStorage.clear();
-    missionListEl.textContent = "";
+    localStorage.clear(); // Clear local storage
+    resetXpMeter(); // Reset the XP meter
+    resetStreak(); // Reset the streak
 }
 
 // Clear textfield
@@ -178,3 +211,46 @@ function clearTextField() {
     inputEl.value = "";
     missionButtonEl.disabled = true;
 }
+
+// Function to add XP to the XP meter and update the streak bonus
+function addXp(xp) {
+    let currentXp = parseInt(xpMeterEl.dataset.xp) || 0; // Get the current XP from the data attribute or default to 0
+    currentXp += xp; // Add the new XP
+    xpMeterEl.dataset.xp = currentXp; // Update the XP data attribute
+
+    // Determine the maximum XP (you can adjust this based on your application)
+    const maxXP = 100; // For example, assume a maximum of 1000 XP
+
+    // Calculate the percentage of XP progress
+    const xpPercentage = (currentXp / maxXP) * 100;
+
+    // Limit the width to 100% (if currentXp exceeds maxXP)
+    const xpMeterWidth = Math.min(xpPercentage, 100);
+
+    // Update the width of the XP meter bar
+    xpMeterEl.style.width = `${xpMeterWidth}%`;
+
+    // Update the text content of the XP meter
+    xpMeterEl.textContent = `${currentXp} XP`; // Adjust as per your UI needs
+}
+
+
+// Function to reset the XP meter
+function resetXpMeter() {
+    xpMeterEl.dataset.xp = 0; // Reset the XP data attribute to 0
+    xpMeterEl.style.width = '0px'; // Reset the width of the XP meter
+    xpMeterEl.textContent = '0 XP'; // Reset the text content of the XP meter
+}
+
+// Function to update the streak
+function updateStreak() {
+    currentStreak++; // Increment the current streak
+    streakBonusEl.textContent = `Streak Bonus: ${currentStreak * 5} XP`; // Update the streak bonus display
+}
+
+// Function to reset the streak
+function resetStreak() {
+    currentStreak = 0; // Reset the current streak
+    streakBonusEl.textContent = `Streak Bonus: 0 XP`; // Update the streak bonus display
+}
+

@@ -149,3 +149,25 @@ input[type="text"] {
     font-weight: bold;
     color: red;
 }
+
+ /* XP meter styles */
+ #xp-meter-container {
+    width: 100%;
+    max-width: 80%;
+    align-self: center;
+    margin: auto;
+    background-color: #00000068;
+    border-radius: 25px;
+    overflow: hidden;
+    margin-top: 20px;
+    text-align: center;
+}
+#xp-meter {
+    height: 25px;
+    background-color: #76c7c0;
+    width: 0;
+    line-height: 25px;
+    color: white;
+    transition: width 0.5s;
+
+}
