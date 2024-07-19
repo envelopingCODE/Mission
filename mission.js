@@ -9,8 +9,8 @@ const resetButtonEl = document.getElementById('resetButton');
 const errorMessageEl = document.getElementById('errorMessage');
 const xpMeterEl = document.getElementById('xp-meter'); // Get the element for the XP meter
 const streakBonusEl = document.getElementById('streak-bonus'); // Get the element for streak bonus
-
 const input = inputEl.value;
+const completionSound = document.getElementById('completionSound'); 
 
 // Deactivate add mission-button
 missionButtonEl.disabled = true;
@@ -132,6 +132,7 @@ function addMission(sanitizedInput) {
                 addXp(xp); // Add the XP to the meter
         e.target.remove();
         displayRandomMessage() 
+        playCompletionSound(); // Play the sound when a mission is completed
         updateStreak(); // Update the streak
 
         // Apply the 'active' class with a slight delay
@@ -256,3 +257,8 @@ function resetStreak() {
     streakBonusEl.textContent = `Streak Bonus: 0 XP`; // Update the streak bonus display
 }
 
+// Function to play the completion sound
+function playCompletionSound() {
+    completionSound.currentTime = 0; // Rewind to the start
+    completionSound.play(); // Play the sound
+}
