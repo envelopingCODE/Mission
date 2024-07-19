@@ -171,3 +171,16 @@ input[type="text"] {
     transition: width 0.5s;
 
 }
+
+/* Add these styles to your CSS */
+.motivational-quote {
+    font-size: 1.5em;
+    font-weight: bold;
+    text-align: center;
+    padding: 20px;
+    margin: 20px;
+    background-color: #f0f8ff42; /* Light background color for visibility */
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
