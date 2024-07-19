@@ -160,8 +160,13 @@ function addMission(sanitizedInput) {
 
 function saveMissions() {
     const missionsEl = document.getElementsByClassName("mission");
-    const tempArray = Array.from(missionsEl).map(missionEl => missionEl.innerHTML);
-
+    const tempArray = Array.from(missionsEl).map(missionEl => {
+        return {
+            text: missionEl.innerHTML,
+            xp: missionEl.dataset.xp
+        };
+    });
+    
     let jsonStringify = JSON.stringify(tempArray);   // Convert the array to a JSON string
     localStorage.setItem("missions", jsonStringify);  // Save the JSON string to local storage
 }
@@ -174,7 +179,7 @@ function loadMissions() {
     if (missions) {
         missions.forEach(mission => {
             const newEl = document.createElement("li");
-            const newTextNode = document.createTextNode(mission);
+            const newTextNode = document.createTextNode(mission.text);
             newEl.appendChild(newTextNode);
             newEl.className = "mission";
             newEl.dataset.xp = mission.xp; // Store the XP value in a data attribute
