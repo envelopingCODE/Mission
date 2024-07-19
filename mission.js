@@ -197,3 +197,48 @@ function playCompletionSound() {
     completionSound.currentTime = 0; // Reset the sound to the beginning
     completionSound.play(); // Play the completion sound
 }
+
+"use strict";
+
+// Existing variables and functions...
+
+const motivationalQuotes = [
+// Updated motivational quotes
+
+    "You control your destiny. Forge ahead, Neon Nomad.",
+    "Every action you take is a calculated move. Keep pressing forward, Lone Wanderer.",
+    "In this wasteland, you make the rules. Blaze your trail, Urban Pioneer.",
+    "Trust your instincts; in this world, your gut is your greatest asset.",
+    "Set your course and carve out your unique path. You're the architect of your fate.",
+    "Every upgrade you achieve is a testament to your prowess. Keep advancing, Technologist.",
+    "Conquer each obstacle and become more formidable. Your strength is unyielding.",
+    "Your progress is a clear signal of your rising competence. Continue to evolve, netrunner.",
+    "With every challenge you master, your abilities grow. Forge your legacy, Resilient Warrior.",
+    "Your skill set is expanding with each accomplishment. Stay relentless, Urban Survivor.",
+    "You are not isolated in this realm; your progress fuels others. Your influence is undeniable.",
+    "Your victories are shared with those who stand beside you. This is a collective triumph.",
+    "Your relentless drive connects you with a network of achievers. Keep pushing, Pioneer.",
+    "You’re part of a network that believes in your potential. Strive for more, Cyber Adventurer.",
+    "Strength in unity. Your triumphs elevate us all. Together, we rise.",
+    "Every effort contributes to your personal evolution. This is your journey of growth.",
+    "With every action, you are building a better future. Continue your mission, Visionary.",
+    "Your tenacity charts the path to greatness. Stay on course, Tactical Genius.",
+    "Believe in your odyssey; each move brings you closer to your endgame. Victory is within reach.",
+    "Celebrate every milestone, no matter the size. Each step forward is progress.",
+    "Reflect on your journey and the strides you’ve made. Your growth is remarkable.",
+    "Every challenge conquered adds to your saga of success. Write your epic tale.",
+    "Embrace the journey; each step is a triumph. Your path is your own.",
+    "Your evolution is the result of persistent effort and dedication. You are unstoppable.",
+    "Pause and honor your progress; it's a testament to your enduring effort."
+];
+
+
+function displayQuote() {
+    const quoteElement = document.getElementById("motivationalQuote");
+    const randomQuote = motivationalQuotes[Math.floor(Math.random() * motivationalQuotes.length)];
+    quoteElement.textContent = randomQuote;
+}
+
+// Initialize quote display and set interval for updates
+displayQuote();
+setInterval(displayQuote, 10 * 60 * 1000); // Updates every 10 minutes

@@ -39,6 +39,7 @@ background-color: rgba(229, 236, 238, 0.791);
 padding: 10px;
 transition-duration: 1s;
 
+
 }
 
 
@@ -161,6 +162,8 @@ input[type="text"] {
     overflow: hidden;
     margin-top: 20px;
     text-align: center;
+    
+    
 }
 #xp-meter {
     height: 25px;
@@ -170,17 +173,42 @@ input[type="text"] {
     color: white;
     transition: width 0.5s;
 
-}
-
-/* Add these styles to your CSS */
+}/* Add these styles to your CSS */
 .motivational-quote {
     font-size: 1.5em;
-    font-weight: bold;
+    color: white;
+    font-weight: 200; /* Slightly lighter font weight for a modern look */
     text-align: center;
-    padding: 20px;
-    margin: 20px;
-    background-color: #f0f8ff42; /* Light background color for visibility */
-    border: 1px solid #ccc;
-    border-radius: 8px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    padding: 15px; /* Slightly reduced padding for a more compact design */
+    margin: 20px auto; /* Centered margin with auto horizontal centering */
+   background-color: rgba(137, 139, 138, 0); /* Light, semi-transparent background color */
+    border: 1px inset rgba(0, 0, 0, 0.1); /* Subtle border color */
+    border-radius: 20px; /* Slightly more rounded corners */
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); /* Soft shadow for a floating effect */
+    max-width: 40%; /* Ensure the quote does not stretch too wide */
+    backdrop-filter: blur(10px); 
+    -webkit-backdrop-filter: blur(10px); 
+    transition: opacity 0.3s ease-in-out; /* Smooth fade-in and fade-out effect */
+}
+
+#xpText {
+    position:relative;
+    text-align: center;
+    color: white;
+}
+
+#motivationalQuote {
+*/    border-bottom: 6px solid rgb(251, 255, 254);
+
+}
+
+/* Optional: Add a hover effect for interaction */
+.motivational-quote:hover {
+    opacity: 1; /* Slightly darker on hover */
+    backdrop-filter: blur(20px); 
+    transform: scale(1.1);
+    transition: 0.3s ease-in-out;
+
+
+    
 }
