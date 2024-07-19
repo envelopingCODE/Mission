@@ -202,9 +202,11 @@ function loadMissions() {
 
 function clearData() {
     localStorage.clear(); // Clear local storage
+    MissionListEl.textContent = ""; // Clear the course list content
     resetXpMeter(); // Reset the XP meter
     resetStreak(); // Reset the streak
 }
+
 
 // Clear textfield
 function clearTextField() {
