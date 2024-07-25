@@ -35,7 +35,7 @@ position: fixed;
 border-radius: 10px ;
 top: 30%;
 right: 35%;
-background-color: rgba(229, 236, 238, 0.791);
+background-color: rgba(159, 195, 208, 0.958);
 padding: 10px;
 transition-duration: 1s;
 
@@ -212,3 +212,4 @@ input[type="text"] {
 
     
 }
+

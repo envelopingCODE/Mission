@@ -9,7 +9,7 @@ const xpMeterEl = document.getElementById('xp-meter'); // Get the element for th
 const streakBonusEl = document.getElementById('streak-bonus'); // Get the element for displaying streak bonus
 const completionSound = document.getElementById('completionSound'); // Get the sound element for mission completion
 
-let currentStreak = 0; // Variable to track the current streak of completed missions
+// let currentStreak = 0; // Variable to track the current streak of completed missions
 
 missionButtonEl.disabled = true; // Initially disable the mission button until input is valid
 
@@ -39,6 +39,12 @@ inputEl.addEventListener('keypress', e => {
         addMission(sanitizedInput); // Add the mission with the sanitized input
     }
 });
+
+xpMeterEl.addEventListener('click', clearXP);
+
+
+
+
 
 missionButtonEl.addEventListener('mouseup', clearTextField); // Clear the text field when the button is released
 resetButtonEl.addEventListener('click', clearData); // Clear all data when the reset button is clicked
@@ -93,7 +99,7 @@ function addMission(sanitizedInput) {
         saveMissions(); // Save the updated list of missions
         displayRandomMessage(); // Display a random motivational message
         playCompletionSound(); // Play the completion sound
-        updateStreak(); // Update the streak count
+    //    updateStreak(); // Update the streak count
     });
 
     missionListEl.appendChild(newEl); // Add the new list item to the mission list
@@ -134,7 +140,7 @@ function loadMissions() {
                 saveMissions(); // Save the updated list of missions
                 displayRandomMessage(); // Display a random motivational message
                 playCompletionSound(); // Play the completion sound
-                updateStreak(); // Update the streak count
+      //          updateStreak(); // Update the streak count
             });
 
             setTimeout(() => {
@@ -152,7 +158,14 @@ function clearData() {
     localStorage.clear(); // Clear all data from local storage
     missionListEl.textContent = ""; // Clear the mission list
     resetXpMeter(); // Reset the XP meter
-    resetStreak(); // Reset the streak count
+  //  resetStreak(); // Reset the streak count
+    console.log("Data has been wiped . . ");
+}
+
+function clearXP() {
+    resetXpMeter(); // Reset the XP meter
+  //  resetStreak(); // Reset the streak count
+    console.log("XP meter has been reset.");
 }
 
 function clearTextField() {
@@ -183,6 +196,7 @@ function resetXpMeter() {
     localStorage.setItem("currentXp", 0); // Reset the current XP in local storage to 0
 }
 
+/*
 function updateStreak() {
     currentStreak++; // Increase the current streak count
     streakBonusEl.textContent = `Streak Bonus: ${currentStreak * 5} XP`; // Update the streak bonus display
@@ -191,14 +205,15 @@ function updateStreak() {
 function resetStreak() {
     currentStreak = 0; // Reset the current streak count to 0
     streakBonusEl.textContent = `Streak Bonus: 0 XP`; // Update the streak bonus display
-}
+} */
+
 
 function playCompletionSound() {
     completionSound.currentTime = 0; // Reset the sound to the beginning
     completionSound.play(); // Play the completion sound
 }
 
-"use strict";
+
 
 // Existing variables and functions...
 
