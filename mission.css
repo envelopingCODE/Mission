@@ -283,22 +283,26 @@ input[type="text"] {
 
 #addMissionButton  {
 
-    width: 50px;
-    height: 40px;
+  
     border-radius: 8%;
-    margin: 10px 10px;
-    background-color: rgba(111, 158, 160, 0.874);
+    padding: 30px 10px; /* Adjust padding as needed */
+    margin: 10px 20px; /* Centered margin with auto horizontal centering */
+    background-color: rgba(137, 193, 155, 0.918);
     color: aliceblue;
+    font-weight: 600;
+
+
 
 
 }
 
 #resetButton {
 
-    width: 80px;
-    height: auto;
+    padding: 30px 10px; /* Adjust padding as needed */
+    margin: 10px 20px; /* Centered margin with auto horizontal centering */
     border-radius: 4%;
-    margin: 10px 10px;
+    margin: 10px auto; /* Centered margin with auto horizontal centering */
+
     background-color: rgba(95, 158, 160, 0.29);
     color: aliceblue;
 }
