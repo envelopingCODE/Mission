@@ -196,11 +196,11 @@ input[type="text"] {
     text-align: center;
     color: white;
 }
-
+/*
 #motivationalQuote {
-*/    border-bottom: 6px solid rgb(251, 255, 254);
+   border-bottom: 6px solid rgb(251, 255, 254);
 
-}
+}*/ 
 
 /* Optional: Add a hover effect for interaction */
 .motivational-quote:hover {
@@ -212,4 +212,98 @@ input[type="text"] {
 
     
 }
+
+.mobile {
+    display: none;
+}
+
+.widescreen {
+    display: block;
+}
+
+
+@media screen and (max-width:600px) {
+
+    .widescreen {
+        display: none;
+    }
+
+    .mobile {
+        display: block;
+    }
+    
+    .course {
+    background-color: #007BFF;
+    font-size: 20px;
+    color: #fff;
+    border-radius: 10px;
+    padding: 10px 14px;
+    width: 100%;
+    max-width: 120px;
+    margin: 20px;
+    margin-left: auto;
+    margin-right: auto;
+    word-wrap:normal;
+    position: relative;
+    box-shadow: #020202 0.2px 4px 4px 0.2px;
+    transition: transform 1.5s;
+    list-style-type:none;
+    opacity: 0;
+    transform: translateY(20px);
+    box-sizing: border-box;
+}
+
+#addMissionButton  {
+
+    width: 50px;
+    height: 40px;
+    border-radius: 8%;
+    margin: 10px 10px;
+    background-color: rgba(111, 158, 160, 0.874);
+    color: aliceblue;
+
+
+}
+
+#resetButton {
+
+    width: 80px;
+    height: auto;
+    border-radius: 4%;
+    margin: 10px 10px;
+    background-color: rgba(95, 158, 160, 0.29);
+    color: aliceblue;
+}
+
+.motivational-quote {
+    font-size: 1.5em;
+    color: white;
+    font-weight: 200; /* Slightly lighter font weight for a modern look */
+    text-align: center;
+    padding: 15px; /* Slightly reduced padding for a more compact design */
+    margin: 20px auto; /* Centered margin with auto horizontal centering */
+   background-color: rgba(137, 139, 138, 0); /* Light, semi-transparent background color */
+    border: 1px inset rgba(0, 0, 0, 0.1); /* Subtle border color */
+    border-radius: 20px; /* Slightly more rounded corners */
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); /* Soft shadow for a floating effect */
+    max-width: 65%; /* Ensure the quote does not stretch too wide */
+    backdrop-filter: blur(10px); 
+    -webkit-backdrop-filter: blur(10px); 
+    transition: opacity 0.3s ease-in-out; /* Smooth fade-in and fade-out effect */
+}
+.grid-item-1 {
+    grid-column:span 5;
+   align-self: center;
+   margin: auto;
+}
+
+.grid-item-2 {
+    grid-column:span 5;
+   align-self: center;
+   margin: auto;
+}
+
+
+}
+
 
