@@ -8,7 +8,9 @@ const errorMessageEl = document.getElementById('errorMessage'); // Get the eleme
 const xpMeterEl = document.getElementById('xp-meter'); // Get the element for the XP meter
 const streakBonusEl = document.getElementById('streak-bonus'); // Get the element for displaying streak bonus
 const completionSound = document.getElementById('completionSound'); // Get the sound element for mission completion
-const levelUpSound = document.getElementById('levelUpSound') // Get the sound element for mission completion
+const levelUpSound = document.getElementById('levelUpSound') // Get the sound element for level up
+const addMissionSound = document.getElementById('addMissionSound') // Get the sound element for adding missions
+
 
 
 // let currentStreak = 0; // Variable to track the current streak of completed missions
@@ -89,6 +91,8 @@ function addMission(sanitizedInput) {
         xpValue = parseInt(prompt("Please enter a valid number for XP"));
     }
 
+    playAddMissionSound();
+
     const newEl = document.createElement("li"); // Create a new list item element
     const newTextNode = document.createTextNode(`${sanitizedInput} — ${xpValue} XP`); // Create a text node with the mission and XP
     newEl.appendChild(newTextNode); // Append the text node to the list item
@@ -111,6 +115,7 @@ function addMission(sanitizedInput) {
         newEl.classList.add("active"); // Add the 'active' class after a short delay for animation
         saveMissions(); // Save the updated list of missions
     }, 10);
+    
 }
 
 function saveMissions() {
@@ -240,6 +245,11 @@ function playLevelUpSound() {
 function playResetDataSound() {
     resetDataSound.currentTime = 0; // Reset the sound to the beginning
     resetDataSound.play(); // Play the completion sound
+};
+
+function playAddMissionSound(){
+    addMissionSound.currentTime = 0; // Reset the sound to the beginning
+    addMissionSound.play(); // Play the completion sound
 };
 
 
