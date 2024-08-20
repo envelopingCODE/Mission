@@ -10,6 +10,7 @@ const streakBonusEl = document.getElementById('streak-bonus'); // Get the elemen
 const completionSound = document.getElementById('completionSound'); // Get the sound element for mission completion
 const levelUpSound = document.getElementById('levelUpSound') // Get the sound element for level up
 const addMissionSound = document.getElementById('addMissionSound') // Get the sound element for adding missions
+const initializingSound = document.getElementById('initializingSound') // Get the sound element for initializing
 
 
 
@@ -55,6 +56,7 @@ missionButtonEl.addEventListener('mouseup', clearTextField); // Clear the text f
 resetButtonEl.addEventListener('click', clearData); // Clear all data when the reset button is clicked
 inputEl.addEventListener('keyup', minimumInput); // Check the input length after every key press
 document.addEventListener('DOMContentLoaded', loadMissions); // Load missions when the document is ready
+
 
 function sanitizeInput(input) {
     return input.replace(/<[^>]*>?/gm, ''); // Remove any HTML tags from the input
@@ -127,6 +129,7 @@ function saveMissions() {
 }
 
 function loadMissions() {
+    playInitSound();
     let missions = JSON.parse(localStorage.getItem("missions")); // Get the saved missions from local storage
 
     if (missions) { // If there are saved missions
@@ -252,6 +255,10 @@ function playAddMissionSound(){
     addMissionSound.play(); // Play the completion sound
 };
 
+function playInitSound(){
+    initializingSound.currentTime = 0; // Reset the sound to the beginning
+    initializingSound.play(); // Play the completion sound
+};
 
 
 
