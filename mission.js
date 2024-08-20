@@ -8,6 +8,8 @@ const errorMessageEl = document.getElementById('errorMessage'); // Get the eleme
 const xpMeterEl = document.getElementById('xp-meter'); // Get the element for the XP meter
 const streakBonusEl = document.getElementById('streak-bonus'); // Get the element for displaying streak bonus
 const completionSound = document.getElementById('completionSound'); // Get the sound element for mission completion
+const levelUpSound = document.getElementById('levelUpSound') // Get the sound element for mission completion
+
 
 // let currentStreak = 0; // Variable to track the current streak of completed missions
 
@@ -25,6 +27,7 @@ function minimumInput() {
         missionButtonEl.disabled = true; // Disable the mission button
     }
 }
+
 
 missionButtonEl.addEventListener('mousedown', function(){
     const input = inputEl.value; // Get the value from the input field
@@ -154,6 +157,14 @@ function loadMissions() {
     updateXpMeter(currentXp); // Update the XP meter display
 }
 
+
+function checkXP(xp){
+if (xp >= 100) {
+    playLevelUpSound();
+    resetXpMeter();
+    xpText.textContent="LEVEL 2 — GREAT JOB OPERATIVE"
+}};
+
 function clearData() {
     localStorage.clear(); // Clear all data from local storage
     missionListEl.textContent = ""; // Clear the mission list
@@ -179,6 +190,7 @@ function addXp(xp) {
     xpMeterEl.dataset.xp = currentXp; // Update the XP meter's data attribute
     localStorage.setItem("currentXp", currentXp); // Save the new current XP to local storage
     updateXpMeter(currentXp); // Update the XP meter display
+    checkXP(currentXp);
 }
 
 function updateXpMeter(currentXp) {
@@ -196,6 +208,10 @@ function resetXpMeter() {
     localStorage.setItem("currentXp", 0); // Reset the current XP in local storage to 0
 }
 
+function resetXpMeterVisual() {
+    xpMeterEl.style.width = '0%'; // Visually reset the XP bar to 0%
+    xpMeterEl.textContent = '0 XP'; // Update the text content to show 0 XP
+}
 /*
 function updateStreak() {
     currentStreak++; // Increase the current streak count
@@ -211,6 +227,12 @@ function resetStreak() {
 function playCompletionSound() {
     completionSound.currentTime = 0; // Reset the sound to the beginning
     completionSound.play(); // Play the completion sound
+}
+
+
+function playLevelUpSound() {
+    levelUpSound.currentTime = 0; // Reset the sound to the beginning
+    levelUpSound.play(); // Play the completion sound
 }
 
 
