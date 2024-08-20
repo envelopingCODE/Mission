@@ -166,6 +166,7 @@ if (xp >= 100) {
 }};
 
 function clearData() {
+    playResetDataSound();
     localStorage.clear(); // Clear all data from local storage
     missionListEl.textContent = ""; // Clear the mission list
     resetXpMeter(); // Reset the XP meter
@@ -174,6 +175,7 @@ function clearData() {
 }
 
 function clearXP() {
+    playResetDataSound();
     resetXpMeter(); // Reset the XP meter
   //  resetStreak(); // Reset the streak count
     console.log("XP meter has been reset.");
@@ -227,13 +229,19 @@ function resetStreak() {
 function playCompletionSound() {
     completionSound.currentTime = 0; // Reset the sound to the beginning
     completionSound.play(); // Play the completion sound
-}
+};
 
 
 function playLevelUpSound() {
     levelUpSound.currentTime = 0; // Reset the sound to the beginning
     levelUpSound.play(); // Play the completion sound
-}
+};
+
+function playResetDataSound() {
+    resetDataSound.currentTime = 0; // Reset the sound to the beginning
+    resetDataSound.play(); // Play the completion sound
+};
+
 
 
 
