@@ -349,7 +349,7 @@ function typeMessage() {
                     setTimeout(() => {
                         outputDiv.style.display = "none"; // Remove the div from the display
                     }, 1000); // Wait for 1 second after fading out
-                }, 8000); // Wait for 8 seconds before starting the fade-out
+                }, 4000); // Wait for 8 seconds before starting the fade-out
 
                 if (index < 3) { // Only type the first three messages
                     setTimeout(typeMessage, 1000); // Wait for 1 second before typing the next message
