@@ -173,7 +173,7 @@ input[type="text"] {
     color: white;
     transition: width 0.5s;
 
-}/* Add these styles to your CSS */
+}
 .motivational-quote {
     font-size: 1.5em;
     color: white;
@@ -341,7 +341,6 @@ input[type="text"] {
 
 #output { /* Styles specifically for the output div */
     margin:auto;
-
 
     font-family: 'Courier New', Courier, monospace; /* Sets a monospace font for a techy look */
     background-color: rgba(0, 0, 0, 0.721); /* Sets the background color to black */

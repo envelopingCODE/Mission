@@ -94,7 +94,7 @@ function addMission(sanitizedInput) {
     }
 
     playAddMissionSound();
-    typeAdditionalMessage(3);
+    typeAdditionalMessage(2);
 
     const newEl = document.createElement("li"); // Create a new list item element
     const newTextNode = document.createTextNode(`${sanitizedInput} — ${xpValue} XP`); // Create a text node with the mission and XP
@@ -176,7 +176,7 @@ if (xp >= 100) {
 
 function clearData() {
     playResetDataSound();
-    typeAdditionalMessage(4);
+    typeAdditionalMessage(3);
     localStorage.clear(); // Clear all data from local storage
     missionListEl.textContent = ""; // Clear the mission list
     resetXpMeter(); // Reset the XP meter
@@ -307,8 +307,7 @@ function displayQuote() {
 const messages = [
     "Initializing Uplink . . ", // First message
     "Uplink established.", // Second message
-    "Transmission received.", // Third message
-    "OP. accepted", // Fourth message
+    "OP. accepted", // Third message
     "Data wipe initiated . . " // Fourth message
 ];
 
@@ -318,7 +317,7 @@ const outputDiv = document.getElementById('output'); // Get the output div eleme
 // Function to type out messages one by one
 function typeMessage() {
     // Check if there are more messages to type
-    if (index < 3) { // Only type the first three messages
+    if (index < 2) { // Only type the first three messages
         let message = messages[index]; // Get the current message
         let charIndex = 0; // Index to track the current character being typed
 
@@ -332,6 +331,11 @@ function typeMessage() {
                 clearInterval(typeInterval); // Stop the typing interval
                 index++; // Move to the next message
                 outputDiv.textContent += '\n'; // Add a new line after the message
+
+                // Add an extra line space after the first message
+                if (index === 1) {
+                    outputDiv.textContent += '\n'; // Add an extra line space after the first message
+                }
 
                 // Start the fade-out effect after 10 seconds
                 setTimeout(() => {
