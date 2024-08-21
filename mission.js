@@ -309,7 +309,7 @@ const messages = [
     "Uplink established.", // Second message
     "Transmission received.", // Third message
     "OP. accepted", // Fourth message
-    "Emergency data wipe." // Fourth message
+    "Data wipe initiated . . " // Fourth message
 ];
 
 let index = 0; // Index to track the current message being typed
