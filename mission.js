@@ -297,11 +297,17 @@ const motivationalQuotes = [
 ];
 
 
+
+
 function displayQuote() {
     const quoteElement = document.getElementById("motivationalQuote");
     const randomQuote = motivationalQuotes[Math.floor(Math.random() * motivationalQuotes.length)];
     quoteElement.textContent = randomQuote;
 }
+
+// Initialize quote display and set interval for updates
+displayQuote();
+setInterval(displayQuote, 10 * 60 * 1000); // Updates every 10 minutes
 
 // Array containing the messages to be displayed
 const messages = [
