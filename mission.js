@@ -94,6 +94,7 @@ function addMission(sanitizedInput) {
     }
 
     playAddMissionSound();
+    typeAdditionalMessage(3);
 
     const newEl = document.createElement("li"); // Create a new list item element
     const newTextNode = document.createTextNode(`${sanitizedInput} — ${xpValue} XP`); // Create a text node with the mission and XP
@@ -175,6 +176,7 @@ if (xp >= 100) {
 
 function clearData() {
     playResetDataSound();
+    typeAdditionalMessage(4);
     localStorage.clear(); // Clear all data from local storage
     missionListEl.textContent = ""; // Clear the mission list
     resetXpMeter(); // Reset the XP meter
@@ -301,6 +303,89 @@ function displayQuote() {
     quoteElement.textContent = randomQuote;
 }
 
-// Initialize quote display and set interval for updates
-displayQuote();
-setInterval(displayQuote, 10 * 60 * 1000); // Updates every 10 minutes
+// Array containing the messages to be displayed
+const messages = [
+    "Initializing Uplink . . ", // First message
+    "Uplink established.", // Second message
+    "Transmission received.", // Third message
+    "OP. accepted", // Fourth message
+    "Emergency data wipe." // Fourth message
+];
+
+let index = 0; // Index to track the current message being typed
+const outputDiv = document.getElementById('output'); // Get the output div element
+
+// Function to type out messages one by one
+function typeMessage() {
+    // Check if there are more messages to type
+    if (index < 3) { // Only type the first three messages
+        let message = messages[index]; // Get the current message
+        let charIndex = 0; // Index to track the current character being typed
+
+        // Set an interval to type each character of the message
+        const typeInterval = setInterval(() => {
+            outputDiv.textContent += message.charAt(charIndex); // Append the current character to the output div
+            charIndex++; // Move to the next character
+
+            // Check if the entire message has been typed
+            if (charIndex === message.length) {
+                clearInterval(typeInterval); // Stop the typing interval
+                index++; // Move to the next message
+                outputDiv.textContent += '\n'; // Add a new line after the message
+
+                // Start the fade-out effect after 10 seconds
+                setTimeout(() => {
+                    outputDiv.style.opacity = 0; // Start fading out
+                    setTimeout(() => {
+                        outputDiv.style.display = "none"; // Remove the div from the display
+                    }, 1000); // Wait for 1 second after fading out
+                }, 8000); // Wait for 8 seconds before starting the fade-out
+
+                if (index < 3) { // Only type the first three messages
+                    setTimeout(typeMessage, 1000); // Wait for 1 second before typing the next message
+                }
+            }
+        }, 60); // Typing speed: 60 milliseconds per character
+    }
+}
+
+// Call typeMessage on page load to start typing the first message
+window.onload = typeMessage;
+
+// Function to type out additional messages (e.g., when a task is added)
+function typeAdditionalMessage(messageIndex) {
+    // Ensure the output div is visible and fully opaque before typing the new message
+    outputDiv.style.display = "block";
+    outputDiv.style.opacity = 1;
+
+    // Check if the message index is within the array bounds
+    if (messageIndex >= 0 && messageIndex < messages.length) {
+        let message = messages[messageIndex]; // Get the current message
+        let charIndex = 0; // Index to track the current character being typed
+
+         // Clear the output div before typing the new message
+         outputDiv.textContent = '';
+
+        // Set an interval to type each character of the message
+        const typeInterval = setInterval(() => {
+            outputDiv.textContent += message.charAt(charIndex); // Append the current character to the output div
+            charIndex++; // Move to the next character
+
+            // Check if the entire message has been typed
+            if (charIndex === message.length) {
+                clearInterval(typeInterval); // Stop the typing interval
+                outputDiv.textContent += '\n'; // Add a new line after the message
+
+                // Start the fade-out effect after 10 seconds
+                setTimeout(() => {
+                    outputDiv.style.opacity = 0; // Start fading out
+                    setTimeout(() => {
+                        outputDiv.style.display = "none"; // Remove the div from the display
+                    }, 1000); // Wait for 1 second after fading out
+                }, 4000); // Wait for 8 seconds before starting the fade-out
+            }
+        }, 60); // Typing speed: 60 milliseconds per character
+    } else {
+        console.error("Message index out of bounds."); // Log an error if the index is invalid
+    }
+}

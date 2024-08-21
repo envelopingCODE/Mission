@@ -339,3 +339,17 @@ input[type="text"] {
 }
 
 
+#output { /* Styles specifically for the output div */
+    margin:auto;
+
+
+    font-family: 'Courier New', Courier, monospace; /* Sets a monospace font for a techy look */
+    background-color: rgba(0, 0, 0, 0.721); /* Sets the background color to black */
+    color: rgba(0, 255, 0, 0.81); /* Sets the text color to lime green */
+    padding: 20px; /* Adds padding around the content */
+    white-space: pre; /* Preserves whitespace and line breaks */
+    border: 1px solid lime; /* Optional: adds a border around the div */
+    width: fit-content; /* Optional: adjusts the width to fit the content */
+    opacity: 1; /* Initial opacity */
+    transition: opacity 2s ease; /* Smooth transition for opacity changes */
+}
