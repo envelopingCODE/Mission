@@ -11,6 +11,7 @@ const completionSound = document.getElementById('completionSound'); // Get the s
 const levelUpSound = document.getElementById('levelUpSound') // Get the sound element for level up
 const addMissionSound = document.getElementById('addMissionSound') // Get the sound element for adding missions
 const initializingSound = document.getElementById('initializingSound') // Get the sound element for initializing
+const mediaQuery = window.matchMedia('(max-width: 600px)');
 
 
 
@@ -94,7 +95,15 @@ function addMission(sanitizedInput) {
     }
 
     playAddMissionSound();
-  //  typeAdditionalMessage(2);
+
+    // Check if the viewport is 600px or less (mobile mode)
+    const mediaQuery = window.matchMedia('(max-width: 600px)');
+    if (mediaQuery.matches) {
+        // Call typeAdditionalMessage only if in mobile mode
+        typeAdditionalMessage(2);
+    }
+
+
 
     const newEl = document.createElement("li"); // Create a new list item element
     const newTextNode = document.createTextNode(`${sanitizedInput} — ${xpValue} XP`); // Create a text node with the mission and XP
@@ -296,18 +305,38 @@ const motivationalQuotes = [
     "Pause and honor your progress; it's a testament to your enduring effort."
 ];
 
+document.addEventListener("DOMContentLoaded", function() {
+    const mediaQuery = window.matchMedia('(max-width: 600px)');
+
+    // Function to display the quote based on the media query
+    function updateQuote() {
+        if (mediaQuery.matches) {
+            // Mobile mode
+            displayQuote("motivationalQuoteMobile");
+        } else {
+            // Desktop mode
+            displayQuote("motivationalQuoteWidescreen");
+        }
+    }
+
+    // Function to display a quote in the specified element
+    function displayQuote(elementId) {
+        let quoteElement = document.getElementById(elementId);
+        const randomQuote = motivationalQuotes[Math.floor(Math.random() * motivationalQuotes.length)];
+        quoteElement.textContent = randomQuote;
+    }
+
+    // Initial quote display
+    updateQuote();
+    setInterval(updateQuote, 10 * 60 * 1000); // Updates every 10 minutes
+
+    // Listen for changes in the viewport size
+    mediaQuery.addEventListener('change', updateQuote);
+});
 
 
 
-function displayQuote() {
-    const quoteElement = document.getElementById("motivationalQuote");
-    const randomQuote = motivationalQuotes[Math.floor(Math.random() * motivationalQuotes.length)];
-    quoteElement.textContent = randomQuote;
-}
 
-// Initialize quote display and set interval for updates
-displayQuote();
-setInterval(displayQuote, 10 * 60 * 1000); // Updates every 10 minutes
 
 // Array containing the messages to be displayed
 const messages = [
