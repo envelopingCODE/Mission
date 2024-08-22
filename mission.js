@@ -94,7 +94,7 @@ function addMission(sanitizedInput) {
     }
 
     playAddMissionSound();
-    typeAdditionalMessage(2);
+  //  typeAdditionalMessage(2);
 
     const newEl = document.createElement("li"); // Create a new list item element
     const newTextNode = document.createTextNode(`${sanitizedInput} — ${xpValue} XP`); // Create a text node with the mission and XP
