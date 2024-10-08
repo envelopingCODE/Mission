@@ -14,12 +14,14 @@
 <h1 class="mobile">Ops. for today:</h1>
 
 
-Add objectives: <input type="text" id="addMission">
+<label id="label1" for="addMission">Add objectives:</label>
+ <input type="text" id="addMission">
 <button id="addMissionButton"> Add Op.</button>
 
 <button id="resetButton">  Wipe memory </button>
 
 <p><span id="errorMessage"></span></p>
+
 </div>
 
 <div id="output"></div> <!-- A div to display the output messages -->
@@ -28,8 +30,13 @@ Add objectives: <input type="text" id="addMission">
 <div id="xp-meter-container">
    
     <div id="xp-meter">0 XP</div>
+
+</div>
+<div id="leaderboard">
+    <p>Current High Score: <span id="highScore">0</span> XP</p>
 </div>
 <br>
+
 
 
 <br>
@@ -40,7 +47,7 @@ Add objectives: <input type="text" id="addMission">
 <audio id="initializingSound" src="initializingSound.mp3" preload="auto"></audio>
 
 <div id="motivationalQuoteWidescreen" class="motivational-quote widescreen"></div>
-
+>
 
 <div class="missions-grid" >
 
@@ -49,6 +56,8 @@ Add objectives: <input type="text" id="addMission">
     <div class="grid-item-2"> <ul id="missionList"></ul> </div>
 
 </div>
+
+
 
 <div id="motivationalQuoteMobile" class="motivational-quote mobile"></div>
 

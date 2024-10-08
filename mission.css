@@ -42,7 +42,18 @@ transition-duration: 1s;
 
 }
 
+#leaderboard  {
+    margin: auto;
+    align-self: center;
+    align-content: center;
+    text-align: center;
+   
 
+}
+
+#leaderboard p {
+    color: rgba(255, 255, 255, 0.865);
+}
 
 .missions-grid {
   display: grid;
@@ -119,8 +130,17 @@ transform: translateY(0);
 
 
 
+#label1 {
+   margin-right: 5px;
+   margin-left: 48px;
+/* color: rgba(79, 239, 151, 0.806); */
+   font-family: 'Courier New', Courier, monospace;
+   font-weight: 700;
+   
+   
 
 
+}
 
 
 
@@ -150,6 +170,52 @@ input[type="text"] {
     font-weight: bold;
     color: red;
 }
+
+
+#addMissionButton  {
+
+  
+    border-radius: 8%;
+    padding: 6px 10px; /* Adjust padding as needed */
+    margin: 10px 20px; /* Centered margin with auto horizontal centering */
+    background-color: rgba(137, 193, 155, 0.918);
+    color: aliceblue;
+    font-weight: 600;
+
+}
+
+#addMissionButton:hover {
+    background-color: rgba(139, 251, 174, 0.918);
+
+}
+
+#addMissionButton:disabled {
+    background-color: #998e8ec1; /* Gray background */
+    color: #ffffff; /* Dimmed text color */
+    cursor: not-allowed; /* Change cursor to show it's disabled */
+    opacity: 0.6; /* Make it slightly transparent */
+    box-shadow: none; /* Remove any shadows */
+
+}
+
+#resetButton {
+
+    padding: 6px 10px; /* Adjust padding as needed */
+    margin: 10px 20px; /* Centered margin with auto horizontal centering */
+    border-radius: 4%;
+    margin: 10px auto; /* Centered margin with auto horizontal centering */
+
+    background-color: rgba(95, 158, 160, 0.29);
+    color: aliceblue;
+}
+
+#resetButton:hover {
+
+    background-color: rgba(183, 180, 180, 0.665);
+    color: rgb(0, 0, 0);
+}
+
+
 
  /* XP meter styles */
  #xp-meter-container {
@@ -343,7 +409,7 @@ input[type="text"] {
     margin:auto;
 
     font-family: 'Courier New', Courier, monospace; /* Sets a monospace font for a techy look */
-    background-color: rgba(0, 0, 0, 0.721); /* Sets the background color to black */
+    background-color: rgba(0, 0, 0, 0.482); /* Sets the background color to black */
     color: rgba(0, 255, 0, 0.81); /* Sets the text color to lime green */
     padding: 20px; /* Adds padding around the content */
     white-space: pre; /* Preserves whitespace and line breaks */
@@ -351,4 +417,9 @@ input[type="text"] {
     width: fit-content; /* Optional: adjusts the width to fit the content */
     opacity: 1; /* Initial opacity */
     transition: opacity 2s ease; /* Smooth transition for opacity changes */
+    box-shadow: 
+    0 0 5px rgba(0, 255, 115, 0.5),
+    0 0 10px rgba(0, 255, 115, 0.7),
+    0 0 15px rgba(0, 255, 115, 0.9);
+
 }

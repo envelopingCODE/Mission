@@ -170,9 +170,35 @@ function loadMissions() {
         });
     }
 
-    let currentXp = parseInt(localStorage.getItem("currentXp")) || 0; // Get the current XP from local storage, or default to 0
+    // Load current XP and high score from localStorage
+    let currentXp = parseInt(localStorage.getItem("currentXp")) || 0;
+    let highScore = parseInt(localStorage.getItem("highScore")) || 0; // Get the high score or default to 0
+
     xpMeterEl.dataset.xp = currentXp; // Set the XP meter's data attribute to the current XP
+   
     updateXpMeter(currentXp); // Update the XP meter display
+
+     // Update leaderboard display
+     updateHighScoreDisplay(highScore);
+}
+
+
+// Update high score function
+function updateHighScoreDisplay(highScore) {
+    const highScoreEl = document.getElementById('highScore');
+    highScoreEl.textContent = highScore;
+}
+
+function displayCongratulatoryMessage() {
+    const messageElement = document.createElement("div");
+    messageElement.textContent = "New High Score! 🎉";
+    messageElement.classList.add("congratulatory-message");
+
+    document.body.appendChild(messageElement);
+
+    setTimeout(() => {
+        messageElement.remove(); // Remove the message after 3 seconds
+    }, 3000);
 }
 
 
@@ -211,6 +237,17 @@ function addXp(xp) {
     xpMeterEl.dataset.xp = currentXp; // Update the XP meter's data attribute
     localStorage.setItem("currentXp", currentXp); // Save the new current XP to local storage
     updateXpMeter(currentXp); // Update the XP meter display
+
+    // Check if the current XP exceeds the high score
+    let highScore = parseInt(localStorage.getItem("highScore")) || 0;
+    if (currentXp > highScore) {
+        localStorage.setItem("highScore", currentXp); // Save the new high score
+        updateHighScoreDisplay(currentXp); // Update the displayed high score
+        displayCongratulatoryMessage(); // Display a message if high score is broken
+    }
+
+
+
     checkXP(currentXp);
 }
 
@@ -428,3 +465,4 @@ function typeAdditionalMessage(messageIndex) {
         console.error("Message index out of bounds."); // Log an error if the index is invalid
     }
 }
+
