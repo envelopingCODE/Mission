@@ -31,13 +31,15 @@ text-shadow: black 1px 2px;
 }
 
 .motivational-message {
-position: fixed;
+position:fixed;
 border-radius: 10px ;
-top: 30%;
-right: 35%;
-background-color: rgba(159, 195, 208, 0.958);
+top: 55%;
+right: 30%;
+background-color: rgba(152, 218, 242, 0.475);
 padding: 10px;
-transition-duration: 1s;
+transition-duration: 1.5s;
+backdrop-filter: blur(10px); 
+-webkit-backdrop-filter: blur(10px); 
 
 
 }
@@ -178,9 +180,12 @@ input[type="text"] {
     border-radius: 8%;
     padding: 6px 10px; /* Adjust padding as needed */
     margin: 10px 20px; /* Centered margin with auto horizontal centering */
-    background-color: rgba(137, 193, 155, 0.918);
+    background-color: rgba(137, 193, 155, 0.521);
     color: aliceblue;
     font-weight: 600;
+
+    
+    
 
 }
 
@@ -195,6 +200,7 @@ input[type="text"] {
     cursor: not-allowed; /* Change cursor to show it's disabled */
     opacity: 0.6; /* Make it slightly transparent */
     box-shadow: none; /* Remove any shadows */
+    
 
 }
 
@@ -207,6 +213,8 @@ input[type="text"] {
 
     background-color: rgba(95, 158, 160, 0.29);
     color: aliceblue;
+        backdrop-filter: blur(10px); 
+    -webkit-backdrop-filter: blur(10px); 
 }
 
 #resetButton:hover {
@@ -231,6 +239,7 @@ input[type="text"] {
     
     
     
+    
 }
 #xp-meter {
     height: 25px;
@@ -239,6 +248,7 @@ input[type="text"] {
     line-height: 25px;
     color: white;
     transition: width 1.5s;
+    
    
 
 }
