@@ -27,7 +27,7 @@ function minimumInput() {
         errorMessageEl.textContent = " "; // Clear any error message
         missionButtonEl.disabled = false; // Enable the mission button
     } else {
-        errorMessageEl.textContent = "Your mission name has to be 5 characters long . . "; // Show error message
+        errorMessageEl.textContent = "Your mission name has to be 3 characters long . . "; // Show error message
         missionButtonEl.disabled = true; // Disable the mission button
     }
 }
@@ -60,7 +60,7 @@ document.addEventListener('DOMContentLoaded', loadMissions); // Load missions wh
 
 
 function sanitizeInput(input) {
-    return input.replace(/<[^>]*>?/gm, ''); // Remove any HTML tags from the input
+    return input.trim().replace(/<[^>]*>?/gm, ''); // Trim and sanitize input
 }
 
 const motivationalMessages = [  
@@ -88,32 +88,48 @@ function displayRandomMessage() {
     }, 3000);
 }
 
+function getClassForPrefix(prefix) {
+    // Return a class based on the prefix
+    switch (prefix) {
+        case "1.":
+            return "prefix-one"; // Class for "1."
+        case "2.":
+            return "prefix-two"; // Class for "2."
+        case "3.":
+            return "prefix-three"; // Class for "3."
+        default:
+            return "prefix-default"; // Default class for other prefixes
+    }
+}
 function modifyMissionText(input) {
-    // Check if input starts with '1.'
-    if (input.startsWith("1.")) {
-        // Replace '1.' with '1. Secure Funding: '
-        return input.replace("1.", "1. Secure Funding: ");
+    // Check if input starts with '1.', '2.' or '3.'
+    const missionPrefixes = ["1.", "2.", "3."];
+    for (const prefix of missionPrefixes) {
+        if (input.startsWith(prefix)) {
+            // Modify the mission text by adding the mission title after the prefix
+            switch (prefix) {
+                case "1.":
+                    return input.replace(prefix, "1. Secure Funding: ");
+                case "2.":
+                    return input.replace(prefix, "2. Graduate: ");
+                case "3.":
+                    return input.replace(prefix, "3. Optimal State: ");
+                default:
+                    return input; // Return unchanged if no match is found
+            }
+        }
     }
-    if (input.startsWith("2.")) {
-        // Replace '2.' with '2. Graduate: '
-        return input.replace("2.", "2. Graduate: ");
-    }
-    if (input.startsWith("3.")) {
-        // Replace '3.' with '3. Optimal State: '
-        return input.replace("3.", "3. Optimal State: ");
-    }
-    return input; // Return unchanged if no pattern is found
+    return input; // Return unchanged if no prefix is found
 }
 
+// Adding the mission to the list
 function addMission(sanitizedInput) {
+    const modifiedMission = modifyMissionText(sanitizedInput);
 
-    const modifiedMission = modifyMissionText(sanitizedInput) 
-    let xpValue = parseInt(prompt(`Enter XP for "${modifiedMission}"`)); // Prompt the user to enter XP for the mission
-    while (isNaN(xpValue)) { // Keep prompting if the entered value is not a number
-        xpValue = parseInt(prompt("Please enter a valid number for XP"));
-    }
+    // Get the prefix (first part of the mission)
+    const prefix = modifiedMission.split(' ')[0];
+    const prefixClass = getClassForPrefix(prefix); // Get the class based on the prefix
 
-    
 
     playAddMissionSound();
 
@@ -124,14 +140,18 @@ function addMission(sanitizedInput) {
         typeAdditionalMessage(2);
     }
 
-
+    const xpValue = parseInt(prompt(`Enter XP for "${modifiedMission}"`));
+    if (isNaN(xpValue)) {
+        alert("Please enter a valid number for XP");
+        return; // Prevent adding the mission if XP is invalid
+    }
 
     const newEl = document.createElement("li"); // Create a new list item element
-    const newTextNode = document.createTextNode(`${modifiedMission} — ${xpValue} XP`); // Create a text node with the mission and XP
-    newEl.appendChild(newTextNode); // Append the text node to the list item
+    newEl.innerHTML = `<span class="${prefixClass}">${modifiedMission.split(':')[0]}:</span> ${modifiedMission.split(':')[1]} — ${xpValue} XP`; // Apply class to the prefix
     newEl.className = "mission"; // Add a class to the list item
     newEl.dataset.xp = xpValue; // Set the XP value as a data attribute on the list item
 
+    
     newEl.addEventListener('click', function (e) {
         const xp = parseInt(e.target.dataset.xp); // Get the XP value from the clicked list item
         addXp(xp); // Add the XP to the meter
