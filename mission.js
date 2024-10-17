@@ -88,11 +88,32 @@ function displayRandomMessage() {
     }, 3000);
 }
 
+function modifyMissionText(input) {
+    // Check if input starts with '1.'
+    if (input.startsWith("1.")) {
+        // Replace '1.' with '1. Secure Funding: '
+        return input.replace("1.", "1. Secure Funding: ");
+    }
+    if (input.startsWith("2.")) {
+        // Replace '2.' with '2. Graduate: '
+        return input.replace("2.", "2. Graduate: ");
+    }
+    if (input.startsWith("3.")) {
+        // Replace '3.' with '3. Optimal State: '
+        return input.replace("3.", "3. Optimal State: ");
+    }
+    return input; // Return unchanged if no pattern is found
+}
+
 function addMission(sanitizedInput) {
-    let xpValue = parseInt(prompt(`Enter XP for "${sanitizedInput}"`)); // Prompt the user to enter XP for the mission
+
+    const modifiedMission = modifyMissionText(sanitizedInput) 
+    let xpValue = parseInt(prompt(`Enter XP for "${modifiedMission}"`)); // Prompt the user to enter XP for the mission
     while (isNaN(xpValue)) { // Keep prompting if the entered value is not a number
         xpValue = parseInt(prompt("Please enter a valid number for XP"));
     }
+
+    
 
     playAddMissionSound();
 
@@ -106,7 +127,7 @@ function addMission(sanitizedInput) {
 
 
     const newEl = document.createElement("li"); // Create a new list item element
-    const newTextNode = document.createTextNode(`${sanitizedInput} — ${xpValue} XP`); // Create a text node with the mission and XP
+    const newTextNode = document.createTextNode(`${modifiedMission} — ${xpValue} XP`); // Create a text node with the mission and XP
     newEl.appendChild(newTextNode); // Append the text node to the list item
     newEl.className = "mission"; // Add a class to the list item
     newEl.dataset.xp = xpValue; // Set the XP value as a data attribute on the list item
@@ -423,7 +444,7 @@ function typeMessage() {
             }
         }, 60); // Typing speed: 60 milliseconds per character
     }
-}
+}   
 
 // Call typeMessage on page load to start typing the first message
 window.onload = typeMessage;
@@ -458,7 +479,7 @@ function typeAdditionalMessage(messageIndex) {
                     setTimeout(() => {
                         outputDiv.style.display = "none"; // Remove the div from the display
                     }, 1000); // Wait for 1 second after fading out
-                }, 4000); // Wait for 8 seconds before starting the fade-out
+                }, 2000); // Wait for 4 seconds before starting the fade-out
             }
         }, 60); // Typing speed: 60 milliseconds per character
     } else {
