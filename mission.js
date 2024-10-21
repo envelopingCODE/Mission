@@ -173,28 +173,43 @@ function addMission(sanitizedInput) {
 
 function saveMissions() {
     const missionsEl = document.getElementsByClassName("mission"); // Get all elements with the 'mission' class
-    const tempArray = Array.from(missionsEl).map(missionEl => missionEl.textContent); // Create an array of the text content of each mission
+    const missionsData = Array.from(missionsEl).map(missionEl => {
+        const prefixClass = missionEl.querySelector('span').className; // Get the prefix class from the <span>
+        const missionText = missionEl.textContent.split(' — ')[0]; // Get the mission text before the XP
+        const xp = missionEl.dataset.xp; // Get the XP value from the data attribute
 
-    let jsonStringify = JSON.stringify(tempArray); // Convert the array to a JSON string
-    localStorage.setItem("missions", jsonStringify); // Save the JSON string to local storage
+        return {
+            text: missionText,
+            prefixClass: prefixClass,
+            xp: xp
+        };
+    });
+
+    localStorage.setItem("missions", JSON.stringify(missionsData)); // Save the structured data to localStorage
 }
 
 function loadMissions() {
-    playInitSound();
-    let missions = JSON.parse(localStorage.getItem("missions")); // Get the saved missions from local storage
+    let missions = JSON.parse(localStorage.getItem("missions")); // Get the saved missions from localStorage
 
     if (missions) { // If there are saved missions
-        missions.forEach(mission => { // For each saved mission
+        missions.forEach(mission => {
             const newEl = document.createElement("li"); // Create a new list item element
-            const [missionText, xpText] = mission.split(' — '); // Split the mission text and XP
-            const xpValue = parseInt(xpText.replace(' XP', '')); // Parse the XP value
-            const newTextNode = document.createTextNode(mission); // Create a text node with the mission
-            newEl.appendChild(newTextNode); // Append the text node to the list item
-            newEl.className = "mission"; // Add a class to the list item
-            newEl.dataset.xp = xpValue; // Set the XP value as a data attribute on the list item
 
-            missionListEl.appendChild(newEl); // Add the new list item to the mission list
+            // Create the span with the prefix class
+            const prefixSpan = document.createElement("span");
+            prefixSpan.className = mission.prefixClass; // Apply the saved prefix class
+            prefixSpan.textContent = mission.text.split(':')[0] + ':';
 
+            const missionText = document.createTextNode(' ' + mission.text.split(':')[1] + ' — ' + mission.xp + ' XP');
+
+            // Append the prefix and mission text
+            newEl.appendChild(prefixSpan);
+            newEl.appendChild(missionText);
+
+            newEl.className = "mission"; // Add the mission class to the list item
+            newEl.dataset.xp = mission.xp; // Set the XP value as a data attribute
+
+            // Add click listener for adding XP
             newEl.addEventListener('click', function (e) {
                 const xp = parseInt(e.target.dataset.xp); // Get the XP value from the clicked list item
                 addXp(xp); // Add the XP to the meter
@@ -202,8 +217,9 @@ function loadMissions() {
                 saveMissions(); // Save the updated list of missions
                 displayRandomMessage(); // Display a random motivational message
                 playCompletionSound(); // Play the completion sound
-      //          updateStreak(); // Update the streak count
             });
+
+            missionListEl.appendChild(newEl); // Add the new list item to the mission list
 
             setTimeout(() => {
                 newEl.classList.add("active"); // Add the 'active' class after a short delay for animation
@@ -211,6 +227,7 @@ function loadMissions() {
         });
     }
 
+   
     // Load current XP and high score from localStorage
     let currentXp = parseInt(localStorage.getItem("currentXp")) || 0;
     let highScore = parseInt(localStorage.getItem("highScore")) || 0; // Get the high score or default to 0
