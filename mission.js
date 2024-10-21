@@ -33,6 +33,8 @@ function minimumInput() {
 }
 
 
+// Event listeners 
+
 missionButtonEl.addEventListener('mousedown', function(){
     const input = inputEl.value; // Get the value from the input field
     const sanitizedInput = sanitizeInput(input); // Sanitize the input

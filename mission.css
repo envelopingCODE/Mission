@@ -456,3 +456,29 @@ input[type="text"] {
     0 0 15px rgba(0, 255, 115, 0.9);
 
 }
+
+.prefix-two:hover::after {
+    content: 'Missions that ties into your academic goals ';
+    background-color: #33333346;
+    color: white;
+    padding: 14px;
+    position: absolute;
+    z-index: 100;
+    left: 110%; /* Move it to the left of the mission list */
+    top: 50%; /* Vertically center it */
+    transform: translateY(-47%); /* Adjust for vertical centering */
+    border-radius: 5px;
+    white-space: nowrap;
+    font-family: 'Courier New', Courier, monospace;S
+
+
+  }
+  
+  .prefix-two {
+    transition: all 0.3s ease;
+  }
+  
+  .prefix-two:hover {
+    color: rgba(1, 255, 137, 0.535);
+  }
+  
