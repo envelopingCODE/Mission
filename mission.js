@@ -128,8 +128,11 @@ function modifyMissionText(input) {
 function addMission(sanitizedInput) {
     const modifiedMission = modifyMissionText(sanitizedInput);
 
+
     // Get the prefix (first part of the mission)
-    const prefix = modifiedMission.split(' ')[0];
+    const prefixRegex = /^(\d+\.)/; 
+
+    const prefix = modifiedMission.match(prefixRegex)[0];
     const prefixClass = getClassForPrefix(prefix); // Get the class based on the prefix
 
 
@@ -370,38 +373,38 @@ function playInitSound(){
 
 
 
-// Existing variables and functions...
-
 const motivationalQuotes = [
-// Updated motivational quotes
-
-    "You control your destiny. Forge ahead, Neon Nomad.",
-    "Every action you take is a calculated move. Keep pressing forward, Lone Wanderer.",
-    "In this wasteland, you make the rules. Blaze your trail, Urban Pioneer.",
-    "Trust your instincts; in this world, your gut is your greatest asset.",
-    "Set your course and carve out your unique path. You're the architect of your fate.",
-    "Every upgrade you achieve is a testament to your prowess. Keep advancing, Technologist.",
-    "Conquer each obstacle and become more formidable. Your strength is unyielding.",
-    "Your progress is a clear signal of your rising competence. Continue to evolve, netrunner.",
-    "With every challenge you master, your abilities grow. Forge your legacy, Resilient Warrior.",
-    "Your skill set is expanding with each accomplishment. Stay relentless, Urban Survivor.",
-    "You are not isolated in this realm; your progress fuels others. Your influence is undeniable.",
-    "Your victories are shared with those who stand beside you. This is a collective triumph.",
-    "Your relentless drive connects you with a network of achievers. Keep pushing, Pioneer.",
-    "You’re part of a network that believes in your potential. Strive for more, Cyber Adventurer.",
-    "Strength in unity. Your triumphs elevate us all. Together, we rise.",
-    "Every effort contributes to your personal evolution. This is your journey of growth.",
-    "With every action, you are building a better future. Continue your mission, Visionary.",
-    "Your tenacity charts the path to greatness. Stay on course, Tactical Genius.",
-    "Believe in your odyssey; each move brings you closer to your endgame. Victory is within reach.",
-    "Celebrate every milestone, no matter the size. Each step forward is progress.",
-    "Reflect on your journey and the strides you’ve made. Your growth is remarkable.",
-    "Every challenge conquered adds to your saga of success. Write your epic tale.",
-    "Embrace the journey; each step is a triumph. Your path is your own.",
-    "Your evolution is the result of persistent effort and dedication. You are unstoppable.",
-    "Pause and honor your progress; it's a testament to your enduring effort."
-];
-
+    // Updated motivational quotes with revised character names
+    
+        "The wasteland doesn’t define you; you define yourself. Forge your own path, Nomad.", 
+        "Every choice you make brings you closer to your purpose. Reflect and decide your way forward.", 
+        "You are the architect of your own world. Build it with purpose, Creator.", 
+        "Your story is yours alone to write. Every line matters, and every choice is yours, Author.", 
+        "Trust in your ability to overcome. Each obstacle is a stepping stone, Survivor.", 
+        "Take a moment to breathe and appreciate how far you’ve come. You've earned it.", 
+        "Your potential is limitless; believe in your ability to adapt and evolve.", 
+        "You are in control of your journey. Each step is a conscious move toward your greater goal, Architect.", 
+        "You’ve got the tools, now use them to craft the future you want. You’ve got this, Tinkerer.", 
+        "In the chaos, you’re the constant. Trust your inner compass and keep moving forward, Navigator.", 
+        "No one else can walk your path for you. Keep choosing your destiny, Rebel.", 
+        "Every victory, no matter how small, is a testament to your resilience. Take pride in it.", 
+        "Look back at your progress only to fuel your next move. Your journey isn’t over yet, Pathfinder.", 
+        "Your actions ripple through this world, affecting others more than you realize. Keep leading the way, Vanguard.", 
+        "Every setback is an opportunity to learn and grow. You’re stronger than any failure, Builder.", 
+        "The world shifts as you shape it. Stay the course and claim your power, Architect.", 
+        "Your legacy is built on moments like these. Make them count, Explorer.", 
+        "Listen to your instincts. They’ve gotten you this far for a reason, Traveler.", 
+        "Progress isn’t always linear, but each step forward is a testament to your determination, Pioneer.", 
+        "You’re not alone in this journey. Every connection you make strengthens your cause, Networker.", 
+        "Your resilience is unmatched. Each challenge is an opportunity to rise stronger, Athelete.", 
+        "The horizon may seem distant, but you’ve already crossed galaxies to get here. Keep going, Visionary.", 
+        "Celebrate your wins—no matter how small. They’re the building blocks of your future, Vault Dweller.", 
+        "This world is what you make of it. You’re the one in control of your destiny.", 
+        "Your mind is your greatest asset. Use it to solve, adapt, and conquer.", 
+        "The wasteland only hardens those who rise above it. You’ve proven you can, Survivor.", 
+        "Let every step be a reminder of how far you’ve come. Keep building, Maker.", 
+    ];
+    
 document.addEventListener("DOMContentLoaded", function() {
     const mediaQuery = window.matchMedia('(max-width: 600px)');
 
