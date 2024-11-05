@@ -233,16 +233,37 @@ function loadMissions() {
     }
 
    
-    // Load current XP and high score from localStorage
-    let currentXp = parseInt(localStorage.getItem("currentXp")) || 0;
-    let highScore = parseInt(localStorage.getItem("highScore")) || 0; // Get the high score or default to 0
+   // Load current XP and high score from localStorage
+let currentXp = parseInt(localStorage.getItem("currentXp")) || 0;
+let highScore = parseInt(localStorage.getItem("highScore")) || 0; // Get the high score or default to 0
 
-    xpMeterEl.dataset.xp = currentXp; // Set the XP meter's data attribute to the current XP
-   
-    updateXpMeter(currentXp); // Update the XP meter display
+// Update XP meter to show progress within the current level
+xpMeterEl.dataset.xp = currentXp;
+updateXpMeter(currentXp); // Update the XP meter display with the adjusted function
 
-     // Update leaderboard display
-     updateHighScoreDisplay(highScore);
+// Update leaderboard display
+updateHighScoreDisplay(highScore);
+
+// Function to update the XP meter to show progress for the current level
+function updateXpMeter(currentXp) {
+    const level = Math.floor(currentXp / 100) + 1;           // Calculate level
+    const xpForCurrentLevel = currentXp % 100;               // XP within the current level
+    const xpProgress = (xpForCurrentLevel / 100) * 100;      // Calculate percentage within level
+
+    // Update meter width based on current level XP
+    xpMeterEl.style.width = `${xpProgress}%`;
+
+    // Update level and XP text (optional for clarity)
+    xpText.textContent = `LEVEL ${level} — XP: ${xpForCurrentLevel}/100`;
+    xpMeterEl.textContent = `${xpForCurrentLevel} XP`; // Update the text content of the XP meter
+
+}
+
+// Update high score display
+function updateHighScoreDisplay(highScore) {
+    const highScoreEl = document.getElementById('highScore');
+    highScoreEl.textContent = highScore;
+}
 }
 
 
@@ -265,12 +286,24 @@ function displayCongratulatoryMessage() {
 }
 
 
-function checkXP(xp){
-if (xp >= 100) {
-    playLevelUpSound();
-    resetXpMeter();
-    xpText.textContent="LEVEL 2 — GREAT JOB OPERATIVE"
-}};
+function checkXP(totalXp) {
+    const level = Math.floor(totalXp / 100)+1;  // Calculate the current level based on total XP
+    const xpForCurrentLevel = totalXp % 100;  // XP within the current level (remainder of XP divided by 100)
+
+    // Check if we just leveled up
+    if (xpForCurrentLevel === 0 && totalXp > 0) {
+        playLevelUpSound();
+        resetXpMeter();  // This could reset the visual bar, but doesn't touch the total XP
+        xpText.textContent = `LEVEL ${level} — GREAT JOB OPERATIVE`;
+    }
+
+    // Update the XP meter to show how much XP has been earned in the current level
+    updateXpMeter(xpForCurrentLevel);  // Update the visual XP meter based on current level XP
+
+    // Display the level text
+    xpText.textContent = `Level ${level} — XP: ${xpForCurrentLevel}/100`;
+}
+
 
 function clearData() {
     playResetDataSound();
