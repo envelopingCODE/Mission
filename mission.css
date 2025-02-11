@@ -243,15 +243,19 @@ input[type="text"] {
 }
 #xp-meter {
     height: 25px;
-    background-color: #76c7c0;
+    background-color: #12628d4a;
     width: 0;
     line-height: 25px;
     color: white;
-    transition: width 1.5s;
-    
+    transition: width 2s;
+    backdrop-filter: blur(10px); 
+    -webkit-backdrop-filter: blur(10px); 
+
    
 
 }
+
+
 .motivational-quote {
     font-size: 1.5em;
     color: white;
@@ -319,6 +323,96 @@ input[type="text"] {
 .widescreen {
     display: block;
 }
+
+
+
+
+#output { /* Styles specifically for the output div */
+    margin:auto;
+
+    font-family: 'Courier New', Courier, monospace; /* Sets a monospace font for a techy look */
+    background-color: rgba(0, 0, 0, 0.482); /* Sets the background color to black */
+    color: rgba(0, 255, 0, 0.81); /* Sets the text color to lime green */
+    padding: 20px; /* Adds padding around the content */
+    white-space: pre; /* Preserves whitespace and line breaks */
+    border: 1px solid lime; /* Optional: adds a border around the div */
+    width: fit-content; /* Optional: adjusts the width to fit the content */
+    opacity: 1; /* Initial opacity */
+    transition: opacity 2s ease; /* Smooth transition for opacity changes */
+    box-shadow: 
+    0 0 5px rgba(0, 255, 115, 0.5),
+    0 0 10px rgba(0, 255, 115, 0.7),
+    0 0 15px rgba(0, 255, 115, 0.9);
+
+}
+
+.prefix-two:hover::after {
+    content: 'Missions that ties into your academic goals ';
+    background-color: #33333346;
+    color: white;
+    padding: 14px;
+    position: absolute;
+    z-index: 100;
+    left: 110%; /* Move it to the left of the mission list */
+    top: 50%; /* Vertically center it */
+    transform: translateY(-47%); /* Adjust for vertical centering */
+    border-radius: 5px;
+    white-space: nowrap;
+    font-family: 'Courier New', Courier, monospace;
+
+
+  }
+  
+  .prefix-two {
+    transition: all 0.3s ease;
+  }
+  
+  .prefix-two:hover {
+    color: rgba(1, 255, 137, 0.535);
+  }
+  
+
+  :root {
+    --neon-cyan: #0ff;
+    --neon-pink: #ff2d55;
+    --neon-blue: #007aff;
+--accent-primary:#3c848f76;
+   --accent-secondary: #55baca76;
+    --dark-bg: rgba(28, 28, 30, 0.95);
+    --glass-bg: rgba(255, 255, 255, 0.1);
+    --neural-gradient: linear-gradient(135deg, #2d68ff 0%, rgb(0, 255, 132) 100%);
+}
+
+  
+/* Neural Interface Elements */
+.container2 {
+    border-radius: 20px;
+    padding: 2rem;
+    margin: 2rem auto;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 8px 32px rgba(0, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    position: relative;
+    overflow: hidden;
+}
+
+.container2::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--neural-gradient);
+    animation: neural-pulse 3s infinite;
+}
+
+@keyframes neural-pulse {
+    0% { opacity: 0.3; }
+    50% { opacity: 1; }
+    100% { opacity: 0.3; }
+}
+
 
 
 @media screen and (max-width:600px) {
@@ -435,50 +529,130 @@ input[type="text"] {
 }
 
 
-}
-
-
-#output { /* Styles specifically for the output div */
-    margin:auto;
-
-    font-family: 'Courier New', Courier, monospace; /* Sets a monospace font for a techy look */
-    background-color: rgba(0, 0, 0, 0.482); /* Sets the background color to black */
-    color: rgba(0, 255, 0, 0.81); /* Sets the text color to lime green */
-    padding: 20px; /* Adds padding around the content */
-    white-space: pre; /* Preserves whitespace and line breaks */
-    border: 1px solid lime; /* Optional: adds a border around the div */
-    width: fit-content; /* Optional: adjusts the width to fit the content */
-    opacity: 1; /* Initial opacity */
-    transition: opacity 2s ease; /* Smooth transition for opacity changes */
-    box-shadow: 
-    0 0 5px rgba(0, 255, 115, 0.5),
-    0 0 10px rgba(0, 255, 115, 0.7),
-    0 0 15px rgba(0, 255, 115, 0.9);
-
-}
-
-.prefix-two:hover::after {
-    content: 'Missions that ties into your academic goals ';
-    background-color: #33333346;
-    color: white;
-    padding: 14px;
+    
+.container2::before {
+    content: '';
     position: absolute;
-    z-index: 100;
-    left: 110%; /* Move it to the left of the mission list */
-    top: 50%; /* Vertically center it */
-    transform: translateY(-47%); /* Adjust for vertical centering */
-    border-radius: 5px;
-    white-space: nowrap;
-    font-family: 'Courier New', Courier, monospace;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--neural-gradient);
+    animation: neural-pulse 3s infinite;
+}
+
+}
 
 
-  }
-  
-  .prefix-two {
+/* Neural Interface Terminal - Enhanced Version */
+:root {
+    --neon-cyan: #00ffd5;
+    --neon-magenta: #ff00ff;
+    --dark-bg: #0a0b0f;
+    --glitch-color: #ff003c;
+}
+
+#output {
+    font-family: 'SF Mono', Monaco, Consolas, monospace;
+    background: linear-gradient(170deg, 
+        rgba(10, 11, 15, 0.95) 0%,
+        rgba(20, 21, 25, 0.98) 100%);
+    color: var(--neon-cyan);
+    padding: 1.5rem;
+    border-radius: 8px;
+    border: 1px solid var(--neon-cyan);
+    box-shadow: 
+        0 0 20px rgba(0, 255, 213, 0.2),
+        inset 0 0 15px rgba(0, 255, 213, 0.1);
+    margin: 1.5rem auto;
+    width: fit-content;
+    position: relative;
+    overflow: hidden;
+    backdrop-filter: blur(5px);
+    transform-style: preserve-3d;
     transition: all 0.3s ease;
-  }
-  
-  .prefix-two:hover {
-    color: rgba(1, 255, 137, 0.535);
-  }
-  
+}
+
+
+#output::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background: linear-gradient(90deg, 
+        transparent,
+        var(--neon-cyan),
+        transparent);
+    animation: scan 3s linear infinite;
+    filter: drop-shadow(0 0 5px var(--neon-cyan));
+}
+
+#output::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: repeating-linear-gradient(
+        0deg,
+        rgba(0, 255, 213, 0.03) 0px,
+        rgba(0, 255, 213, 0.03) 1px,
+        transparent 1px,
+        transparent 2px
+    );
+    pointer-events: none;
+    animation: flicker 0.3s infinite;
+}
+
+#output:hover {
+    transform: translateZ(10px);
+    box-shadow: 
+        0 0 30px rgba(0, 255, 213, 0.3),
+        inset 0 0 20px rgba(0, 255, 213, 0.2);
+}
+
+/* Text glitch effect on hover */
+#output:hover::before {
+    animation: glitch 0.3s cubic-bezier(.25, .46, .45, .94) both infinite;
+}
+
+@keyframes scan {
+    0% { transform: translateY(0) translateX(-100%); }
+    100% { transform: translateY(100px) translateX(100%); }
+}
+
+@keyframes flicker {
+    0% { opacity: 0.97; }
+    50% { opacity: 0.98; }
+    100% { opacity: 0.97; }
+}
+
+@keyframes glitch {
+    0% {
+        clip-path: polygon(0 2%, 100% 2%, 100% 5%, 0 5%);
+        transform: translate(0);
+    }
+    20% {
+        clip-path: polygon(0 15%, 100% 15%, 100% 15%, 0 15%);
+        transform: translate(-5px);
+    }
+    40% {
+        clip-path: polygon(0 10%, 100% 10%, 100% 20%, 0 20%);
+        transform: translate(5px);
+    }
+    60% {
+        clip-path: polygon(0 1%, 100% 1%, 100% 2%, 0 2%);
+        transform: translate(-5px);
+    }
+    80% {
+        clip-path: polygon(0 33%, 100% 33%, 100% 33%, 0 33%);
+        transform: translate(0);
+    }
+    100% {
+        clip-path: polygon(0 44%, 100% 44%, 100% 44%, 0 44%);
+        transform: translate(0);
+    }
+}

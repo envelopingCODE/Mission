@@ -1,4 +1,6 @@
 {
     "git.ignoreLimitWarning": true,
-    "liveServer.settings.port": 5501
+    "liveServer.settings.port": 5501,
+    "bg3ModHelper.rootModPath": "c:\\Users\\actor\\Documents\\Webdesign_projects\\IP\\Gamified Task Webb App",
+    "bg3ModHelper.packingPriority": 0
 }
