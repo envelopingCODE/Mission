@@ -386,7 +386,6 @@ input[type="text"] {
   
 /* Neural Interface Elements */
 .container2 {
-    border-radius: 20px;
     padding: 2rem;
     margin: 2rem auto;
     border: 1px solid rgba(255, 255, 255, 0.1);
@@ -554,16 +553,6 @@ input[type="text"] {
 
 #output {
     font-family: 'SF Mono', Monaco, Consolas, monospace;
-    background: linear-gradient(170deg, 
-        rgba(10, 11, 15, 0.95) 0%,
-        rgba(20, 21, 25, 0.98) 100%);
-    color: var(--neon-cyan);
-    padding: 1.5rem;
-    border-radius: 8px;
-    border: 1px solid var(--neon-cyan);
-    box-shadow: 
-        0 0 20px rgba(0, 255, 213, 0.2),
-        inset 0 0 15px rgba(0, 255, 213, 0.1);
     margin: 1.5rem auto;
     width: fit-content;
     position: relative;
