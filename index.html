@@ -1,6 +1,13 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
+
+ <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+ <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+<script type="text/babel" src="mission-react.js"></script>
+
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" type="text/css" href="mission.css">
@@ -8,8 +15,11 @@
 </head>
 
 <body class="container">
-    <br>
+    
+    <div id="react-mission-control"></div>
+
     <div class="container2">
+
 <h1 class="widescreen">Objectives for today:</h1>
 <h1 class="mobile">Ops. for today:</h1>
 
@@ -36,6 +46,7 @@
     <p>Current High Score: <span id="highScore">0</span> XP</p>
 </div>
 <br>
+
 
 
 
