@@ -250,6 +250,7 @@ function updateXpMeter(currentXp) {
     const xpForCurrentLevel = currentXp % 100;               // XP within the current level
     const xpProgress = (xpForCurrentLevel / 100) * 100;      // Calculate percentage within level
 
+    
     // Update meter width based on current level XP
     xpMeterEl.style.width = `${xpProgress}%`;
 
@@ -419,7 +420,7 @@ const motivationalQuotes = [
         "You are in control of your journey. Each step is a conscious move toward your greater goal, Architect.", 
         "You’ve got the tools, now use them to craft the future you want. You’ve got this, Tinkerer.", 
         "In the chaos, you’re the constant. Trust your inner compass and keep moving forward, Navigator.", 
-        "No one else can walk your path for you. Keep choosing your destiny, Rebel.", 
+        "No one else can walk your path for you. Forge your own way, pathfinder.", 
         "Every victory, no matter how small, is a testament to your resilience. Take pride in it.", 
         "Look back at your progress only to fuel your next move. Your journey isn’t over yet, Pathfinder.", 
         "Your actions ripple through this world, affecting others more than you realize. Keep leading the way, Vanguard.", 

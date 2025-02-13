@@ -11,6 +11,10 @@ url(assets/images/free-photo-of-black-and-white-photo-of-people-waiting-in-a-mod
 10% 70% no-repeat;
 }
 
+svg {
+  max-width: 140px;
+}
+
 .container2 {
     background-image: url(assets/images/free-photo-of-black-and-white-photo-of-people-waiting-in-a-modern-building-hallway.jpeg);
     background-attachment: scroll;
@@ -693,14 +697,16 @@ input[type="text"] {
     overflow: hidden;
     margin: 1rem 0;
     margin-bottom: 0%;
-;    box-shadow: 0 0 20px rgba(0, 255, 255, 0.1);
+    padding-bottom: 0px;
+    max-height: 300px;
+    box-shadow: 0 0 20px rgba(0, 255, 255, 0.1);
   }
   
   .cyber-header {
     position: relative;
     margin-bottom: 2rem;
     padding-bottom: 1rem;
-    border-bottom: 1px solid rgba(0, 255, 255, 0.1);
+    /*border-bottom: 1px solid rgba(0, 255, 255, 0.1); */
   }
   
   .cyber-line {
@@ -723,7 +729,25 @@ input[type="text"] {
     font-size: 0.9rem;
     letter-spacing: 1px;
   }
+
+  .robot-companion-container {
+    margin-top: 0;
+    margin-bottom: 15%;
+  }
   
+  @media screen and (max-width:600px) {
+    
+    .header-content {
+      display: grid;
+      align-items: center;
+      text-align: left;
+      font-size: 0.9rem;
+      gap: 1rem;
+      letter-spacing: 1px;
+    }
+    
+
+  }
   .status-indicator {
     display: flex;
     align-items: center;
@@ -780,7 +804,7 @@ input[type="text"] {
   
   .scan-line {
     position: absolute;
-    top: 0;
+    top: 0px;
     left: 0;
     width: 100%;
     height: 2px;
@@ -816,3 +840,98 @@ input[type="text"] {
     10% { clip-path: inset(0 0 0 0); }
   }
 
+/* Primer Neural Interface: Adaptive Styling */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scanLine {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(calc(100vh + 100%)); }
+}
+
+@keyframes pulseGlow {
+  0%, 100% { 
+    box-shadow: 0 0 5px rgba(16, 185, 129, 0.3);
+  }
+  50% { 
+    box-shadow: 0 0 15px rgba(16, 185, 129, 0.6);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.5s ease-out;
+}
+
+.animate-scan {
+  animation: scanLine 3s linear infinite;
+}
+
+.animate-pulse {
+  animation: pulseGlow 2s infinite;
+}
+
+/* Core Interface Typography */
+body {
+  background-color: #000;
+  /*font-family: 'Orbitron', 'Monaco', monospace; */
+  color: #23f0ac;  /* Emerald base */
+  text-shadow: #000 0.5px 0.5px 0.5px;
+  line-height: 1.6;
+}
+
+/* Neon Glow and Cybernetic Aesthetics */
+.shadow-neon {
+  box-shadow: 
+    0 0 10px rgba(16, 185, 129, 0.4),
+    0 0 20px rgba(16, 185, 129, 0.2),
+    0 0 30px rgba(16, 185, 129, 0.1);
+}
+
+/* Glitch Text Effect for Narrative Emphasis */
+.text-glitch {
+  position: relative;
+  text-shadow: 
+    0.05em 0 0 #00fffc, 
+    -0.03em -0.04em 0 #10b981,
+    0.025em 0.04em 0 #10b981;
+  animation: glitch 725ms infinite;
+}
+
+@keyframes glitch {
+  0%, 49%, 100% {
+    text-shadow: 
+      0.05em 0 0 #00fffc, 
+      -0.03em -0.04em 0 #10b981,
+      0.025em 0.04em 0 #10b981;
+  }
+  50% {
+    text-shadow: 
+      0.05em 0.035em 0 #00fffc, 
+      0.03em 0 0 #10b981,
+      0 -0.04em 0 #10b981;
+  }
+}
+
+@keyframes scan {
+  0% {
+    transform: translateY(-40px);
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(40px);
+    opacity: 0;
+  }
+}
+
+.animate-scan {
+  animation: scan 3s linear infinite;
+}
+
+.animate-pulse {
+  animation: pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
