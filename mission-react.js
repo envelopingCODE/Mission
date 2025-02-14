@@ -62,11 +62,11 @@ React.useEffect(() => {
 //################## SECTION 4: Emotion Logic ##################
 React.useEffect(() => {
   // First, determine the base emotion based on level and XP
-  let baseEmotion = 'glitched';
+  let baseEmotion = 'neutral';
   
   // Set base emotion based on level
   if (currentLevel >= 2) {
-    baseEmotion = 'happy';  // Level 2+ starts at happy
+    baseEmotion = 'neutral';  // Level 2+ starts at happy
   } else {
     // Level 1 progression
     if (taskCompletionLevel >= 70) {
@@ -182,18 +182,17 @@ React.useEffect(() => {
 }, [currentLevel, taskCompletionLevel, isTaskCompleted, currentEmotion]);
 //################## SECTION 5: Expressions Configuration ##################
 const expressions = {
-  'neutral': {
-    leftEye: 'M-30,-5 A15,20 0 1,1 0,-5',
-    rightEye: 'M0,-5 A15,-20 0 1,1 30, -5',
-    mouth: 'M-30,20 Q0,25 30,20',
-    color: '#86dfff',
-    // New metadata for emotional depth
+'neutral': {
+    leftEye: 'M-30,-5 A18,13 0 1,1 -2,-4',  // Gentle oval for left eye
+    rightEye: 'M2,-4 A18,13 0 1,1 30,-5',    // Matching oval for right eye
+    mouth: 'M-25,15 Q0,20 25,15',            // Refined subtle curve for mouth
+    color: '#00e6e6',
     emotional_metadata: {
-      energy_level: 0.3,
-      cognitive_state: 'passive_observation',
-      tension: 0.2
+        energy_level: 0.3,
+        cognitive_state: 'passive_observation',
+        tension: 0.2
     }
-  },
+},
   'happy': {
     leftEye: 'M-30,-5 Q-12,-25 0,-5',   // Increased vertical curve height
     rightEye: 'M0,-5 Q12,-25 30,-5',    // Matched increased vertical curve height
