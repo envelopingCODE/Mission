@@ -62,7 +62,7 @@ React.useEffect(() => {
 //################## SECTION 4: Emotion Logic ##################
 React.useEffect(() => {
   // First, determine the base emotion based on level and XP
-  let baseEmotion = 'curious';
+  let baseEmotion = 'neutral';
   
   // Set base emotion based on level
   if (currentLevel >= 2) {
