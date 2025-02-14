@@ -233,9 +233,11 @@ function loadMissions() {
     }
 
    
-   // Load current XP and high score from localStorage
-let currentXp = parseInt(localStorage.getItem("currentXp")) || 0;
-let highScore = parseInt(localStorage.getItem("highScore")) || 0; // Get the high score or default to 0
+   
+    // Load current XP, level, and high score from localStorage
+    let currentXp = parseInt(localStorage.getItem("currentXp")) || 0;
+    let currentLevel = parseInt(localStorage.getItem("currentLevel")) || 1;
+    let highScore = parseInt(localStorage.getItem("highScore")) || 0;
 
 // Update XP meter to show progress within the current level
 xpMeterEl.dataset.xp = currentXp;
@@ -329,21 +331,26 @@ function clearTextField() {
 }
 
 function addXp(xp) {
-    let currentXp = parseInt(xpMeterEl.dataset.xp) || 0; // Get the current XP, or default to 0
-    currentXp += xp; // Add the new XP to the current XP
-    xpMeterEl.dataset.xp = currentXp; // Update the XP meter's data attribute
-    localStorage.setItem("currentXp", currentXp); // Save the new current XP to local storage
-    updateXpMeter(currentXp); // Update the XP meter display
+    let currentXp = parseInt(xpMeterEl.dataset.xp) || 0;
+    currentXp += xp;
+    
+    // Calculate the current level
+    const currentLevel = Math.floor(currentXp / 100) + 1;
+    
+    // Store both XP and level
+    xpMeterEl.dataset.xp = currentXp;
+    localStorage.setItem("currentXp", currentXp);
+    localStorage.setItem("currentLevel", currentLevel);
 
-    // Check if the current XP exceeds the high score
+    // Rest of the existing function remains the same
+    updateXpMeter(currentXp);
+
     let highScore = parseInt(localStorage.getItem("highScore")) || 0;
     if (currentXp > highScore) {
-        localStorage.setItem("highScore", currentXp); // Save the new high score
-        updateHighScoreDisplay(currentXp); // Update the displayed high score
-        displayCongratulatoryMessage(); // Display a message if high score is broken
+        localStorage.setItem("highScore", currentXp);
+        updateHighScoreDisplay(currentXp);
+        displayCongratulatoryMessage();
     }
-
-
 
     checkXP(currentXp);
 }

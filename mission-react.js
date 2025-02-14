@@ -62,7 +62,7 @@ React.useEffect(() => {
 //################## SECTION 4: Emotion Logic ##################
 React.useEffect(() => {
   // First, determine the base emotion based on level and XP
-  let baseEmotion = 'neutral';
+  let baseEmotion = 'glitched';
   
   // Set base emotion based on level
   if (currentLevel >= 2) {
@@ -195,27 +195,89 @@ const expressions = {
     }
   },
   'happy': {
-    leftEye: 'M-30,-5 Q-12,-20 0,-5',
-    rightEye: 'M0,-5 Q12,-20 30,-5',
-    mouth: 'M-35,20 Q0,35 35,20',
+    leftEye: 'M-30,-5 Q-12,-25 0,-5',   // Increased vertical curve height
+    rightEye: 'M0,-5 Q12,-25 30,-5',    // Matched increased vertical curve height
+    mouth: 'M-35,20 Q0,45 35,20',       // Taller, more expansive smile curve
     color: '#86dfff',
     emotional_metadata: {
-      energy_level: 0.7,
-      cognitive_state: 'positive_engagement',
-      tension: 0.1
+      energy_level: 0.8,                // Slightly increased energy
+      cognitive_state: 'joyful_resonance',  // More descriptive state
+      tension: 0.05,                    // Very low tension
+      happiness_depth: 0.7               // New metric to quantify emotional intensity
     }
-  },
-  'excited': {
-    leftEye: 'M-30,-5 Q-15,-25 0,-5',
-    rightEye: 'M0,-5 Q15,-25 30,-5',
-    mouth: 'M-40,20 Q0,50 40,20',
+},
+
+'excited': {
+    leftEye: 'M-30,-5 C-22,-25 -12,-35 0,-5',   // Larger, more dramatic bean curve for left eye
+    rightEye: 'M0,-5 C12,-35 22,-25 30,-5',     // Matching larger bean curve for right eye
+    mouth: 'M-40,20 Q0,55 40,20',               // Maintained playful smile
     color: '#86dfff',
     emotional_metadata: {
-      energy_level: 0.9,
-      cognitive_state: 'high_stimulation',
-      tension: 0.3
+      energy_level: 0.9,                // High but not maxed out energy
+      cognitive_state: 'joyful_burst',   // Softer, more cute-oriented state
+      tension: 0.3,                     // Reduced tension for a more adorable feel
+      excitement_intensity: 0.8,         // Slightly moderated excitement
+      cute_factor: 0.9                   // New metric for adorable excitement
+    }
+},
+
+'glitched': {
+  // Base properties
+  leftEye: "M-36,-12 L-40,-8 L-24,8 L-20,12 Z M-36,12 L-40,8 L-24,-8 L-20,-12 Z",
+  rightEye: "M36,-12 L40,-8 L24,8 L20,12 Z M36,12 L40,8 L24,-8 L20,-12 Z",
+  mouth: "M-25,20 Q0,35 25,20",
+  color: "#00ffff",
+  isGlitched: true,
+  
+  // Add the effects configuration
+  effects: {
+    // Color split effect configuration
+    colorSplit: {
+      dx: 2,
+      duration: "0.8s",
+      values: "2;1;2"
+    },
+    // Displacement effect configuration
+    displacement: {
+      baseFrequency: 0.1,
+      scale: 2,
+      duration: "0.8s",
+      frequencyValues: "0.1;0.15;0.1"
     }
   },
+  
+  // Animation configurations
+  animations: {
+    eyes: {
+      fill: {
+        values: "#00ffff;#ff69b4;#00ffff",
+        dur: "0.8s"
+      },
+      transform: {
+        values: "translate(-15, -10);translate(-16, -10);translate(-15, -10)",
+        dur: "1.2s"
+      }
+    },
+    mouth: {
+      path: {
+        values: "M-25,20 Q0,35 25,20;M-25,21 Q0,36 25,21;M-25,20 Q0,35 25,20",
+        dur: "1s"
+      },
+      stroke: {
+        values: "#00ffff;#ff69b4;#00ffff",
+        dur: "0.8s"
+      }
+    }
+  },
+  
+  emotional_metadata: {
+    energy_level: 0.7,
+    cognitive_state: "digital_consciousness",
+    digital_interference: 0.8,
+    system_status: "active_connection"
+  }
+},
+
   'curious': {
     leftEye: 'M-30,-5 A15,20 0 1,1 0,-5',
     rightEye: 'M0,-5 A15,-20 0 1,1 30,-5',
@@ -227,16 +289,19 @@ const expressions = {
       tension: 0.4
     }
   },
-  'playful': {
-    leftEye: 'M-25,-5 Q-10,-15 0,-5',  // Normal eye
-    rightEye: 'M-25,-5 L25,-5 0,-6',   // Wink effect
-    mouth: 'M-40,20 Q20,90 30,20',
+
+'playful': {
+    leftEye: 'M-25,-5 Q-10,-20 0,-5',  // Raised eyebrow effect
+    rightEye: 'M-25,-5 L25,-5 0,-6',   // Mischievous wink
+    mouth: 'M-35,20 Q0,45 35,20 Q15,10 -35,20',  // Asymmetrical, sly smile
     color: '#86dfff',
     emotional_metadata: {
-      energy_level: 0.8,
-      cognitive_state: 'lighthearted',
-      tension: 0.1
+      energy_level: 0.9,
+      cognitive_state: 'mischievous_delight',
+      tension: 0.2,
+      playfulness_index: 0.8
     }
+
   },
   'perplexed': {
     leftEye: 'M-25,-5 A15,10 0 1,1 0,-5',
@@ -298,20 +363,31 @@ function getEmotionTransitionDetails(fromEmotion, toEmotion) {
     cognitiveEngagement: 'moderate'
   };
 }
+  //################## SECTION 6: Render Logic ##################
+
+
+    React.useEffect(() => {
+      // Your emotion logic here
+    }, [taskCompletionLevel, currentLevel, isTaskCompleted]);
   
+    // Blinking effect
+    React.useEffect(() => {
+      // Your blinking logic here
+    }, []);
+  
+    // Get current expression
+    const currentExpression = expressions[currentEmotion];
+  
+  return (
 
-//################## SECTION 6: Render Logic ##################
-const currentExpression = expressions[currentEmotion];
-
-return (
-  <svg 
-    xmlns="http://www.w3.org/2000/svg" 
-    viewBox="-50 -50 100 100" 
+    
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="-50 -50 100 100"
     className="minimalist-face w-full h-full"
   >
-    
     <defs>
-      {/* CRT Glow Filter */}
+      {/* Base CRT Glow Filter - provides the classic screen effect */}
       <filter id="crt-glow">
         <feGaussianBlur stdDeviation="2.75" result="coloredBlur"/>
         <feComponentTransfer>
@@ -324,66 +400,123 @@ return (
         </feMerge>
       </filter>
 
-      {/* Screen Fade Gradient */}
+      {/* Screen Fade Gradient - creates the monitor-like background effect */}
       <radialGradient id="screen-fade" cx="50%" cy="50%" r="50%">
         <stop offset="0%" stopColor="#86dfff" stopOpacity="0.1"/>
         <stop offset="50%" stopColor="#4a9eff" stopOpacity="0.05"/>
         <stop offset="60%" stopColor="#2c3e50" stopOpacity="0"/>
       </radialGradient>
+
+      {/* Enhanced filters for glitched state */}
+      {currentExpression.isGlitched && (
+        <filter id="color-split">
+          <feOffset dx="2" dy="0">
+            <animate
+              attributeName="dx"
+              values="2;1;2"
+              dur="0.8s"
+              repeatCount="indefinite"
+            />
+          </feOffset>
+        </filter>
+      )}
+
+   
     </defs>
 
     {/* Background with screen fade */}
-    <circle 
-      cx="0" 
-      cy="0" 
-      r="45" 
+    <circle
+      cx="0"
+      cy="0"
+      r="45"
       fill="url(#screen-fade)"
       className="animate-pulse opacity-60"
     />
 
-    {/* Main face group with CRT glow */}
-    <g filter="url(#crt-glow)" className="retro-screen">
-
-    {/* Left Heart Eye */}
-{currentExpression.isHeartEyes ? (
-  <path 
-    d="M0,0 C-6,-6 -12,-6 -12,0 C-12,4 -6,8 0,12 C6,8 12,4 12,0 C12,-6 6,-6 0,0" 
-    transform="translate(-25, -10)"  // Kept same as other expressions
-    fill="#86dfff"
-    className="heart-eye left animate-pulse"
-  />
-) : (
+    {/* Main face group with appropriate glow effect */}
+    <g filter={currentExpression.isGlitched ? "url(#color-split)" : "url(#crt-glow)"} 
+       className="retro-screen">
+      
+      {/* Left Eye with all states */}
+      {currentExpression.isHeartEyes ? (
+        <path
+          d="M0,0 C-6,-6 -12,-6 -12,0 C-12,4 -6,8 0,12 C6,8 12,4 12,0 C12,-6 6,-6 0,0"
+          transform="translate(-25, -10)"
+          fill="#86dfff"
+          className="heart-eye left animate-pulse"
+        />
+      ) : currentExpression.isGlitched ? (
         <path 
-          d={currentExpression.leftEye} 
+          d={currentExpression.leftEye}
+          transform="translate(-15, -10)"
+          fill={currentExpression.color}
+          filter="url(#color-split)"
+        >
+          <animate 
+            attributeName="fill"
+            values="#00ffff;#ff69b4;#00ffff"
+            dur="0.8s"
+            repeatCount="indefinite"
+          />
+          <animate
+            attributeName="transform"
+            values="translate(-15, -10);translate(-16, -10);translate(-15, -10)"
+            dur="1.2s"
+            repeatCount="indefinite"
+          />
+        </path>
+      ) : (
+        <path
+          d={currentExpression.leftEye}
           transform="translate(-25, -10)"
           fill="#86dfff"
           opacity={isBlinking ? 0.3 : 0.9}
           className="eye-left transition-all duration-300"
         />
       )}
-      
-      {/* Right Eye */}
+
+      {/* Right Eye with all states */}
       {currentExpression.isHeartEyes ? (
-        <path 
-          d="M0,0 C-6,-6 -12,-6 -12,0 C-12,4 -6,8 0,12 C6,8 12,4 12,0 C12,-6 6,-6 0,0" 
+        <path
+          d="M0,0 C-6,-6 -12,-6 -12,0 C-12,4 -6,8 0,12 C6,8 12,4 12,0 C12,-6 6,-6 0,0"
           transform="translate(25, -10)"
           fill="#86dfff"
           className="heart-eye right animate-pulse"
         />
-      ) : (
-        currentExpression.rightEye && (
-          <path 
-            d={currentExpression.rightEye} 
-            transform="translate(25, -10)"
-            fill="#86dfff"
-            opacity={isBlinking ? 0.3 : 0.9}
-            className="eye-right transition-all duration-300"
+      ) : currentExpression.isGlitched ? (
+        <path 
+          d={currentExpression.rightEye}
+          transform="translate(15, -10)"
+          fill={currentExpression.color}
+          filter="url(#color-split)"
+        >
+          <animate 
+            attributeName="fill"
+            values="#00ffff;#ff69b4;#00ffff"
+            dur="0.8s"
+            repeatCount="indefinite"
+            begin="0.4s"
           />
-        )
+          <animate
+            attributeName="transform"
+            values="translate(15, -10);translate(16, -10);translate(15, -10)"
+            dur="1.2s"
+            repeatCount="indefinite"
+            begin="0.4s"
+          />
+        </path>
+      ) : (
+        <path
+          d={currentExpression.rightEye}
+          transform="translate(25, -10)"
+          fill="#86dfff"
+          opacity={isBlinking ? 0.3 : 0.9}
+          className="eye-right transition-all duration-300"
+        />
       )}
 
-  {/* Eyebrows - Only render if the current expression has eyebrows */}
-  {currentExpression.eyebrows && (
+      {/* Eyebrows - Only render if the current expression has eyebrows */}
+      {currentExpression.eyebrows && (
         <g className="eyebrows">
           <path
             d={currentExpression.eyebrows.left}
@@ -403,17 +536,39 @@ return (
           />
         </g>
       )}
-      
 
-      {/* Mouth */}
-      <path 
-        d={currentExpression.mouth} 
-        fill="#86dfff" 
-        className="mouth transition-all duration-500 opacity-90"
-      />
+      {/* Mouth with enhanced glitch support */}
+      {currentExpression.isGlitched ? (
+        <path 
+          d={currentExpression.mouth}
+          fill="none"
+          stroke={currentExpression.color}
+          strokeWidth="3"
+          filter="url(#fractal-displace)"
+        >
+          <animate
+            attributeName="d"
+            values="M-25,20 Q0,35 25,20;M-25,21 Q0,36 25,21;M-25,20 Q0,35 25,20"
+            dur="1s"
+            repeatCount="indefinite"
+          />
+          <animate
+            attributeName="stroke"
+            values="#00ffff;#ff69b4;#00ffff"
+            dur="0.8s"
+            repeatCount="indefinite"
+          />
+        </path>
+      ) : (
+        <path
+          d={currentExpression.mouth}
+          fill="#86dfff"
+          className="mouth transition-all duration-500 opacity-90"
+        />
+      )}
     </g>
 
-    {/* Animated scan line */}
+    {/* Single animated scan line */}
     <line 
       x1="-50" 
       y1="0" 
@@ -437,9 +592,9 @@ return (
         repeatCount="indefinite" 
       />
     </line>
-  </svg>
-);
-}
+    </svg>
+  );
+};
 
 //################## SECTION 7: Interface Component ##################
 const CyberpunkInterface = () => {
@@ -540,11 +695,11 @@ const CyberpunkInterface = () => {
   //################## SECTION 9: Interface Render ##################
   return (
     <div className="cyber-container flex flex-col relative">
-    <div className="neural-status-panel">
-      <div>Mission AI v2.3</div>
-      <div>PrimerOS 0.9.5</div>
-    </div>
-
+      <div className="neural-status-panel">
+        <div>Mission AI v2.3</div>
+        <div>PrimerOS 0.9.5</div>
+      </div>
+  
       <div className="cyber-header">
         <div className="cyber-line"></div>
         <div className="header-content flex justify-between items-center">
@@ -555,7 +710,7 @@ const CyberpunkInterface = () => {
           {!isMobile && <div className="time-display">{time}_UTC</div>}
         </div>
       </div>
-
+  
       <div className="robot-companion-container flex flex-col items-center mt-4 relative">
         <div className="minimalist-face-wrapper w-32 h-32 relative">
           <CuteRobotFace 
@@ -569,10 +724,12 @@ const CyberpunkInterface = () => {
           />
         </div>
       </div>
-
-     
+       
       <div className="scan-line"></div>
     </div>
+
+
+  
   );
 };
 
