@@ -182,15 +182,63 @@ React.useEffect(() => {
 }, [currentLevel, taskCompletionLevel, isTaskCompleted, currentEmotion]);
 //################## SECTION 5: Expressions Configuration ##################
 const expressions = {
-'neutral': {
-    leftEye: 'M-30,-5 A18,13 0 1,1 -2,-4',  // Gentle oval for left eye
-    rightEye: 'M2,-4 A18,13 0 1,1 30,-5',    // Matching oval for right eye
-    mouth: 'M-25,15 Q0,20 25,15',            // Refined subtle curve for mouth
+
+  'neutral': {
+    leftEye: {
+        path: 'M-25,-5 A15,10 0 1,1 -5,-4',  // Made significantly smaller
+        blinkPath: 'M-25,-2 A15,1 0 1,1 -5,-2',  // Blink adjusted to match
+        animationParams: {
+            glowIntensity: {
+                values: '0.95;0.85;0.95',
+                duration: '4s'
+            },
+            floatOffset: {
+                range: [-2, 2],
+                duration: '3s'
+            }
+        }
+    },
+    rightEye: {
+        path: 'M5,-4 A15,10 0 1,1 25,-5',  // Matching smaller scale
+        blinkPath: 'M5,-2 A15,1 0 1,1 25,-2',  // Matching blink
+        animationParams: {
+            glowIntensity: {
+                values: '0.95;0.85;0.95',
+                duration: '4s'
+            },
+            floatOffset: {
+                range: [-2, 2],
+                duration: '3s'
+            }
+        }
+    },
+    mouth: 'M-25,20 Q0,25 25,20',  // Scaled mouth to match
+    effects: {
+        gradient: {
+            type: 'radial',
+            colors: [
+                { offset: '0%', color: '#00ffff' },
+                { offset: '60%', color: '#00e6e6' },
+                { offset: '100%', color: '#00cccc' }
+            ]
+        },
+        filter: {
+            blur: [
+                { stdDeviation: 1.5, result: 'glow1' },
+                { stdDeviation: 3, result: 'glow2' }
+            ]
+        }
+    },
     color: '#00e6e6',
+    opacity: 0.95,
     emotional_metadata: {
         energy_level: 0.3,
         cognitive_state: 'passive_observation',
-        tension: 0.2
+        tension: 0.2,
+        blink_interval: {
+            min: 2000,
+            max: 5000
+        }
     }
 },
   'happy': {
@@ -338,6 +386,16 @@ const expressions = {
   }
 };
 
+// Add this helper function after the expressions object
+const getEyePath = (expression, isLeft, isBlinking) => {
+  if (typeof expression[isLeft ? 'leftEye' : 'rightEye'] === 'object') {
+    return isBlinking 
+      ? expression[isLeft ? 'leftEye' : 'rightEye'].blinkPath 
+      : expression[isLeft ? 'leftEye' : 'rightEye'].path;
+  }
+  return expression[isLeft ? 'leftEye' : 'rightEye'];
+};
+
 // Emotion Transition Helper (Optional Enhancement)
 const EmotionTransitionRules = {
   // Define transition probabilities and interesting rules
@@ -386,18 +444,63 @@ function getEmotionTransitionDetails(fromEmotion, toEmotion) {
     className="minimalist-face w-full h-full"
   >
     <defs>
-      {/* Base CRT Glow Filter - provides the classic screen effect */}
-      <filter id="crt-glow">
-        <feGaussianBlur stdDeviation="2.75" result="coloredBlur"/>
-        <feComponentTransfer>
-          <feFuncR type="linear" slope="0.5"/>
-          <feFuncG type="linear" slope="0.5"/>
-        </feComponentTransfer>
-        <feMerge>
-          <feMergeNode in="coloredBlur"/>
-          <feMergeNode in="SourceGraphic"/>
-        </feMerge>
-      </filter>
+      {/* Base CRT Glow Filter */}
+  <filter id="crt-glow">
+    <feGaussianBlur stdDeviation="2.75" result="coloredBlur"/>
+    <feComponentTransfer>
+      <feFuncR type="linear" slope="0.5"/>
+      <feFuncG type="linear" slope="0.5"/>
+    </feComponentTransfer>
+    <feMerge>
+      <feMergeNode in="coloredBlur"/>
+      <feMergeNode in="SourceGraphic"/>
+    </feMerge>
+  </filter>
+
+  {/* Eye glow gradient */}
+  <radialGradient id="eyeGlow">
+    {/* We'll use a conditional render here instead of fragments */}
+    {currentExpression && currentExpression.effects && currentExpression.effects.gradient ? 
+      currentExpression.effects.gradient.colors.map(color => (
+        <stop
+          key={color.offset}
+          offset={color.offset}
+          stopColor={color.color}
+        />
+      ))
+      :
+      [
+        <stop key="0" offset="0%" stopColor="#00ffff" />,
+        <stop key="1" offset="60%" stopColor="#00e6e6" />,
+        <stop key="2" offset="100%" stopColor="#00cccc" />
+      ]
+    }
+  </radialGradient>
+
+  {/* Cute glow filter */}
+  <filter id="cuteGlow">
+    {/* Similarly, we'll use an array of elements instead of fragments */}
+    {currentExpression && currentExpression.effects && currentExpression.effects.filter ? 
+      currentExpression.effects.filter.blur.map((blur, index) => (
+        <feGaussianBlur
+          key={index}
+          stdDeviation={blur.stdDeviation}
+          result={blur.result}
+        />
+      ))
+      :
+      [
+        <feGaussianBlur key="1" stdDeviation="1.5" result="glow1"/>,
+        <feGaussianBlur key="2" stdDeviation="3" result="glow2"/>
+      ]
+    }
+    <feMerge>
+      <feMergeNode in="glow2"/>
+      <feMergeNode in="glow1"/>
+      <feMergeNode in="SourceGraphic"/>
+    </feMerge>
+  </filter>
+</defs>
 
       {/* Screen Fade Gradient - creates the monitor-like background effect */}
       <radialGradient id="screen-fade" cx="50%" cy="50%" r="50%">
@@ -421,7 +524,6 @@ function getEmotionTransitionDetails(fromEmotion, toEmotion) {
       )}
 
    
-    </defs>
 
     {/* Background with screen fade */}
     <circle
@@ -435,84 +537,134 @@ function getEmotionTransitionDetails(fromEmotion, toEmotion) {
     {/* Main face group with appropriate glow effect */}
     <g filter={currentExpression.isGlitched ? "url(#color-split)" : "url(#crt-glow)"} 
        className="retro-screen">
-      
       {/* Left Eye with all states */}
-      {currentExpression.isHeartEyes ? (
-        <path
-          d="M0,0 C-6,-6 -12,-6 -12,0 C-12,4 -6,8 0,12 C6,8 12,4 12,0 C12,-6 6,-6 0,0"
-          transform="translate(-25, -10)"
-          fill="#86dfff"
-          className="heart-eye left animate-pulse"
-        />
-      ) : currentExpression.isGlitched ? (
-        <path 
-          d={currentExpression.leftEye}
-          transform="translate(-15, -10)"
-          fill={currentExpression.color}
-          filter="url(#color-split)"
-        >
-          <animate 
-            attributeName="fill"
-            values="#00ffff;#ff69b4;#00ffff"
-            dur="0.8s"
-            repeatCount="indefinite"
-          />
-          <animate
-            attributeName="transform"
-            values="translate(-15, -10);translate(-16, -10);translate(-15, -10)"
-            dur="1.2s"
-            repeatCount="indefinite"
-          />
-        </path>
-      ) : (
-        <path
-          d={currentExpression.leftEye}
-          transform="translate(-25, -10)"
-          fill="#86dfff"
-          opacity={isBlinking ? 0.3 : 0.9}
-          className="eye-left transition-all duration-300"
-        />
-      )}
+{currentExpression.isHeartEyes ? (
+  // Heart eyes state remains unchanged
+  <path
+    d="M0,0 C-6,-6 -12,-6 -12,0 C-12,4 -6,8 0,12 C6,8 12,4 12,0 C12,-6 6,-6 0,0"
+    transform="translate(-25, -10)"
+    fill="#86dfff"
+    className="heart-eye left animate-pulse"
+  />
+) : currentExpression.isGlitched ? (
+  // Glitched state with color split effect
+  <path
+    d={currentExpression.leftEye}
+    transform="translate(-15, -10)"
+    fill={currentExpression.color}
+    filter="url(#color-split)"
+  >
+    <animate
+      attributeName="fill"
+      values="#00ffff;#ff69b4;#00ffff"
+      dur="0.8s"
+      repeatCount="indefinite"
+    />
+    <animate
+      attributeName="transform"
+      values="translate(-15, -10);translate(-16, -10);translate(-15, -10)"
+      dur="1.2s"
+      repeatCount="indefinite"
+    />
+  </path>
+) : (
+  // Enhanced normal state with glow effects
+  <g>
+    {/* Base eye shape */}
+    <path
+      d={getEyePath(currentExpression, true, isBlinking)}
+      transform="translate(-25, -10)"
+      fill="url(#eyeGlow)"
+      filter="url(#cuteGlow)"
+      opacity={isBlinking ? 0.3 : (currentExpression.opacity || 0.95)}
+      className="eye-left transition-all duration-300"
+    />
+    {/* Glow animation if available */}
+    {currentExpression.leftEye && currentExpression.leftEye.animationParams && (
+      <animate
+        attributeName="opacity"
+        values={currentExpression.leftEye.animationParams.glowIntensity.values}
+        dur={currentExpression.leftEye.animationParams.glowIntensity.duration}
+        repeatCount="indefinite"
+      />
+    )}
+  </g>
+)}
 
-      {/* Right Eye with all states */}
-      {currentExpression.isHeartEyes ? (
-        <path
-          d="M0,0 C-6,-6 -12,-6 -12,0 C-12,4 -6,8 0,12 C6,8 12,4 12,0 C12,-6 6,-6 0,0"
-          transform="translate(25, -10)"
-          fill="#86dfff"
-          className="heart-eye right animate-pulse"
-        />
-      ) : currentExpression.isGlitched ? (
-        <path 
-          d={currentExpression.rightEye}
-          transform="translate(15, -10)"
-          fill={currentExpression.color}
-          filter="url(#color-split)"
-        >
-          <animate 
-            attributeName="fill"
-            values="#00ffff;#ff69b4;#00ffff"
-            dur="0.8s"
-            repeatCount="indefinite"
-            begin="0.4s"
-          />
-          <animate
-            attributeName="transform"
-            values="translate(15, -10);translate(16, -10);translate(15, -10)"
-            dur="1.2s"
-            repeatCount="indefinite"
-            begin="0.4s"
-          />
-        </path>
-      ) : (
-        <path
-          d={currentExpression.rightEye}
-          transform="translate(25, -10)"
-          fill="#86dfff"
-          opacity={isBlinking ? 0.3 : 0.9}
-          className="eye-right transition-all duration-300"
-        />
-      )}
+{/* Right Eye with all states */}
+{currentExpression.isHeartEyes ? (
+  // Heart eyes state remains unchanged
+  <path
+    d="M0,0 C-6,-6 -12,-6 -12,0 C-12,4 -6,8 0,12 C6,8 12,4 12,0 C12,-6 6,-6 0,0"
+    transform="translate(25, -10)"
+    fill="#86dfff"
+    className="heart-eye right animate-pulse"
+  />
+) : currentExpression.isGlitched ? (
+  // Glitched state with color split effect
+  <path
+    d={currentExpression.rightEye}
+    transform="translate(15, -10)"
+    fill={currentExpression.color}
+    filter="url(#color-split)"
+  >
+    <animate
+      attributeName="fill"
+      values="#00ffff;#ff69b4;#00ffff"
+      dur="0.8s"
+      repeatCount="indefinite"
+      begin="0.4s"
+    />
+    <animate
+      attributeName="transform"
+      values="translate(15, -10);translate(16, -10);translate(15, -10)"
+      dur="1.2s"
+      repeatCount="indefinite"
+      begin="0.4s"
+    />
+  </path>
+) : (
+  // Enhanced normal state with glow effects
+  <g>
+    {/* Base eye shape */}
+    <path
+      d={getEyePath(currentExpression, false, isBlinking)}
+      transform="translate(25, -10)"
+      fill="url(#eyeGlow)"
+      filter="url(#cuteGlow)"
+      opacity={isBlinking ? 0.3 : (currentExpression.opacity || 0.95)}
+      className="eye-right transition-all duration-300"
+    />
+    {/* Glow animation if available */}
+    {currentExpression.rightEye && currentExpression.rightEye.animationParams && (
+      <animate
+        attributeName="opacity"
+        values={currentExpression.rightEye.animationParams.glowIntensity.values}
+        dur={currentExpression.rightEye.animationParams.glowIntensity.duration}
+        repeatCount="indefinite"
+      />
+    )}
+  </g>
+)}
+
+{/* Add definitions for gradients and filters */}
+<defs>
+  <radialGradient id="eyeGlow">
+    <stop offset="0%" stopColor="#00ffff" />
+    <stop offset="60%" stopColor="#00e6e6" />
+    <stop offset="100%" stopColor="#00cccc" />
+  </radialGradient>
+  
+  <filter id="cuteGlow">
+    <feGaussianBlur stdDeviation="1.5" result="glow1"/>
+    <feGaussianBlur stdDeviation="3" result="glow2"/>
+    <feMerge>
+      <feMergeNode in="glow2"/>
+      <feMergeNode in="glow1"/>
+      <feMergeNode in="SourceGraphic"/>
+    </feMerge>
+  </filter>
+</defs>
 
       {/* Eyebrows - Only render if the current expression has eyebrows */}
       {currentExpression.eyebrows && (
