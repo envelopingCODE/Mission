@@ -288,22 +288,20 @@ function displayCongratulatoryMessage() {
 
 
 function checkXP(totalXp) {
-    const level = Math.floor(totalXp / 100) + 1;  // Calculate current level
-    const xpForCurrentLevel = totalXp % 100;      // XP within current level
-    
+    const level = Math.floor(totalXp / 100)+1;  // Calculate the current level based on total XP
+    const xpForCurrentLevel = totalXp % 100;  // XP within the current level (remainder of XP divided by 100)
+
     // Check if we just leveled up
     if (xpForCurrentLevel === 0 && totalXp > 0) {
         playLevelUpSound();
-        resetXpMeterVisual();  // Only reset the visual display, not the actual XP
+        resetXpMeter();  // This could reset the visual bar, but doesn't touch the total XP
         xpText.textContent = `LEVEL ${level} — GREAT JOB OPERATIVE`;
     }
-    
-    // Update the XP meter to show progress within current level
-    const xpPercentage = (xpForCurrentLevel / 100) * 100;
-    xpMeterEl.style.width = `${xpPercentage}%`;
-    xpMeterEl.textContent = `${xpForCurrentLevel} XP`;
-    
-    // Update level text
+
+    // Update the XP meter to show how much XP has been earned in the current level
+    updateXpMeter(xpForCurrentLevel);  // Update the visual XP meter based on current level XP
+
+    // Display the level text
     xpText.textContent = `Level ${level} — XP: ${xpForCurrentLevel}/100`;
 }
 
@@ -330,46 +328,44 @@ function clearTextField() {
     missionButtonEl.disabled = true; // Disable the mission button
 }
 
-
 function addXp(xp) {
-    let currentXp = parseInt(localStorage.getItem("currentXp")) || 0;
-    const oldLevel = Math.floor(currentXp / 100) + 1;
-    
-    currentXp += xp;  // Add new XP
-    const newLevel = Math.floor(currentXp / 100) + 1;
-    
-    // Save total XP
-    localStorage.setItem("currentXp", currentXp);
-    xpMeterEl.dataset.xp = currentXp;
-    
-    // Check for level up
-    if (newLevel > oldLevel) {
-        playLevelUpSound();
-    }
-    
-    // Update high score if needed
+    let currentXp = parseInt(xpMeterEl.dataset.xp) || 0; // Get the current XP, or default to 0
+    currentXp += xp; // Add the new XP to the current XP
+    xpMeterEl.dataset.xp = currentXp; // Update the XP meter's data attribute
+    localStorage.setItem("currentXp", currentXp); // Save the new current XP to local storage
+    updateXpMeter(currentXp); // Update the XP meter display
+
+    // Check if the current XP exceeds the high score
     let highScore = parseInt(localStorage.getItem("highScore")) || 0;
     if (currentXp > highScore) {
-        localStorage.setItem("highScore", currentXp);
-        updateHighScoreDisplay(currentXp);
-        displayCongratulatoryMessage();
+        localStorage.setItem("highScore", currentXp); // Save the new high score
+        updateHighScoreDisplay(currentXp); // Update the displayed high score
+        displayCongratulatoryMessage(); // Display a message if high score is broken
     }
-    
+
+
+
     checkXP(currentXp);
 }
 
-// Only resets the visual display without touching the actual XP
-function resetXpMeterVisual() {
-    xpMeterEl.style.width = '0%';
-    xpMeterEl.textContent = '0 XP';
+function updateXpMeter(currentXp) {
+    const maxXP = 100; // Set the maximum XP for the meter
+    const xpPercentage = (currentXp / maxXP) * 100; // Calculate the XP as a percentage of the maximum
+    const xpMeterWidth = Math.min(xpPercentage, 100); // Ensure the XP meter doesn't exceed 100%
+    xpMeterEl.style.width = `${xpMeterWidth}%`; // Set the width of the XP meter
+    xpMeterEl.textContent = `${currentXp} XP`; // Update the text content of the XP meter
 }
 
-// Use this function when you actually want to reset all progress
 function resetXpMeter() {
-    localStorage.setItem("currentXp", 0);
-    xpMeterEl.dataset.xp = 0;
-    resetXpMeterVisual();
-    xpText.textContent = 'Level 1 — XP: 0/100';
+    xpMeterEl.dataset.xp = 0; // Reset the XP meter's data attribute to 0
+    xpMeterEl.style.width = '0px'; // Set the XP meter width to 0
+    xpMeterEl.textContent = '0 XP'; // Update the text content of the XP meter to 0
+    localStorage.setItem("currentXp", 0); // Reset the current XP in local storage to 0
+}
+
+function resetXpMeterVisual() {
+    xpMeterEl.style.width = '0%'; // Visually reset the XP bar to 0%
+    xpMeterEl.textContent = '0 XP'; // Update the text content to show 0 XP
 }
 /*
 function updateStreak() {

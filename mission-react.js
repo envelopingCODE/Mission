@@ -40,17 +40,23 @@ const CuteRobotFace = ({
   const [currentEmotion, setCurrentEmotion] = React.useState('curious');
 
   //################## SECTION 3: Animation Effects ##################
+React.useEffect(() => {
+  const blinkVariations = [
+    { duration: 100, interval: 3000 },   // Quick blink
+    { duration: 50, interval: 5000 },    // Rapid blink
+    { duration: 200, interval: 7000 }    // Longer, slower blink
+  ];
 
-  React.useEffect(() => {
-  // Keep only the blinking animation, remove the emotion cycling
+  const randomBlinkStyle = blinkVariations[
+    Math.floor(Math.random() * blinkVariations.length)
+  ];
+
   const blinkInterval = setInterval(() => {
     setIsBlinking(true);
-    setTimeout(() => setIsBlinking(false), 100);
-  }, 3000 + Math.random() * 2000);
+    setTimeout(() => setIsBlinking(false), randomBlinkStyle.duration);
+  }, randomBlinkStyle.interval);
 
-  return () => {
-    clearInterval(blinkInterval);
-  };
+  return () => clearInterval(blinkInterval);
 }, []);
 
 //################## SECTION 4: Emotion Logic ##################
@@ -174,69 +180,124 @@ React.useEffect(() => {
 
   return () => clearInterval(randomEmotionInterval);
 }, [currentLevel, taskCompletionLevel, isTaskCompleted, currentEmotion]);
-
-  //################## SECTION 5: Expressions Configuration ##################
-  const expressions = {
-    'neutral': {
-      leftEye: 'M-30,-5 A15,20 0 1,1 0,-5',
-      rightEye: 'M0,-5 A15,-20 0 1,1 30, -5',
-      mouth: 'M-30,20 Q0,25 30,20',
-      color: '#86dfff'
-    },
+//################## SECTION 5: Expressions Configuration ##################
+const expressions = {
+  'neutral': {
+    leftEye: 'M-30,-5 A15,20 0 1,1 0,-5',
+    rightEye: 'M0,-5 A15,-20 0 1,1 30, -5',
+    mouth: 'M-30,20 Q0,25 30,20',
+    color: '#86dfff',
+    // New metadata for emotional depth
+    emotional_metadata: {
+      energy_level: 0.3,
+      cognitive_state: 'passive_observation',
+      tension: 0.2
+    }
+  },
   'happy': {
     leftEye: 'M-30,-5 Q-12,-20 0,-5',
     rightEye: 'M0,-5 Q12,-20 30,-5',
     mouth: 'M-35,20 Q0,35 35,20',
-    color: '#86dfff'
+    color: '#86dfff',
+    emotional_metadata: {
+      energy_level: 0.7,
+      cognitive_state: 'positive_engagement',
+      tension: 0.1
+    }
   },
-    'excited': {
-      leftEye: 'M-30,-5 Q-15,-25 0,-5',
-      rightEye: 'M0,-5 Q15,-25 30,-5',
-      mouth: 'M-40,20 Q0,50 40,20',
-      color: '#86dfff'
-    },
-
-'curious': {
-  leftEye: 'M-30,-5 A15,20 0 1,1 0,-5',
-  rightEye: 'M0,-5 A15,-20 0 1,1 30,-5',
-  mouth: 'M-30,20 Q0,25 30,20',
-  color: '#86dfff'
-
+  'excited': {
+    leftEye: 'M-30,-5 Q-15,-25 0,-5',
+    rightEye: 'M0,-5 Q15,-25 30,-5',
+    mouth: 'M-40,20 Q0,50 40,20',
+    color: '#86dfff',
+    emotional_metadata: {
+      energy_level: 0.9,
+      cognitive_state: 'high_stimulation',
+      tension: 0.3
+    }
   },
-
-
-
-
-
-    'playful': {
-      leftEye: 'M-25,-5 Q-10,-15 0,-5',  // Normal eye
-      rightEye: 'M-25,-5 L25,-5 0,-6',         // Simplified line to represent a wink
-      mouth: 'M-40,20 Q20,90 30,20',
-      color: '#86dfff'
-    },
-
+  'curious': {
+    leftEye: 'M-30,-5 A15,20 0 1,1 0,-5',
+    rightEye: 'M0,-5 A15,-20 0 1,1 30,-5',
+    mouth: 'M-30,20 Q0,25 30,20',
+    color: '#86dfff',
+    emotional_metadata: {
+      energy_level: 0.6,
+      cognitive_state: 'exploratory',
+      tension: 0.4
+    }
+  },
+  'playful': {
+    leftEye: 'M-25,-5 Q-10,-15 0,-5',  // Normal eye
+    rightEye: 'M-25,-5 L25,-5 0,-6',   // Wink effect
+    mouth: 'M-40,20 Q20,90 30,20',
+    color: '#86dfff',
+    emotional_metadata: {
+      energy_level: 0.8,
+      cognitive_state: 'lighthearted',
+      tension: 0.1
+    }
+  },
   'perplexed': {
-  leftEye: 'M-25,-5 A15,10 0 1,1 0,-5',
-  rightEye: 'M0,-5 A15,10 0 1,1 25,-5',
-  mouth: 'M-10,30 A10,5 0 1,1 5,30',
-  color: '#86dfff'
-},
+    leftEye: 'M-25,-5 A15,10 0 1,1 0,-5',
+    rightEye: 'M0,-5 A15,10 0 1,1 25,-5',
+    mouth: 'M-10,30 A10,5 0 1,1 5,30',
+    color: '#86dfff',
+    emotional_metadata: {
+      energy_level: 0.5,
+      cognitive_state: 'analytical_confusion',
+      tension: 0.7
+    }
+  },
+  'sleepy': {
+    leftEye: 'M-20,-5 A15,8 0 1,1 0,-5',
+    rightEye: 'M0,-5 A15,8 0 1,1 20,-5',
+    mouth: 'M-30,20 Q0,25 30,20',
+    color: '#86dfff',
+    emotional_metadata: {
+      energy_level: 0.2,
+      cognitive_state: 'low_engagement',
+      tension: 0.1
+    }
+  },
+  'heart-eyes': {
+    leftEye: 'M0,0 C-6,-6 -12,-6 -12,0 C-12,4 -6,8 0,12 C6,8 12,4 12,0 C12,-6 6,-6 0,0', 
+    rightEye: 'M0,0 C-6,-6 -12,-6 -12,0 C-12,4 -6,8 0,12 C6,8 12,4 12,0 C12,-6 6,-6 0,0',
+    mouth: 'M-30,20 Q0,40 30,20',
+    color: '#86dfff',
+    isHeartEyes: true,
+    emotional_metadata: {
+      energy_level: 0.9,
+      cognitive_state: 'euphoric_connection',
+      tension: 0.05
+    }
+  }
+};
 
-'sleepy': {
-  leftEye: 'M-20,-5 A15,8 0 1,1 0,-5',
-  rightEye: 'M0,-5 A15,8 0 1,1 20,-5',
-  mouth: 'M-30,20 Q0,25 30,20',
-  color: '#86dfff'
-},
+// Emotion Transition Helper (Optional Enhancement)
+const EmotionTransitionRules = {
+  // Define transition probabilities and interesting rules
+  'neutral-to-curious': {
+    probability: 0.7,
+    energyShift: 0.3,
+    cognitiveEngagement: 'increase'
+  },
+  'curious-to-excited': {
+    probability: 0.5,
+    energyShift: 0.4,
+    cognitiveEngagement: 'spike'
+  }
+};
 
-'heart-eyes': {
-  leftEye: 'M0,0 C-6,-6 -12,-6 -12,0 C-12,4 -6,8 0,12 C6,8 12,4 12,0 C12,-6 6,-6 0,0', 
-  rightEye: 'M0,0 C-6,-6 -12,-6 -12,0 C-12,4 -6,8 0,12 C6,8 12,4 12,0 C12,-6 6,-6 0,0',
-  mouth: 'M-30,20 Q0,40 30,20',
-  color: '#86dfff',
-  isHeartEyes: true
-},
+// Utility function to get emotional transition information
+function getEmotionTransitionDetails(fromEmotion, toEmotion) {
+  const transitionKey = `${fromEmotion}-to-${toEmotion}`;
+  return EmotionTransitionRules[transitionKey] || {
+    probability: 0.5,
+    energyShift: 0.2,
+    cognitiveEngagement: 'moderate'
   };
+}
   
 
 //################## SECTION 6: Render Logic ##################
@@ -382,24 +443,32 @@ return (
 
 //################## SECTION 7: Interface Component ##################
 const CyberpunkInterface = () => {
+  // Existing state declarations
   const [status, setStatus] = React.useState('CONNECTED');
   const [time, setTime] = React.useState('');
   const [taskCompletionLevel, setTaskCompletionLevel] = React.useState(0);
   const [currentLevel, setCurrentLevel] = React.useState(1);
   const [isTaskCompleted, setIsTaskCompleted] = React.useState(false);
   const [isMobile, setIsMobile] = React.useState(false);
-
-    //  // Add these new state variables
   const [motivationalMessage, setMotivationalMessage] = React.useState('');
   const [showMessage, setShowMessage] = React.useState(false);
 
-  // Add the displayRandomMessage function right after the state declarations
+  // Enhanced displayRandomMessage function
   const displayRandomMessage = React.useCallback(() => {
-    const messages = window.motivationalMessages || [];
-    const message = messages[Math.floor(Math.random() * messages.length)];
-    setMotivationalMessage(message);
-    setShowMessage(true);
-    setTimeout(() => setShowMessage(false), 3000);
+    // Access the existing motivationalMessages array from window scope
+    if (window.motivationalMessages && window.motivationalMessages.length > 0) {
+      const message = window.motivationalMessages[
+        Math.floor(Math.random() * window.motivationalMessages.length)
+      ];
+      setMotivationalMessage(message);
+      setShowMessage(true);
+      
+      // Hide the message after 3 seconds
+      setTimeout(() => {
+        setShowMessage(false);
+        setMotivationalMessage('');
+      }, 3000);
+    }
   }, []);
  
   //################## SECTION 8: Interface Effects ##################

@@ -711,7 +711,7 @@ input[type="text"] {
 
 
 .cyber-container {
-    background: rgba(0, 0, 0, 0.627);
+    background: rgba(0, 0, 0, 0.83);
     border: 1px solid rgba(0, 255, 255, 0.1);
     padding: 1.5rem;
     color: #00ffd5;
@@ -1052,3 +1052,141 @@ body {
     box-shadow: 0 0 15px rgba(0, 255, 213, 0.7);
   }
 }
+
+
+/* Add these styles to your CSS file */
+.motivational-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.motivational-message {
+  background: rgba(0, 0, 0, 0.8);
+  color: #86dfff;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  border: 1px solid #86dfff;
+  text-align: center;
+  max-width: 200px;
+  font-size: 0.9rem;
+  backdrop-filter: blur(4px);
+  transform: translateY(-20px);
+}
+
+/* Add these styles to your CSS */
+.robot-companion-container {
+  position: relative;
+  padding-bottom: 10rem; /* Make room for the message */
+}
+
+/* Add to your CSS file */
+/* More specific selectors to avoid affecting the face animation */
+.motivational-message {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  word-break: break-word;
+  max-width: 100%;
+  overflow-wrap: break-word;
+}
+
+/* Enhanced pulse animation specifically for typing indicator */
+@keyframes message-typing-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+/* Specific class for the typing animation */
+.message-typing-pulse {
+  animation: message-typing-pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+
+
+
+
+/* Free-Floating Avatar Container */
+.minimalist-face-wrapper {
+  position: flex;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  border: none;
+  outline: none;
+  background: transparent;
+}
+
+.minimalist-face {
+  /* Remove any fixed sizing constraints */
+  width: auto;
+  height: auto;
+  max-width: none;
+  max-height: none;
+
+  /* Hovering and floating effects */
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(1);
+  transition: all 0.5s ease-in-out;
+
+  /* Subtle hovering animation */
+  animation: 
+    float-hover 4s ease-in-out infinite,
+    subtle-glow 3s alternate infinite;
+}
+
+/* Floating animation */
+@keyframes float-hover {
+  0%, 100% { 
+    transform: translate(-50%, -50%) translateY(0);
+  }
+  50% { 
+    transform: translate(-50%, -50%) translateY(-10px);
+  }
+}
+
+/* Ethereal glow effect */
+@keyframes subtle-glow {
+  0% { 
+    filter: 
+      brightness(0.9) 
+      contrast(1.1)
+      drop-shadow(0 0 5px rgba(134, 223, 255, 0.2));
+  }
+  100% { 
+    filter: 
+      brightness(1.1) 
+      contrast(1.2)
+      drop-shadow(0 0 15px rgba(134, 223, 255, 0.4));
+  }
+}
+
+/* Interactive hover effects */
+.minimalist-face-wrapper:hover .minimalist-face {
+  transform: translate(-50%, -50%) scale(1.05);
+  filter: 
+    brightness(1.2) 
+    drop-shadow(0 0 20px rgba(134, 223, 255, 0.5));
+}
+
+.minimalist-face-wrapper:active .minimalist-face {
+  transform: translate(-50%, -50%) scale(0.95);
+}
+
+/* Background integration */
+svg.minimalist-face {
+  background: transparent;
+  overflow: visible;
+}
+
+/* Reduce visual boundaries */
+.robot-companion-container {
+  overflow: visible;
+  position: relative;
+}
+
