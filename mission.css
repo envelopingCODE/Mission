@@ -12,7 +12,29 @@ url(assets/images/free-photo-of-black-and-white-photo-of-people-waiting-in-a-mod
 }
 
 svg {
-  max-width: 140px;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+}
+
+.minimalist-face {
+  width: 100%;
+  height: 100%;
+}
+
+.robot-companion-container {
+  margin-top: 0;
+  margin-bottom: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.minimalist-face-wrapper {
+  width: 100%;
+  height: 100%;
+  max-width: 150px;  /* or adjust as needed */
+  max-height: 150px;
 }
 
 .container2 {
