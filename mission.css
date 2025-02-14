@@ -432,6 +432,7 @@ input[type="text"] {
     animation: neural-pulse 3s infinite;
 }
 
+
 @keyframes neural-pulse {
     0% { opacity: 0.3; }
     50% { opacity: 1; }
@@ -956,4 +957,98 @@ body {
 
 .animate-pulse {
   animation: pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Cyberpunk Neural Interface Animations */
+.cyber-container .robot-companion-container {
+  position: relative;
+  perspective: 500px;
+  transition: all 0.3s ease-in-out;
+}
+
+/* Pulse and Breathing Animation */
+@keyframes neural-pulse {
+  0%, 100% { 
+    transform: scale(1) rotateX(0deg); 
+    opacity: 0.9; 
+  }
+  50% { 
+    transform: scale(1.02) rotateX(2deg); 
+    opacity: 1; 
+  }
+}
+
+/* Subtle Electrical Interference */
+@keyframes electrical-interference {
+  0%, 100% { 
+    filter: brightness(1) hue-rotate(0deg);
+  }
+  25% { 
+    filter: brightness(1.1) hue-rotate(10deg);
+  }
+  50% { 
+    filter: brightness(0.9) hue-rotate(-10deg);
+  }
+  75% { 
+    filter: brightness(1.05) hue-rotate(5deg);
+  }
+}
+
+/* Glitch Effect for Occasional Randomness */
+@keyframes glitch-transform {
+  0% { transform: translate(0, 0) scale(1); }
+  20% { transform: translate(-1px, 1px) scale(1.01); }
+  40% { transform: translate(1px, -1px) scale(0.99); }
+  60% { transform: translate(-0.5px, 0.5px) scale(1.02); }
+  80% { transform: translate(0.5px, -0.5px) scale(0.98); }
+  100% { transform: translate(0, 0) scale(1); }
+}
+
+/* Neural Companion Hover and Interaction States */
+.cyber-container .robot-companion-container {
+  animation: 
+    neural-pulse 3s ease-in-out infinite,
+    electrical-interference 5s infinite;
+  transition: all 0.3s ease;
+}
+
+/* Responsive Scaling for Different Screen Sizes */
+@media screen and (max-width: 600px) {
+  .cyber-container .robot-companion-container {
+    animation-scale: 0.8;
+  }
+}  
+.minimalist-face {
+  filter: 
+    drop-shadow(0 0 5px rgba(0, 255, 255, 0.3)) 
+    brightness(1.2);
+}
+
+.minimalist-face g {
+  transition: all 0.3s ease;
+}
+
+/* Additional Interactive Animations */
+.cyber-container .minimalist-face {
+  transition: transform 0.2s ease;
+}
+
+.cyber-container .minimalist-face:active {
+  transform: scale(0.95);
+}
+
+/* Status Indicator Pulse */
+.cyber-container .status-indicator .dot {
+  animation: status-pulse 2s infinite;
+}
+
+@keyframes status-pulse {
+  0%, 100% { 
+    transform: scale(1);
+    box-shadow: 0 0 5px rgba(0, 255, 213, 0.3);
+  }
+  50% { 
+    transform: scale(1.2);
+    box-shadow: 0 0 15px rgba(0, 255, 213, 0.7);
+  }
 }
