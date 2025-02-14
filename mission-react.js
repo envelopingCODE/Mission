@@ -539,7 +539,12 @@ const CyberpunkInterface = () => {
    
   //################## SECTION 9: Interface Render ##################
   return (
-    <div className="cyber-container flex flex-col">
+    <div className="cyber-container flex flex-col relative">
+    <div className="neural-status-panel">
+      <div>Mission AI v2.3</div>
+      <div>PrimerOS 0.9.5</div>
+    </div>
+
       <div className="cyber-header">
         <div className="cyber-line"></div>
         <div className="header-content flex justify-between items-center">
