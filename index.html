@@ -3,15 +3,12 @@
 <html lang="en">
 <head>
 
- <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
- <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-<script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
-
-    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-    <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
-
-<script type="text/babel" src="mission-react.js"></script>
+    <head>
+        <!-- Load React first -->
+        <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+        <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+        <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+    </head>
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -33,6 +30,8 @@
 <button id="addMissionButton"> Add Op.</button>
 
 <button id="resetButton">  Wipe memory </button>
+
+<div id="xp-selector-mount"></div>
 
 <p><span id="errorMessage"></span></p>
 
@@ -78,7 +77,8 @@
 
 <div id="motivationalQuoteMobile" class="motivational-quote mobile"></div>
 
-
 <script src="mission.js"></script>
+<script type="text/babel" src="xp-selector-react.js"></script>
+<script type="text/babel" src="mission-react.js"></script>
 </body>
 </html>

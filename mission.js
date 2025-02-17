@@ -1,5 +1,6 @@
 "use strict"; // Strict mode helps catch common coding errors and "unsafe" actions
 
+
 const inputEl = document.getElementById("addMission"); // Get the input element for mission names
 const missionButtonEl = document.getElementById("addMissionButton"); // Get the button to add missions
 const missionListEl = document.getElementById('missionList'); // Get the list where missions will be displayed
@@ -13,7 +14,12 @@ const addMissionSound = document.getElementById('addMissionSound') // Get the so
 const initializingSound = document.getElementById('initializingSound') // Get the sound element for initializing
 const mediaQuery = window.matchMedia('(max-width: 600px)');
 
+let xpSelectorCallback = null;
 
+// Add this to your mission.js file
+window.addEventListener('error', function(e) {
+    console.error('Script error:', e);
+});
 
 // let currentStreak = 0; // Variable to track the current streak of completed missions
 
@@ -125,55 +131,72 @@ function modifyMissionText(input) {
 }
 
 // Adding the mission to the list
+
 function addMission(sanitizedInput) {
     const modifiedMission = modifyMissionText(sanitizedInput);
-
-
-    // Get the prefix (first part of the mission)
-    const prefixRegex = /^(\d+\.)/; 
-
-    const prefix = modifiedMission.match(prefixRegex)[0];
-    const prefixClass = getClassForPrefix(prefix); // Get the class based on the prefix
-
+    const prefix = modifiedMission.match(/^(\d+\.)/)[0];
+    const prefixClass = getClassForPrefix(prefix);
 
     playAddMissionSound();
 
-    // Check if the viewport is 600px or less (mobile mode)
-    const mediaQuery = window.matchMedia('(max-width: 600px)');
     if (mediaQuery.matches) {
-        // Call typeAdditionalMessage only if in mobile mode
         typeAdditionalMessage(2);
     }
 
-    const xpValue = parseInt(prompt(`Enter XP for "${modifiedMission}"`));
-    if (isNaN(xpValue)) {
-        alert("Please enter a valid number for XP");
-        return; // Prevent adding the mission if XP is invalid
+    // Create a callback function to handle XP selection
+    xpSelectorCallback = (xpValue) => {
+        const newEl = document.createElement("li");
+        newEl.innerHTML = `<span class="${prefixClass}">${modifiedMission.split(':')[0]}:</span> ${modifiedMission.split(':')[1]} — ${xpValue} XP`;
+        newEl.className = "mission";
+        newEl.dataset.xp = xpValue;
+
+        newEl.addEventListener('click', function(e) {
+            const xp = parseInt(e.target.dataset.xp);
+            addXp(xp);
+            e.target.remove();
+            saveMissions();
+            displayRandomMessage();
+            playCompletionSound();
+        });
+
+        missionListEl.appendChild(newEl);
+
+        setTimeout(() => {
+            newEl.classList.add("active");
+            saveMissions();
+        }, 10);
+    };
+
+    // Show the XP selector
+    const mountPoint = document.getElementById('xp-selector-mount');
+    if (mountPoint) {
+        mountPoint.style.display = 'flex';
+        const backdrop = document.createElement('div');
+        backdrop.id = 'xp-selector-backdrop';
+        document.body.appendChild(backdrop);
     }
 
-    const newEl = document.createElement("li"); // Create a new list item element
-    newEl.innerHTML = `<span class="${prefixClass}">${modifiedMission.split(':')[0]}:</span> ${modifiedMission.split(':')[1]} — ${xpValue} XP`; // Apply class to the prefix
-    newEl.className = "mission"; // Add a class to the list item
-    newEl.dataset.xp = xpValue; // Set the XP value as a data attribute on the list item
+    // Call the showXPSelector function from your React component
+    if (typeof window.showXPSelector === 'function') {
+        window.showXPSelector(xpSelectorCallback);
+    } else {
+        console.error('XP Selector not initialized');
+    }
+}
 
+// Add this function to handle closing the XP selector
+function closeXPSelector() {
+    const mountPoint = document.getElementById('xp-selector-mount');
+    const backdrop = document.getElementById('xp-selector-backdrop');
     
-    newEl.addEventListener('click', function (e) {
-        const xp = parseInt(e.target.dataset.xp); // Get the XP value from the clicked list item
-        addXp(xp); // Add the XP to the meter
-        e.target.remove(); // Remove the clicked list item
-        saveMissions(); // Save the updated list of missions
-        displayRandomMessage(); // Display a random motivational message
-        playCompletionSound(); // Play the completion sound
-    //    updateStreak(); // Update the streak count
-    });
-
-    missionListEl.appendChild(newEl); // Add the new list item to the mission list
-
-    setTimeout(() => {
-        newEl.classList.add("active"); // Add the 'active' class after a short delay for animation
-        saveMissions(); // Save the updated list of missions
-    }, 10);
+    if (backdrop) {
+        backdrop.remove();
+    }
     
+    if (mountPoint) {
+        mountPoint.style.display = 'none';
+    }
+
 }
 
 function saveMissions() {
