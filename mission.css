@@ -35,7 +35,7 @@ body {
   
   
   /* Option 2: Semi-transparent background */
-  background-color: rgba(0, 0, 0, 0.19);
+  background-color: rgba(0, 0, 0, 0.115);
   
 
 }
@@ -92,7 +92,6 @@ body {
   cursor: grab;
   user-select: none;
   position: relative;
-  background: rgba(134, 223, 255, 0.05);
   border-left: 3px solid transparent;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   transform-origin: left center;
@@ -104,7 +103,6 @@ body {
 .mission:hover {
   border-left: 3px solid #86dfff;
   transform: translateX(8px) scale(1.2); /* Adjusted scale */
-    background: rgba(134, 223, 255, 0.231);
     scale:1.1;
 }
 
@@ -196,6 +194,10 @@ body {
       box-shadow: 0 0 0 0 rgba(134, 223, 255, 0);
   }
 }
+
+
+
+
 
 
 
@@ -1455,122 +1457,142 @@ svg.minimalist-face {
 
 
 .lock-in-wrapper {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
 }
 
 .lock-in-button {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    padding: 4px 8px;
-    border: 1px solid #86dfff;
-    background: transparent;
-    color: #86dfff;
-    border-radius: 4px;
-    cursor: pointer;
-    transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border: 1px solid #86dfff;
+  background: transparent;
+  color: #86dfff;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.3s ease;
 }
 
 .lock-in-button:hover {
-    background: rgba(134, 223, 255, 0.1);
+  background: rgba(134, 223, 255, 0.1);
 }
 
 .lock-in-button.locked {
-    border-color: #ff3e3e;
-    color: #ff3e3e;
+  border-color: #ff3e3e;
+  color: #ff3e3e;
 }
 
 .timer-display {
-    font-family: monospace;
-    color: #86dfff;
-    padding: 4px 8px;
-    border-radius: 4px;
-    position: relative;
-    overflow: hidden;
+  font-family: monospace;
+  color: #86dfff;
+  padding: 4px 8px;
+  border-radius: 4px;
+  position: relative;
+  overflow: hidden;
 }
 
 .timer-display::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    height: 100%;
-    width: var(--progress, 100%);
-    background: rgba(134, 223, 255, 0.1);
-    transition: width 1s linear;
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: var(--progress, 100%);
+  background: rgba(134, 223, 255, 0.1);
+  transition: width 1s linear;
 }
 
 .timer-display.hidden {
-    display: none;
+  display: none;
 }
 
 .mission.locked-in {
-    border: 1px solid #ff3e3e;
-    box-shadow: 0 0 10px rgba(255, 62, 62, 0.2);
+  border: 1px solid #ff3e3e;
+  box-shadow: 0 0 10px rgba(255, 62, 62, 0.2);
 }
 
 .bonus-message {
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    background: rgba(0, 0, 0, 0.8);
-    color: #ff3e3e;
-    padding: 16px 24px;
-    border-radius: 8px;
-    border: 1px solid #ff3e3e;
-    animation: bonusAppear 2s forwards;
-    z-index: 1000;
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(0, 0, 0, 0.8);
+  color: #ff3e3e;
+  padding: 16px 24px;
+  border-radius: 8px;
+  border: 1px solid #ff3e3e;
+  animation: bonusAppear 2s forwards;
+  z-index: 1000;
 }
 
 @keyframes bonusAppear {
-    0% {
-        opacity: 0;
-        transform: translate(-50%, -30%);
-    }
-    20% {
-        opacity: 1;
-        transform: translate(-50%, -50%);
-    }
-    80% {
-        opacity: 1;
-        transform: translate(-50%, -50%);
-    }
-    100% {
-        opacity: 0;
-        transform: translate(-50%, -70%);
-    }
+  0% {
+      opacity: 0;
+      transform: translate(-50%, -30%);
+  }
+  20% {
+      opacity: 1;
+      transform: translate(-50%, -50%);
+  }
+  80% {
+      opacity: 1;
+      transform: translate(-50%, -50%);
+  }
+  100% {
+      opacity: 0;
+      transform: translate(-50%, -70%);
+  }
 }
 
 .timer-expired-notification {
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    background: rgba(255, 62, 62, 0.9);
-    color: white;
-    padding: 12px 20px;
-    border-radius: 4px;
-    animation: notificationSlide 3s forwards;
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background: rgba(255, 62, 62, 0.9);
+  color: white;
+  padding: 12px 20px;
+  border-radius: 4px;
+  animation: notificationSlide 3s forwards;
 }
 
 @keyframes notificationSlide {
-    0% {
-        transform: translateX(100%);
-        opacity: 0;
-    }
-    10% {
-        transform: translateX(0);
-        opacity: 1;
-    }
-    90% {
-        transform: translateX(0);
-        opacity: 1;
-    }
-    100% {
-        transform: translateX(100%);
-        opacity: 0;
-    }
+  0% {
+      transform: translateX(100%);
+      opacity: 0;
+  }
+  10% {
+      transform: translateX(0);
+      opacity: 1;
+  }
+  90% {
+      transform: translateX(0);
+      opacity: 1;
+  }
+  100% {
+      transform: translateX(100%);
+      opacity: 0;
+  }
 }
+
+
+/* Mission item core styling */
+.mission {
+    cursor: grab;
+    user-select: none;
+    position: relative;
+    border-left: 3px solid transparent;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transform-origin: left center;
+    align-items: center;
+    padding-right: 1rem;
+}
+
+/* Preserve the original hover effect */
+.mission:hover {
+    border-left: 3px solid #86dfff;
+    transform: translateX(8px) scale(1.2);
+}
+
