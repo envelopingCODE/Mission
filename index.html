@@ -1,84 +1,63 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
-
-    <head>
-        <!-- Load React first -->
-        <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
-        <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-        <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
-    </head>
-
+    <!-- Load React first -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" type="text/css" href="mission.css">
     <title>Mission — Gamify your tasks</title>
 </head>
-
-<body class="container">
+<body>
+    <!-- Add the blur overlay -->
+    <div class="blur-overlay"></div>
     
+    <!-- Wrap all content in a main content container -->
+    <div class="content container">
+        <div class="container2">
+            <h1 class="widescreen">Objectives for today:</h1>
+            <h1 class="mobile">Ops. for today:</h1>
+            <label id="label1" for="addMission">Add objectives:</label>
+            <input type="text" id="addMission">
+            <button id="addMissionButton">Add Op.</button>
+            <button id="resetButton">Wipe memory</button>
+            <div id="xp-selector-mount"></div>
+            <p><span id="errorMessage"></span></p>
+        </div>
 
-    <div class="container2">
+        <div id="react-mission-control"></div>
+        <br>
+        <div id="output"></div>
+        <P id="xpText">LEVEL UP</P>
+        <div id="xp-meter-container">
+            <div id="xp-meter">0 XP</div>
+        </div>
+        <div id="leaderboard">
+            <p>Current High Score: <span id="highScore">0</span> XP</p>
+        </div>
+        <br>
+        <br>
+        <audio id="completionSound" src="Completion.mp3" preload="auto"></audio>
+        <audio id="levelUpSound" src="levelUpSound.mp3" preload="auto"></audio>
+        <audio id="resetDataSound" src="eraseSound.mp3" preload="auto"></audio>
+        <audio id="addMissionSound" src="addMissionSound.mp3" preload="auto"></audio>
+        <audio id="initializingSound" src="initializingSound.mp3" preload="auto"></audio>
+        <div id="motivationalQuoteWidescreen" class="motivational-quote widescreen"></div>
+        <div class="missions-grid">
+            <div class="grid-item-1">
+                <h2>Stored missions</h2>
+            </div>
+            <div class="grid-item-2">
+                <ul id="missionList"></ul>
+            </div>
+        </div>
+        <div id="motivationalQuoteMobile" class="motivational-quote mobile"></div>
+    </div>
 
-<h1 class="widescreen">Objectives for today:</h1>
-<h1 class="mobile">Ops. for today:</h1>
-
-
-<label id="label1" for="addMission">Add objectives:</label>
- <input type="text" id="addMission">
-<button id="addMissionButton"> Add Op.</button>
-
-<button id="resetButton">  Wipe memory </button>
-
-<div id="xp-selector-mount"></div>
-
-<p><span id="errorMessage"></span></p>
-
-</div>
-<div id="react-mission-control"></div>
-<br>
-<div id="output"></div> <!-- A div to display the output messages -->
-
-<P id="xpText">LEVEL UP</P>
-<div id="xp-meter-container">
-   
-    <div id="xp-meter">0 XP</div>
-
-</div>
-<div id="leaderboard">
-    <p>Current High Score: <span id="highScore">0</span> XP</p>
-</div>
-<br>
-
-
-
-
-<br>
-<audio id="completionSound" src="Completion.mp3" preload="auto"></audio>
-<audio id="levelUpSound" src="levelUpSound.mp3" preload="auto"></audio>
-<audio id="resetDataSound" src="eraseSound.mp3" preload="auto"></audio>
-<audio id="addMissionSound" src="addMissionSound.mp3" preload="auto"></audio>
-<audio id="initializingSound" src="initializingSound.mp3" preload="auto"></audio>
-
-<div id="motivationalQuoteWidescreen" class="motivational-quote widescreen"></div>
-
-
-
-<div class="missions-grid" >
-
-    <div class="grid-item-1"> <h2>Stored missions</h2>  </div>
-
-    <div class="grid-item-2"> <ul id="missionList"></ul> </div>
-
-</div>
-
-
-
-<div id="motivationalQuoteMobile" class="motivational-quote mobile"></div>
-
-<script src="mission.js"></script>
-<script type="text/babel" src="xp-selector-react.js"></script>
-<script type="text/babel" src="mission-react.js"></script>
+    <script src="mission.js"></script>
+    <script type="text/babel" src="xp-selector-react.js"></script>
+    <script type="text/babel" src="mission-react.js"></script>
 </body>
 </html>

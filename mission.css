@@ -18,6 +18,42 @@ svg {
 }
 
 
+/* Ensure the parent container has position relative */
+body {
+  position: relative;
+}
+
+/* Create the blur overlay */
+.blur-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1;  /* Adjust this value based on your needs */
+  
+  
+  
+  /* Option 2: Semi-transparent background */
+  background-color: rgba(0, 0, 0, 0.19);
+  
+
+}
+
+/* Ensure content appears above the overlay */
+.content {
+  position: relative;
+  z-index: 2;
+}
+
+/* Optional: Add a subtle transition */
+.blur-overlay {
+  transition: backdrop-filter 0.3s ease, background-color 0.3s ease;
+}
+
+
+
+
 
 .robot-companion-container {
   margin-top: 0;
