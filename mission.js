@@ -159,7 +159,6 @@ function addMission(sanitizedInput) {
     const prefix = modifiedMission.match(/^(\d+\.)/)[0];
     const prefixClass = getClassForPrefix(prefix);
 
-    playAddMissionSound();
 
     if (mediaQuery.matches) {
         typeAdditionalMessage(2);
@@ -177,6 +176,11 @@ function addMission(sanitizedInput) {
         createMissionClickHandler(newEl);
 
         missionListEl.appendChild(newEl);
+
+
+        // Play the sound after XP is selected and mission is added
+        playAddMissionSound();
+
 
         setTimeout(() => {
             newEl.classList.add("active");
