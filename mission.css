@@ -52,6 +52,215 @@ body {
 }
 
 
+/* Dragging function */
+
+.mission {
+    cursor: grab;
+    user-select: none;
+    transform: translateZ(0); /* Hardware acceleration */
+    transition: all 0.2s ease;
+    position: relative;  /* Ensure this is properly defined */
+}
+
+.mission.dragging {
+    cursor: grabbing;
+    background: rgba(134, 223, 255, 0.1);
+    transform: scale(1.02); /* Use transform instead of animation-scale */
+    box-shadow: 0 2px 8px rgba(134, 223, 255, 0.2);
+}
+
+
+/* Add visual feedback for drag target */
+.mission.drag-over {
+  border-top: 2px solid #86dfff;
+}
+
+// Add smooth transition when items are reordered
+.mission {
+    transition: transform 0.2s ease;
+}
+
+.mission.dragging {
+    transform: scale(1.05);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+}
+
+
+
+/* Base mission styling with hover effect */
+.mission {
+  cursor: grab;
+  user-select: none;
+  position: relative;
+  background: rgba(134, 223, 255, 0.05);
+  border-left: 3px solid transparent;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transform-origin: left center;
+  overflow: hidden;
+  transition: all 2s ease-in-out; /* Combined transition */
+}
+
+/* Hover state with data stream effect */
+.mission:hover {
+  border-left: 3px solid #86dfff;
+  transform: translateX(8px) scale(1.2); /* Adjusted scale */
+    background: rgba(134, 223, 255, 0.231);
+    scale:1.1;
+}
+
+/* Glowing line effect on hover */
+.mission::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(
+      90deg,
+      transparent,
+      #86dfff,
+      transparent
+  );
+  transition: 0.5s;
+}
+
+.mission:hover::after {
+  left: 100%;
+}
+
+/* Active dragging state */
+.mission.dragging {
+  cursor: grabbing;
+  transform: scale(1.02) translateY(-2px);
+  background: rgba(134, 223, 255, 0.12);
+  box-shadow: 
+      0 4px 20px rgba(134, 223, 255, 0.2),
+      0 0 30px rgba(134, 223, 255, 0.1);
+  z-index: 1000;
+}
+
+/* Drop target indicator */
+.mission.drag-over {
+  border-top: 2px solid #86dfff;
+  transform: translateY(4px);
+  transition: transform 0.2s ease;
+}
+
+/* Completion animation */
+@keyframes complete {
+  0% {
+      transform: translateX(0);
+      opacity: 1;
+  }
+  50% {
+      transform: translateX(30px);
+      opacity: 0.5;
+  }
+  100% {
+      transform: translateX(100%);
+      opacity: 0;
+  }
+}
+
+/* Add this class when mission is completed */
+.mission.completing {
+  animation: complete 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* Entrance animation for new missions */
+@keyframes enter {
+  from {
+      opacity: 0;
+      transform: translateX(-30px);
+  }
+  to {
+      opacity: 1;
+      transform: translateX(0);
+  }
+}
+
+.mission.active {
+  animation: enter 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* Cyberpunk-style pulse effect */
+@keyframes pulse {
+  0% {
+      box-shadow: 0 0 0 0 rgba(134, 223, 255, 0.4);
+  }
+  70% {
+      box-shadow: 0 0 0 10px rgba(134, 223, 255, 0);
+  }
+  100% {
+      box-shadow: 0 0 0 0 rgba(134, 223, 255, 0);
+  }
+}
+
+
+
+
+
+
+
+/* Priority mission indicator (first child) */
+.mission:first-child {
+    position: relative;
+    border-left: 3px solid #0fdfab;  /* Red indicator on left */
+}
+
+/* Subtle scanning line for priority mission */
+.mission:first-child::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 3px;
+    height: 100%;
+    background: linear-gradient(
+        to bottom,
+        transparent,
+        #1cc777,
+        transparent
+    );
+    animation: scanPriority 4s ease-in-out infinite;
+    opacity: 0.7;
+}
+
+@keyframes scanPriority {
+    0%, 100% {
+        transform: translateY(-100%);
+    }
+    50% {
+        transform: translateY(100%);
+    }
+}
+
+/* Keep existing hover effects */
+.mission:hover {
+    transform: translateX(8px) scale(1.01);
+}
+
+/* Maintain original mission styles */
+.mission {
+    cursor: grab;
+    user-select: none;
+    position: relative;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transform-origin: left center;
+    overflow: hidden;
+}
+
+/* Active dragging state */
+.mission.dragging {
+    cursor: grabbing;
+    transform: scale(1.02) translateY(-2px);
+    box-shadow: 0 4px 20px rgba(134, 223, 255, 0.2);
+    z-index: 1000;
+}
+
+
+
 
 
 
@@ -183,11 +392,6 @@ padding: 0;
 .mission.active {
 opacity: 1;
 transform: translateY(0);
-}
-
-.mission:hover {
-    transform: scale(1.2);
-    
 }
 
 
@@ -1246,3 +1450,127 @@ svg.minimalist-face {
   color: rgba(0, 255, 213, 0.6);
 }
 
+
+
+
+
+.lock-in-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: auto;
+}
+
+.lock-in-button {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    border: 1px solid #86dfff;
+    background: transparent;
+    color: #86dfff;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.lock-in-button:hover {
+    background: rgba(134, 223, 255, 0.1);
+}
+
+.lock-in-button.locked {
+    border-color: #ff3e3e;
+    color: #ff3e3e;
+}
+
+.timer-display {
+    font-family: monospace;
+    color: #86dfff;
+    padding: 4px 8px;
+    border-radius: 4px;
+    position: relative;
+    overflow: hidden;
+}
+
+.timer-display::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: var(--progress, 100%);
+    background: rgba(134, 223, 255, 0.1);
+    transition: width 1s linear;
+}
+
+.timer-display.hidden {
+    display: none;
+}
+
+.mission.locked-in {
+    border: 1px solid #ff3e3e;
+    box-shadow: 0 0 10px rgba(255, 62, 62, 0.2);
+}
+
+.bonus-message {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0, 0, 0, 0.8);
+    color: #ff3e3e;
+    padding: 16px 24px;
+    border-radius: 8px;
+    border: 1px solid #ff3e3e;
+    animation: bonusAppear 2s forwards;
+    z-index: 1000;
+}
+
+@keyframes bonusAppear {
+    0% {
+        opacity: 0;
+        transform: translate(-50%, -30%);
+    }
+    20% {
+        opacity: 1;
+        transform: translate(-50%, -50%);
+    }
+    80% {
+        opacity: 1;
+        transform: translate(-50%, -50%);
+    }
+    100% {
+        opacity: 0;
+        transform: translate(-50%, -70%);
+    }
+}
+
+.timer-expired-notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: rgba(255, 62, 62, 0.9);
+    color: white;
+    padding: 12px 20px;
+    border-radius: 4px;
+    animation: notificationSlide 3s forwards;
+}
+
+@keyframes notificationSlide {
+    0% {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    10% {
+        transform: translateX(0);
+        opacity: 1;
+    }
+    90% {
+        transform: translateX(0);
+        opacity: 1;
+    }
+    100% {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+}

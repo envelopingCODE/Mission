@@ -172,6 +172,20 @@ function addMission(sanitizedInput) {
         newEl.className = "mission";
         newEl.dataset.xp = xpValue;
 
+          
+        // Add drag attributes
+        newEl.draggable = true;
+        newEl.addEventListener('dragstart', handleDragStart);
+        newEl.addEventListener('dragend', handleDragEnd);
+        newEl.addEventListener('dragover', handleDragOver);
+        newEl.addEventListener('drop', handleDrop);
+
+        // Add touch events for mobile support
+        newEl.addEventListener('touchstart', handleTouchStart);
+        newEl.addEventListener('touchmove', handleTouchMove);
+        newEl.addEventListener('touchend', handleTouchEnd);
+                
+            
         // Use the new click handler function
         createMissionClickHandler(newEl);
 
@@ -220,6 +234,166 @@ function closeXPSelector() {
 
 }
 
+
+// Click dragging functionality
+
+
+// Drag and Drop event handlers
+let draggedItem = null;
+
+function handleDragStart(e) {
+    draggedItem = e.target;
+    e.target.classList.add('dragging');
+    
+    // Set ghost drag image
+    const ghost = e.target.cloneNode(true);
+    ghost.style.opacity = '0.5';
+    document.body.appendChild(ghost);
+    e.dataTransfer.setDragImage(ghost, 0, 0);
+    setTimeout(() => document.body.removeChild(ghost), 0);
+}
+
+function handleDragEnd(e) {
+    e.target.classList.remove('dragging');
+    draggedItem = null;
+}
+
+function handleDragOver(e) {
+    e.preventDefault();
+    const targetItem = e.target.closest('li');
+    
+    if (!targetItem || !draggedItem || targetItem === draggedItem) return;
+
+    const boundingRect = targetItem.getBoundingClientRect();
+    const draggedRect = draggedItem.getBoundingClientRect();
+    
+    if (e.clientY < boundingRect.top + boundingRect.height / 2) {
+        targetItem.parentNode.insertBefore(draggedItem, targetItem);
+    } else {
+        targetItem.parentNode.insertBefore(draggedItem, targetItem.nextSibling);
+    }
+    
+    saveMissions();
+}
+
+function handleDrop(e) {
+    e.preventDefault();
+    saveMissions();
+}
+
+let touchDraggedItem = null;
+let touchStartY = 0;
+
+function handleTouchStart(e) {
+    const touch = e.touches[0];
+    touchStartY = touch.clientY;
+    touchDraggedItem = e.target.closest('li');
+    if (touchDraggedItem) {
+        touchDraggedItem.classList.add('dragging');
+    }
+}
+
+
+
+// Track previous priority mission
+let previousPriorityMission = null;
+
+function handleDragOver(e) {
+    e.preventDefault();
+    const targetItem = e.target.closest('li');
+    
+    if (!targetItem || !draggedItem || targetItem === draggedItem) return;
+
+    const boundingRect = targetItem.getBoundingClientRect();
+    
+    if (e.clientY < boundingRect.top + boundingRect.height / 2) {
+        targetItem.parentNode.insertBefore(draggedItem, targetItem);
+    } else {
+        targetItem.parentNode.insertBefore(draggedItem, targetItem.nextSibling);
+    }
+    
+    // Check if priority mission changed
+    const currentPriorityMission = missionListEl.firstElementChild;
+    if (currentPriorityMission !== previousPriorityMission) {
+        // Remove priority class from previous
+        if (previousPriorityMission) {
+            previousPriorityMission.classList.remove('becoming-priority');
+        }
+        // Add priority class to new top mission
+        currentPriorityMission.classList.add('becoming-priority');
+        // Play priority change sound
+        playPriorityChangeSound();
+        
+        previousPriorityMission = currentPriorityMission;
+    }
+    
+    saveMissions();
+}
+
+// Add a subtle sound effect for priority changes
+function playPriorityChangeSound() {
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+    
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+    
+    oscillator.type = 'sine';
+    oscillator.frequency.setValueAtTime(440, audioContext.currentTime);
+    oscillator.frequency.linearRampToValueAtTime(880, audioContext.currentTime + 0.1);
+    
+    gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+    gainNode.gain.linearRampToValueAtTime(0, audioContext.currentTime + 0.2);
+    
+    oscillator.start();
+    oscillator.stop(audioContext.currentTime + 0.2);
+}
+
+// Initialize the priority system when loading missions
+function initializePrioritySystem() {
+    const firstMission = missionListEl.firstElementChild;
+    if (firstMission) {
+        previousPriorityMission = firstMission;
+        firstMission.classList.add('becoming-priority');
+    }
+}
+
+// Touch dragging functionality
+
+function handleTouchMove(e) {
+    e.preventDefault();
+    if (!touchDraggedItem) return;
+
+    const touch = e.touches[0];
+    const currentY = touch.clientY;
+    
+    // Get all mission items
+    const items = Array.from(document.querySelectorAll('.mission'));
+    const draggedIndex = items.indexOf(touchDraggedItem);
+    
+    items.forEach((item, index) => {
+        if (item === touchDraggedItem) return;
+        
+        const rect = item.getBoundingClientRect();
+        const centerY = rect.top + rect.height / 2;
+        
+        if (currentY < centerY && index < draggedIndex) {
+            item.parentNode.insertBefore(touchDraggedItem, item);
+        } else if (currentY > centerY && index > draggedIndex) {
+            item.parentNode.insertBefore(touchDraggedItem, item.nextSibling);
+        }
+    });
+}
+
+function handleTouchEnd(e) {
+    if (!touchDraggedItem) return;
+    
+    touchDraggedItem.classList.remove('dragging');
+    touchDraggedItem = null;
+    saveMissions();
+}
+
+
 function saveMissions() {
     const missionsEl = document.getElementsByClassName("mission"); // Get all elements with the 'mission' class
     const missionsData = Array.from(missionsEl).map(missionEl => {
@@ -256,6 +430,18 @@ function loadMissions() {
             newEl.appendChild(missionText);
             newEl.className = "mission";
             newEl.dataset.xp = mission.xp;
+
+            // Add drag functionality
+            newEl.draggable = true;
+            newEl.addEventListener('dragstart', handleDragStart);
+            newEl.addEventListener('dragend', handleDragEnd);
+            newEl.addEventListener('dragover', handleDragOver);
+            newEl.addEventListener('drop', handleDrop);
+
+            // Add touch events for mobile support
+            newEl.addEventListener('touchstart', handleTouchStart);
+            newEl.addEventListener('touchmove', handleTouchMove);
+            newEl.addEventListener('touchend', handleTouchEnd);
 
             // Use the new click handler function
             createMissionClickHandler(newEl);
