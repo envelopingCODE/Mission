@@ -130,6 +130,28 @@ function modifyMissionText(input) {
     return input; // Return unchanged if no prefix is found
 }
 
+// Function to smoothly scroll to the XP meter
+function scrollToXPMeter() {
+    const xpMeterEl = document.getElementById('xp-meter');
+    xpMeterEl.scrollIntoView({ 
+        behavior: 'smooth', 
+        block: 'center'
+    });
+}
+
+// Modify the mission click event listener in the loadMissions and addMission functions
+function createMissionClickHandler(element) {
+    element.addEventListener('click', function(e) {
+        const xp = parseInt(e.target.dataset.xp);
+        addXp(xp);
+        e.target.remove();
+        saveMissions();
+        displayRandomMessage();
+        playCompletionSound();
+        scrollToXPMeter(); // Add scroll to XP meter when mission is completed
+    });
+}
+
 // Adding the mission to the list
 
 function addMission(sanitizedInput) {
@@ -144,20 +166,15 @@ function addMission(sanitizedInput) {
     }
 
     // Create a callback function to handle XP selection
+    
     xpSelectorCallback = (xpValue) => {
         const newEl = document.createElement("li");
         newEl.innerHTML = `<span class="${prefixClass}">${modifiedMission.split(':')[0]}:</span> ${modifiedMission.split(':')[1]} — ${xpValue} XP`;
         newEl.className = "mission";
         newEl.dataset.xp = xpValue;
 
-        newEl.addEventListener('click', function(e) {
-            const xp = parseInt(e.target.dataset.xp);
-            addXp(xp);
-            e.target.remove();
-            saveMissions();
-            displayRandomMessage();
-            playCompletionSound();
-        });
+        // Use the new click handler function
+        createMissionClickHandler(newEl);
 
         missionListEl.appendChild(newEl);
 
@@ -233,29 +250,21 @@ function loadMissions() {
             // Append the prefix and mission text
             newEl.appendChild(prefixSpan);
             newEl.appendChild(missionText);
+            newEl.className = "mission";
+            newEl.dataset.xp = mission.xp;
 
-            newEl.className = "mission"; // Add the mission class to the list item
-            newEl.dataset.xp = mission.xp; // Set the XP value as a data attribute
+            // Use the new click handler function
+            createMissionClickHandler(newEl);
 
-            // Add click listener for adding XP
-            newEl.addEventListener('click', function (e) {
-                const xp = parseInt(e.target.dataset.xp); // Get the XP value from the clicked list item
-                addXp(xp); // Add the XP to the meter
-                e.target.remove(); // Remove the clicked list item
-                saveMissions(); // Save the updated list of missions
-                displayRandomMessage(); // Display a random motivational message
-                playCompletionSound(); // Play the completion sound
-            });
-
-            missionListEl.appendChild(newEl); // Add the new list item to the mission list
+            missionListEl.appendChild(newEl);
 
             setTimeout(() => {
-                newEl.classList.add("active"); // Add the 'active' class after a short delay for animation
+                newEl.classList.add("active");
             }, 10);
         });
     }
 
-   
+       
    
     // Load current XP, level, and high score from localStorage
     let currentXp = parseInt(localStorage.getItem("currentXp")) || 0;
