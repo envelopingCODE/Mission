@@ -38,6 +38,8 @@ const CuteRobotFace = ({
   //################## SECTION 2: State and Hooks ##################
   const [isBlinking, setIsBlinking] = React.useState(false);
   const [currentEmotion, setCurrentEmotion] = React.useState('curious');
+    const [eyePosition, setEyePosition] = React.useState({ x: 0, y: 0 });
+    const [isTracking, setIsTracking] = React.useState(false);
 
   //################## SECTION 3: Animation Effects ##################
 React.useEffect(() => {
@@ -58,6 +60,78 @@ React.useEffect(() => {
 
   return () => clearInterval(blinkInterval);
 }, []);
+
+  // Add natural eye movement
+  React.useEffect(() => {
+    const moveEyesRandomly = () => {
+      if (!isTracking) {
+        const randomX = (Math.random() - 0.5) * 6;
+        const randomY = (Math.random() - 0.5) * 4;
+        setEyePosition({ x: randomX, y: randomY });
+      }
+    };
+
+    const movementInterval = setInterval(() => {
+      if (Math.random() < 0.3) {
+        moveEyesRandomly();
+      }
+    }, 2000);
+
+    const resetInterval = setInterval(() => {
+      if (!isTracking && Math.random() < 0.4) {
+        setEyePosition({ x: 0, y: 0 });
+      }
+    }, 4000);
+
+    return () => {
+      clearInterval(movementInterval);
+      clearInterval(resetInterval);
+    };
+  }, [isTracking]);
+
+  // Add mouse tracking for eye movement
+  React.useEffect(() => {
+    const handleMouseMove = (e) => {
+      const wrapper = document.querySelector('.minimalist-face-wrapper');
+      if (!wrapper) return;
+      
+      const bounds = wrapper.getBoundingClientRect();
+      const centerX = bounds.left + bounds.width / 2;
+      const centerY = bounds.top + bounds.height / 2;
+      
+      const deltaX = (e.clientX - centerX) / (bounds.width / 2);
+      const deltaY = (e.clientY - centerY) / (bounds.height / 2);
+      
+      const limitedX = Math.max(-1, Math.min(1, deltaX)) * 8;
+      const limitedY = Math.max(-1, Math.min(1, deltaY)) * 6;
+      
+      setEyePosition({ 
+        x: limitedX, 
+        y: limitedY 
+      });
+    };
+
+    const handleMouseEnter = () => setIsTracking(true);
+    const handleMouseLeave = () => {
+      setIsTracking(false);
+      setEyePosition({ x: 0, y: 0 });
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    const wrapper = document.querySelector('.minimalist-face-wrapper');
+    if (wrapper) {
+      wrapper.addEventListener('mouseenter', handleMouseEnter);
+      wrapper.addEventListener('mouseleave', handleMouseLeave);
+    }
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      if (wrapper) {
+        wrapper.removeEventListener('mouseenter', handleMouseEnter);
+        wrapper.removeEventListener('mouseleave', handleMouseLeave);
+      }
+    };
+  }, []);
 
 //################## SECTION 4: Emotion Logic ##################
 React.useEffect(() => {
@@ -567,13 +641,25 @@ const expressions = {
 
 // Add this helper function after the expressions object
 const getEyePath = (expression, isLeft, isBlinking) => {
+  let basePath = '';
+  
   if (typeof expression[isLeft ? 'leftEye' : 'rightEye'] === 'object') {
-    return isBlinking 
+    basePath = isBlinking 
       ? expression[isLeft ? 'leftEye' : 'rightEye'].blinkPath 
       : expression[isLeft ? 'leftEye' : 'rightEye'].path;
+  } else {
+    basePath = expression[isLeft ? 'leftEye' : 'rightEye'];
   }
-  return expression[isLeft ? 'leftEye' : 'rightEye'];
+
+  // Add translation for eye movement
+  const baseTransform = isLeft ? 'translate(-25, -10)' : 'translate(25, -10)';
+  return {
+    d: basePath,
+    transform: `${baseTransform} translate(${eyePosition.x}, ${eyePosition.y})`
+  };
 };
+
+
 
 // Emotion Transition Helper (Optional Enhancement)
 const EmotionTransitionRules = {
