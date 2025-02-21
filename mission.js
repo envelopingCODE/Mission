@@ -235,6 +235,236 @@ function closeXPSelector() {
 }
 
 
+
+const TaskSuggestionSystem = {
+    // ... previous properties remain the same ...
+  
+    init() {
+      try {
+        const saved = localStorage.getItem('taskFrequency');
+        if (saved) {
+          this.taskFrequency = new Map(JSON.parse(saved));
+        }
+      } catch (e) {
+        console.warn('Could not load saved task frequencies');
+      }
+  
+      const input = document.getElementById('addMission');
+      if (!input) return;
+  
+      input.style.transition = 'color 0.8s ease, opacity 0.8s ease';
+      
+      let currentSuggestionIndex = 0;
+      let isActive = false;
+      let currentSuggestions = [];
+      let isScrolling = false;
+      let scrollTimeout;
+  
+      const updatePlaceholder = (suggestions, instant = false) => {
+        if (!suggestions?.length) return;
+        
+        clearTimeout(this.fadeTimeout);
+        clearTimeout(this.cycleTimeout);
+  
+        currentSuggestions = suggestions;
+        
+        const updateText = () => {
+          // If user has typed a prefix, preserve it in the placeholder
+          const prefix = input.value;
+          const suggestion = suggestions[currentSuggestionIndex];
+          input.placeholder = prefix ? `${prefix}${suggestion.slice(prefix.length)}` : suggestion;
+          input.style.opacity = '0.8';
+          
+          if (!isScrolling && !instant) {
+            currentSuggestionIndex = (currentSuggestionIndex + 1) % suggestions.length;
+            this.cycleTimeout = setTimeout(() => {
+              updatePlaceholder(suggestions);
+            }, 4000 + Math.random() * 3000);
+          }
+        };
+  
+        if (instant) {
+          updateText();
+        } else {
+          input.style.opacity = '0.4';
+          this.fadeTimeout = setTimeout(updateText, 800);
+        }
+      };
+  
+      const getSuggestionsForPrefix = (prefix = '') => {
+        prefix = prefix.toLowerCase();
+        return Array.from(this.taskFrequency.entries())
+          .filter(([task]) => task.toLowerCase().startsWith(prefix))
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, this.maxSuggestionsPerPrefix)
+          .map(([task]) => task);
+      };
+  
+      // Improved wheel event handler
+      const handleWheel = (e) => {
+        e.preventDefault(); // Prevent page scroll
+        
+        if (!currentSuggestions.length) {
+          // If no current suggestions, try to get some based on input
+          currentSuggestions = getSuggestionsForPrefix(input.value);
+          if (!currentSuggestions.length) return;
+        }
+  
+        clearTimeout(scrollTimeout);
+        isScrolling = true;
+  
+        // Determine scroll direction
+        if (e.deltaY < 0) { // Scrolling up
+          currentSuggestionIndex = (currentSuggestionIndex - 1 + currentSuggestions.length) % currentSuggestions.length;
+        } else { // Scrolling down
+          currentSuggestionIndex = (currentSuggestionIndex + 1) % currentSuggestions.length;
+        }
+  
+        // Update placeholder immediately
+        updatePlaceholder(currentSuggestions, true);
+  
+        // Reset scrolling state after a delay
+        scrollTimeout = setTimeout(() => {
+          isScrolling = false;
+        }, 1000);
+      };
+  
+      // Add wheel event listener to both input and its container
+      input.addEventListener('wheel', handleWheel, { passive: false });
+      input.parentElement.addEventListener('wheel', (e) => {
+        if (document.activeElement === input) {
+          handleWheel(e);
+        }
+      }, { passive: false });
+  
+      // Improved input handler
+      let inputTimeout;
+      input.addEventListener('input', (e) => {
+        if (e.target.value) {
+          input.classList.add('has-content');
+          
+          // Get suggestions for current input value
+          clearTimeout(inputTimeout);
+          inputTimeout = setTimeout(() => {
+            const suggestions = getSuggestionsForPrefix(e.target.value);
+            if (suggestions.length) {
+              isActive = true;
+              currentSuggestionIndex = 0;
+              updatePlaceholder(suggestions, true);
+            }
+          }, 100); // Reduced delay for more responsive feel
+        } else {
+          input.classList.remove('has-content');
+          // Show most frequent tasks when input is cleared
+          const suggestions = this.getMostFrequentTasks();
+          if (suggestions.length) {
+            updatePlaceholder(suggestions);
+          }
+        }
+      });
+  
+      // Improved tab handler
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Tab' && !e.shiftKey) {
+          e.preventDefault();
+          if (currentSuggestions.length > 0) {
+            const suggestion = currentSuggestions[currentSuggestionIndex];
+            input.value = suggestion;
+            input.classList.add('has-content');
+            currentSuggestionIndex = (currentSuggestionIndex + 1) % currentSuggestions.length;
+            // Update placeholder with next suggestion
+            updatePlaceholder(currentSuggestions, true);
+          }
+        }
+      });
+  
+      // Focus handler
+      input.addEventListener('focus', () => {
+        isActive = true;
+        const suggestions = input.value ? 
+          getSuggestionsForPrefix(input.value) : 
+          this.getMostFrequentTasks();
+        if (suggestions.length) {
+          updatePlaceholder(suggestions);
+        }
+      });
+  
+      // Blur handler
+      input.addEventListener('blur', () => {
+        isActive = false;
+        input.style.opacity = '1';
+      });
+  
+      // Initialize with most frequent tasks
+      const initialSuggestions = this.getMostFrequentTasks();
+      if (initialSuggestions.length) {
+        isActive = true;
+        currentSuggestions = initialSuggestions;
+        updatePlaceholder(initialSuggestions);
+      }
+    },
+  
+    recordTask(task) {
+      if (!task) return;
+      
+      const frequency = (this.taskFrequency.get(task) || 0) + 1;
+      this.taskFrequency.set(task, frequency);
+  
+      // Cleanup if we've stored too many items
+      if (this.taskFrequency.size > this.maxHistoryItems) {
+        // Remove least frequent tasks
+        const sortedTasks = Array.from(this.taskFrequency.entries())
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, this.maxHistoryItems);
+        
+        this.taskFrequency = new Map(sortedTasks);
+      }
+  
+      // Clear prefix suggestions cache as frequencies changed
+      this.prefixSuggestions.clear();
+  
+      // Save to localStorage
+      try {
+        localStorage.setItem('taskFrequency', 
+          JSON.stringify(Array.from(this.taskFrequency.entries()))
+        );
+      } catch (e) {
+        console.warn('Could not save task frequencies');
+      }
+    },
+  
+    getMostFrequentTasks() {
+      return Array.from(this.taskFrequency.entries())
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, this.maxSuggestionsPerPrefix)
+        .map(([task]) => task);
+    }
+  };
+  
+  // Initialize when DOM is ready
+  document.addEventListener('DOMContentLoaded', () => {
+    TaskSuggestionSystem.init();
+  });
+  
+  // Add this to your existing task addition logic
+  const addTaskToSystem = (task) => {
+    TaskSuggestionSystem.recordTask(task);
+  };
+  
+  // Modify your existing task addition handler to include:
+  document.getElementById('addMission').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter' && this.value.trim()) {
+      // Your existing task addition logic here
+      
+      // Record the task
+      addTaskToSystem(this.value.trim());
+      
+      // Clear the input
+      this.value = '';
+      this.classList.remove('has-content');
+    }
+  });
+
 // Lock in timer
 
 

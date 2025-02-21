@@ -1596,3 +1596,32 @@ svg.minimalist-face {
     transform: translateX(8px) scale(1.2);
 }
 
+
+
+#addMission {
+  color: #ffffff; /* Text color when typing */
+  background: rgba(0, 0, 0, 0.7);
+  border: 1px solid rgba(134, 223, 255, 0.3);
+  padding: 8px 12px;
+  outline: none;
+  transition: all 0.8s ease;
+}
+
+#addMission::placeholder {
+  color: rgba(134, 223, 255, 0.4); /* Translucent blue for placeholder */
+  transition: color 0.8s ease, opacity 0.8s ease;
+}
+
+#addMission:focus {
+  border-color: rgba(134, 223, 255, 0.8);
+  background: rgba(0, 0, 0, 0.8);
+}
+
+#addMission:focus::placeholder {
+  opacity: 0.6;
+}
+
+/* Style for the text when it's been tabbed or typed */
+#addMission.has-content {
+  color: #ffffff;
+}
