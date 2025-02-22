@@ -5,7 +5,8 @@
     <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
-    <meta charset="UTF-8">
+    <script src="http://localhost:8097"></script>
+        <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" type="text/css" href="mission.css">
     <title>Mission — Gamify your tasks</title>
@@ -20,8 +21,8 @@
             <h1 class="widescreen">Objectives for today:</h1>
             <h1 class="mobile">Ops. for today:</h1>
             <label id="label1" for="addMission">Add objectives:</label>
-            <input type="text" id="addMission">
-            <button id="addMissionButton">Add Op.</button>
+            <input id="addMission" type="text" placeholder="">
+                        <button id="addMissionButton">Add Op.</button>
             <button id="resetButton">Wipe memory</button>
             <div id="xp-selector-mount"></div>
             <p><span id="errorMessage"></span></p>

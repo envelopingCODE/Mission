@@ -96,39 +96,6 @@ function displayRandomMessage() {
     }, 3000);
 }
 
-function getClassForPrefix(prefix) {
-    // Return a class based on the prefix
-    switch (prefix) {
-        case "1.":
-            return "prefix-one"; // Class for "1."
-        case "2.":
-            return "prefix-two"; // Class for "2."
-        case "3.":
-            return "prefix-three"; // Class for "3."
-        default:
-            return "prefix-default"; // Default class for other prefixes
-    }
-}
-function modifyMissionText(input) {
-    // Check if input starts with '1.', '2.' or '3.'
-    const missionPrefixes = ["1.", "2.", "3."];
-    for (const prefix of missionPrefixes) {
-        if (input.startsWith(prefix)) {
-            // Modify the mission text by adding the mission title after the prefix
-            switch (prefix) {
-                case "1.":
-                    return input.replace(prefix, "1. Secure Funding: ");
-                case "2.":
-                    return input.replace(prefix, "2. Graduate: ");
-                case "3.":
-                    return input.replace(prefix, "3. Optimal State: ");
-                default:
-                    return input; // Return unchanged if no match is found
-            }
-        }
-    }
-    return input; // Return unchanged if no prefix is found
-}
 
 // Function to smoothly scroll to the XP meter
 function scrollToXPMeter() {
@@ -155,10 +122,10 @@ function createMissionClickHandler(element) {
 // Adding the mission to the list
 
 function addMission(sanitizedInput) {
-    const modifiedMission = modifyMissionText(sanitizedInput);
-    const prefix = modifiedMission.match(/^(\d+\.)/)[0];
-    const prefixClass = getClassForPrefix(prefix);
-
+    const modifiedMission = TaskSystem.modifyMissionText(sanitizedInput);
+    const prefix = modifiedMission.match(/^(\d+\.)/)?.[0];
+    const prefixClass = TaskSystem.getClassForPrefix(prefix);
+ 
 
     if (mediaQuery.matches) {
         typeAdditionalMessage(2);
@@ -234,10 +201,48 @@ function closeXPSelector() {
 
 }
 
-
-
-const TaskSuggestionSystem = {
-    // ... previous properties remain the same ...
+const TaskSystem = {
+    taskFrequency: new Map(),
+    categories: {
+      "1.": {
+        prefix: "1.",
+        title: "Secure Funding",
+        description: "Financial and resource acquisition tasks",
+        color: "rgba(26, 228, 46, 0.835)",
+        weight: 700,
+        defaultTasks: [
+          "1. Do SoME marketing",
+          "1. Obtain new Client",
+          "1. Prevent loss via interest"
+        ]
+      },
+      "2.": {
+        prefix: "2.",
+        title: "Graduate",
+        description: "Academic and educational goals",
+        color: "rgba(20, 255, 208, 0.835)",
+        weight: 600,
+        defaultTasks: [
+          "2. Study for one unit",
+          "2. Code for one unit",
+          "2. Complete paper"
+        ]
+      },
+      "3.": {
+        prefix: "3.",
+        title: "Optimal State",
+        description: "Personal wellness and optimization",
+        color: "rgba(26, 211, 228, 0.892)",
+        weight: 600,
+        defaultTasks: [
+          "3. Morning meditation",
+          "3. TRX",
+          "3. Journal"
+        ]
+      }
+    },
+    fadeTimeout: null,
+    cycleTimeout: null,
   
     init() {
       try {
@@ -246,224 +251,253 @@ const TaskSuggestionSystem = {
           this.taskFrequency = new Map(JSON.parse(saved));
         }
       } catch (e) {
-        console.warn('Could not load saved task frequencies');
+        console.warn('Neural memory retrieval failed:', e);
       }
   
       const input = document.getElementById('addMission');
       if (!input) return;
   
-      input.style.transition = 'color 0.8s ease, opacity 0.8s ease';
-      
+      // Initialize with default tasks if no history exists
+      if (this.taskFrequency.size === 0) {
+        Object.values(this.categories).forEach(category => {
+          category.defaultTasks.forEach(task => this.recordTask(task));
+        });
+      }
+  
       let currentSuggestionIndex = 0;
-      let isActive = false;
-      let currentSuggestions = [];
-      let isScrolling = false;
-      let scrollTimeout;
+      let currentSuggestions = this.getMostFrequentTasks();
   
       const updatePlaceholder = (suggestions, instant = false) => {
         if (!suggestions?.length) return;
         
         clearTimeout(this.fadeTimeout);
         clearTimeout(this.cycleTimeout);
-  
-        currentSuggestions = suggestions;
         
-        const updateText = () => {
-          // If user has typed a prefix, preserve it in the placeholder
-          const prefix = input.value;
+        const doUpdate = () => {
           const suggestion = suggestions[currentSuggestionIndex];
-          input.placeholder = prefix ? `${prefix}${suggestion.slice(prefix.length)}` : suggestion;
-          input.style.opacity = '0.8';
+          input.placeholder = suggestion;
+          input.style.opacity = '1';
           
-          if (!isScrolling && !instant) {
-            currentSuggestionIndex = (currentSuggestionIndex + 1) % suggestions.length;
-            this.cycleTimeout = setTimeout(() => {
-              updatePlaceholder(suggestions);
-            }, 4000 + Math.random() * 3000);
-          }
+          currentSuggestionIndex = (currentSuggestionIndex + 1) % suggestions.length;
+          this.cycleTimeout = setTimeout(() => {
+            updatePlaceholder(suggestions);
+          }, 3000);
         };
   
         if (instant) {
-          updateText();
+          doUpdate();
         } else {
-          input.style.opacity = '0.4';
-          this.fadeTimeout = setTimeout(updateText, 800);
+          input.style.opacity = '0.6';
+          this.fadeTimeout = setTimeout(doUpdate, 300);
         }
       };
   
-      const getSuggestionsForPrefix = (prefix = '') => {
-        prefix = prefix.toLowerCase();
-        return Array.from(this.taskFrequency.entries())
-          .filter(([task]) => task.toLowerCase().startsWith(prefix))
-          .sort((a, b) => b[1] - a[1])
-          .slice(0, this.maxSuggestionsPerPrefix)
-          .map(([task]) => task);
-      };
-  
-      // Improved wheel event handler
-      const handleWheel = (e) => {
-        e.preventDefault(); // Prevent page scroll
-        
-        if (!currentSuggestions.length) {
-          // If no current suggestions, try to get some based on input
-          currentSuggestions = getSuggestionsForPrefix(input.value);
-          if (!currentSuggestions.length) return;
-        }
-  
-        clearTimeout(scrollTimeout);
-        isScrolling = true;
-  
-        // Determine scroll direction
-        if (e.deltaY < 0) { // Scrolling up
-          currentSuggestionIndex = (currentSuggestionIndex - 1 + currentSuggestions.length) % currentSuggestions.length;
-        } else { // Scrolling down
-          currentSuggestionIndex = (currentSuggestionIndex + 1) % currentSuggestions.length;
-        }
-  
-        // Update placeholder immediately
-        updatePlaceholder(currentSuggestions, true);
-  
-        // Reset scrolling state after a delay
-        scrollTimeout = setTimeout(() => {
-          isScrolling = false;
-        }, 1000);
-      };
-  
-      // Add wheel event listener to both input and its container
-      input.addEventListener('wheel', handleWheel, { passive: false });
-      input.parentElement.addEventListener('wheel', (e) => {
-        if (document.activeElement === input) {
-          handleWheel(e);
-        }
-      }, { passive: false });
-  
-      // Improved input handler
-      let inputTimeout;
-      input.addEventListener('input', (e) => {
-        if (e.target.value) {
-          input.classList.add('has-content');
-          
-          // Get suggestions for current input value
-          clearTimeout(inputTimeout);
-          inputTimeout = setTimeout(() => {
-            const suggestions = getSuggestionsForPrefix(e.target.value);
+      // Initialize suggestions immediately
+      updatePlaceholder(currentSuggestions, true);
+  // Inside TaskSystem.init()
+input.addEventListener('input', (e) => {
+    const value = e.target.value;
+    if (value) {
+        if (value.match(/^[123]\.$/)) {
+            // Show category-specific suggestions when user types a prefix
+            const suggestions = this.getSuggestionsForPrefix(value);
             if (suggestions.length) {
-              isActive = true;
-              currentSuggestionIndex = 0;
-              updatePlaceholder(suggestions, true);
+                currentSuggestions = suggestions;
+                currentSuggestionIndex = 0;
+                input.classList.add('cycling-placeholder');
+                updatePlaceholder(suggestions, true);
             }
-          }, 100); // Reduced delay for more responsive feel
         } else {
-          input.classList.remove('has-content');
-          // Show most frequent tasks when input is cleared
-          const suggestions = this.getMostFrequentTasks();
-          if (suggestions.length) {
-            updatePlaceholder(suggestions);
-          }
+            const suggestions = this.getSuggestionsForPrefix(value);
+            if (suggestions.length) {
+                currentSuggestions = suggestions;
+                currentSuggestionIndex = 0;
+                updatePlaceholder(suggestions, true);
+            }
         }
-      });
+    } else {
+        currentSuggestions = this.getMostFrequentTasks();
+        currentSuggestionIndex = 0;
+        updatePlaceholder(currentSuggestions);
+    }
+});
+
+// Add tab completion
+input.addEventListener('keydown', (e) => {
+    if (e.key === 'Tab' && !e.shiftKey && currentSuggestions.length > 0) {
+        e.preventDefault();
+        input.value = currentSuggestions[currentSuggestionIndex];
+        currentSuggestionIndex = (currentSuggestionIndex + 1) % currentSuggestions.length;
+        input.classList.add('cycling-placeholder');
+    }
+});
+
+// Add wheel scrolling
+input.addEventListener('wheel', (e) => {
+    if (currentSuggestions.length > 0) {
+        e.preventDefault();
+        currentSuggestionIndex = (currentSuggestionIndex + (e.deltaY > 0 ? 1 : -1) + currentSuggestions.length) % currentSuggestions.length;
+        input.placeholder = currentSuggestions[currentSuggestionIndex];
+        input.classList.add('cycling-placeholder');
+    }
+});
   
-      // Improved tab handler
-      input.addEventListener('keydown', (e) => {
-        if (e.key === 'Tab' && !e.shiftKey) {
-          e.preventDefault();
-          if (currentSuggestions.length > 0) {
-            const suggestion = currentSuggestions[currentSuggestionIndex];
-            input.value = suggestion;
-            input.classList.add('has-content');
-            currentSuggestionIndex = (currentSuggestionIndex + 1) % currentSuggestions.length;
-            // Update placeholder with next suggestion
-            updatePlaceholder(currentSuggestions, true);
-          }
-        }
-      });
-  
-      // Focus handler
-      input.addEventListener('focus', () => {
-        isActive = true;
-        const suggestions = input.value ? 
-          getSuggestionsForPrefix(input.value) : 
-          this.getMostFrequentTasks();
-        if (suggestions.length) {
-          updatePlaceholder(suggestions);
-        }
-      });
-  
-      // Blur handler
-      input.addEventListener('blur', () => {
-        isActive = false;
-        input.style.opacity = '1';
-      });
-  
-      // Initialize with most frequent tasks
-      const initialSuggestions = this.getMostFrequentTasks();
-      if (initialSuggestions.length) {
-        isActive = true;
-        currentSuggestions = initialSuggestions;
-        updatePlaceholder(initialSuggestions);
-      }
+
+// Add this inside TaskSystem.init() after the existing input event listeners
+input.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    if (currentSuggestions.length > 0) {
+        currentSuggestionIndex = (currentSuggestionIndex + (e.deltaY > 0 ? 1 : -1) + currentSuggestions.length) % currentSuggestions.length;
+        input.placeholder = currentSuggestions[currentSuggestionIndex];
+        input.classList.add('cycling-placeholder');
+    }
+});
+
+// Add adaptive learning rate based on user interaction patterns
+let learningRate = 1;
+const updateLearningRate = (task) => {
+    const categoryPrefix = task.match(/^(\d+\.)/)?.[0];
+    if (categoryPrefix) {
+        const existingTasks = this.getSuggestionsForPrefix(categoryPrefix);
+        learningRate = Math.min(2, 1 + (existingTasks.length * 0.1));
+    }
+};
+
+
+      // Generate styles for categories
+      this.updateCategoryStyles();
     },
   
-    recordTask(task) {
-      if (!task) return;
-      
-      const frequency = (this.taskFrequency.get(task) || 0) + 1;
-      this.taskFrequency.set(task, frequency);
+    updateCategoryStyles() {
+      let styleSheet = document.getElementById('category-styles');
+      if (!styleSheet) {
+        styleSheet = document.createElement('style');
+        styleSheet.id = 'category-styles';
+        document.head.appendChild(styleSheet);
+      }
   
-      // Cleanup if we've stored too many items
-      if (this.taskFrequency.size > this.maxHistoryItems) {
-        // Remove least frequent tasks
-        const sortedTasks = Array.from(this.taskFrequency.entries())
-          .sort((a, b) => b[1] - a[1])
-          .slice(0, this.maxHistoryItems);
+      const styles = Object.entries(this.categories).map(([prefix, config]) => `
+        .prefix-${prefix.replace('.', '')} {
+          color: ${config.color};
+          font-weight: ${config.weight};
+        }
         
-        this.taskFrequency = new Map(sortedTasks);
-      }
+        .prefix-${prefix.replace('.', '')}:hover::after {
+          content: '${config.description}';
+          background-color: #33333346;
+          color: white;
+          padding: 14px;
+          position: absolute;
+          z-index: 100;
+          left: 110%;
+          top: 50%;
+          transform: translateY(-47%);
+          border-radius: 5px;
+          white-space: nowrap;
+          font-family: 'Courier New', Courier, monospace;
+        }
+      `).join('\n');
   
-      // Clear prefix suggestions cache as frequencies changed
-      this.prefixSuggestions.clear();
+      styleSheet.textContent = styles;
+    },
   
-      // Save to localStorage
-      try {
-        localStorage.setItem('taskFrequency', 
-          JSON.stringify(Array.from(this.taskFrequency.entries()))
-        );
-      } catch (e) {
-        console.warn('Could not save task frequencies');
-      }
+    getSuggestionsForPrefix(prefix) {
+      prefix = prefix.toLowerCase();
+      return Array.from(this.taskFrequency.entries())
+        .filter(([task]) => task.toLowerCase().startsWith(prefix))
+        .sort((a, b) => b[1] - a[1])
+        .map(([task]) => task);
     },
   
     getMostFrequentTasks() {
       return Array.from(this.taskFrequency.entries())
         .sort((a, b) => b[1] - a[1])
-        .slice(0, this.maxSuggestionsPerPrefix)
+        .slice(0, 5)
         .map(([task]) => task);
+    },
+  
+    recordTask(task) {
+      if (!task) return;
+      const frequency = (this.taskFrequency.get(task) || 0) + 1;
+      this.taskFrequency.set(task, frequency);
+      
+      try {
+        localStorage.setItem('taskFrequency', 
+          JSON.stringify(Array.from(this.taskFrequency.entries()))
+        );
+      } catch (e) {
+        console.warn('Neural memory storage failed:', e);
+      }
+    },
+  
+    getClassForPrefix(prefix) {
+      if (this.categories[prefix]) {
+        return `prefix-${prefix.replace('.', '')}`;
+      }
+      return 'prefix-default';
+    },
+  
+    modifyMissionText(input) {
+      const prefix = input.match(/^(\d+\.)/)?.[0];
+      if (prefix && this.categories[prefix]) {
+        const category = this.categories[prefix];
+        return input.replace(prefix, `${prefix} ${category.title}: `);
+      }
+      return input;
+    },
+  
+    // Method to add new categories dynamically
+    addCategory(prefix, config) {
+      if (this.categories[prefix]) {
+        console.warn(`Category ${prefix} already exists. Updating configuration...`);
+      }
+      this.categories[prefix] = {
+        prefix,
+        ...config
+      };
+      
+      this.updateCategoryStyles();
     }
   };
   
-  // Initialize when DOM is ready
   document.addEventListener('DOMContentLoaded', () => {
-    TaskSuggestionSystem.init();
-  });
-  
-  // Add this to your existing task addition logic
-  const addTaskToSystem = (task) => {
-    TaskSuggestionSystem.recordTask(task);
-  };
-  
-  // Modify your existing task addition handler to include:
-  document.getElementById('addMission').addEventListener('keypress', function(e) {
-    if (e.key === 'Enter' && this.value.trim()) {
-      // Your existing task addition logic here
-      
-      // Record the task
-      addTaskToSystem(this.value.trim());
-      
-      // Clear the input
-      this.value = '';
-      this.classList.remove('has-content');
+    TaskSystem.init();
+    loadMissions();
+    const initialSuggestions = TaskSystem.getMostFrequentTasks();
+    if (initialSuggestions.length) {
+        inputEl.placeholder = initialSuggestions[0];
     }
-  });
+});
+
+
+
+  // Add this after your existing event listeners
+inputEl.addEventListener('focus', () => {
+    // Reset placeholder cycling when input is focused
+    const suggestions = TaskSystem.getMostFrequentTasks();
+    if (suggestions.length) {
+        inputEl.placeholder = suggestions[0];
+        inputEl.classList.add('cycling-placeholder');
+    }
+});
+
+inputEl.addEventListener('blur', () => {
+    inputEl.classList.remove('cycling-placeholder');
+});
+
+// Enhanced input handling for prefix suggestions
+inputEl.addEventListener('input', (e) => {
+    const value = e.target.value;
+    if (value.match(/^[123]\.$/)) {
+        // Show category-specific suggestions when user types a prefix
+        const suggestions = TaskSystem.getSuggestionsForPrefix(value);
+        if (suggestions.length) {
+            inputEl.placeholder = suggestions[0];
+        }
+    }
+});
+
+
 
 // Lock in timer
 
@@ -745,23 +779,39 @@ function displayCongratulatoryMessage() {
     }, 3000);
 }
 
-
 function checkXP(totalXp) {
-    const level = Math.floor(totalXp / 100)+1;  // Calculate the current level based on total XP
-    const xpForCurrentLevel = totalXp % 100;  // XP within the current level (remainder of XP divided by 100)
+    const level = Math.floor(totalXp / 100) + 1;
+    const xpForCurrentLevel = totalXp % 100;
 
-    // Check if we just leveled up
+    // Level up condition with visual reset
     if (xpForCurrentLevel === 0 && totalXp > 0) {
         playLevelUpSound();
-        resetXpMeter();  // This could reset the visual bar, but doesn't touch the total XP
-        xpText.textContent = `LEVEL ${level} — GREAT JOB OPERATIVE`;
+        // Reset visual bar but maintain total XP
+        xpMeterEl.style.width = '0%';
+        xpMeterEl.textContent = '0/100 XP';
+        xpText.textContent = `LEVEL ${level} — NEURAL INTERFACE UPGRADED`;
+        
+        // Add a subtle flash effect for level up
+        xpMeterEl.classList.add('level-up-flash');
+        setTimeout(() => {
+            xpMeterEl.classList.remove('level-up-flash');
+        }, 1000);
+    } else {
+        // Normal XP update within current level
+        const xpProgress = (xpForCurrentLevel / 100) * 100;
+        xpMeterEl.style.width = `${xpProgress}%`;
+        xpMeterEl.textContent = `${xpForCurrentLevel}/100 XP`;
+        xpText.textContent = `Level ${level} — XP: ${xpForCurrentLevel}/100`;
     }
+}
 
-    // Update the XP meter to show how much XP has been earned in the current level
-    updateXpMeter(xpForCurrentLevel);  // Update the visual XP meter based on current level XP
-
-    // Display the level text
-    xpText.textContent = `Level ${level} — XP: ${xpForCurrentLevel}/100`;
+function updateXpMeter(totalXp) {
+    const xpForCurrentLevel = totalXp % 100;
+    const xpProgress = (xpForCurrentLevel / 100) * 100;
+    
+    // Always show progress within current level
+    xpMeterEl.style.width = `${xpProgress}%`;
+    xpMeterEl.textContent = `${xpForCurrentLevel}/100 XP`;
 }
 
 
