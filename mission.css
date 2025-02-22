@@ -290,12 +290,34 @@ background-position: 100% 50% ;
 background-size: 40%;
 text-align: center;
 text-shadow: rgba(0, 0, 0, 0.633) 2px 4px 2px ;
-
-
 color: #fff;
 padding: 3%;
 margin-top: 0%; 
 margin-bottom: 4%;}
+
+
+
+@media screen and (max-width: 600px) {
+  /* Container and Background Adaptations */
+  .container2 {
+      background-image: linear-gradient(
+          to bottom,
+          rgba(0, 0, 0, 0.4),
+          rgba(0, 0, 0, 0.0)
+      ),
+      url(assets/images/free-photo-of-black-and-white-photo-of-people-waiting-in-a-modern-building-hallway.jpeg);
+      background-attachment: scroll;
+      border-radius: 0px 0px 30px 30px;
+      background-position: center;
+      background-size: 160%;
+      text-align: center;
+      text-shadow: rgba(0, 0, 0, 0.633) 2px 4px 2px;
+      padding: 1.5rem 1rem;
+      margin: 0;
+      position: relative;
+      overflow: hidden;
+  }  }
+
 
 h2:hover { color: #fff;
 text-shadow: black 1px 2px;
@@ -1725,8 +1747,8 @@ svg.minimalist-face {
 
 /* Gentle focus states */
 #addMission:focus {
-  border-color: rgba(134, 223, 255, 0.3);
-  box-shadow: 0 0 10px rgba(134, 223, 255, 0.1);
+  border-color: rgba(134, 223, 255, 0.356);
+  box-shadow: 0 0 10px rgba(134, 223, 255, 0.959);
 }
 
 /* Subtle hover feedback */

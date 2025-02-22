@@ -213,7 +213,7 @@ const TaskSystem = {
         defaultTasks: [
           "1. Do SoME marketing",
           "1. Obtain new Client",
-          "1. Prevent loss via interest"
+          "1. Prevent loss of assets"
         ]
       },
       "2.": {
@@ -1076,4 +1076,7 @@ function typeAdditionalMessage(messageIndex) {
         console.error("Message index out of bounds."); // Log an error if the index is invalid
     }
 }
+
+
+
 
