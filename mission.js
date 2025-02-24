@@ -16,10 +16,35 @@ const mediaQuery = window.matchMedia('(max-width: 600px)');
 
 let xpSelectorCallback = null;
 
+// Create a single shared AudioContext for all audio operations
+const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+// Initialize on first user interaction
+document.addEventListener('click', function initAudio() {
+    // Resume AudioContext if it was suspended
+    if (audioContext.state === 'suspended') {
+        audioContext.resume();
+    }
+    // Remove the listener once initialized
+    document.removeEventListener('click', initAudio);
+}, { once: true });
+
+
+
 // Add this to your mission.js file
 window.addEventListener('error', function(e) {
     console.error('Script error:', e);
 });
+
+function debounce(func, delay) {
+    let timer;
+    return function() {
+      clearTimeout(timer);
+      timer = setTimeout(() => func.apply(this, arguments), delay);
+    };
+  }
+  
+  
 
 // let currentStreak = 0; // Variable to track the current streak of completed missions
 
@@ -55,16 +80,16 @@ inputEl.addEventListener('keypress', e => {
     }
 });
 
+
 xpMeterEl.addEventListener('click', clearXP);
 
 
 
 
 
-missionButtonEl.addEventListener('mouseup', clearTextField); // Clear the text field when the button is released
-resetButtonEl.addEventListener('click', clearData); // Clear all data when the reset button is clicked
-inputEl.addEventListener('keyup', minimumInput); // Check the input length after every key press
-document.addEventListener('DOMContentLoaded', loadMissions); // Load missions when the document is ready
+missionButtonEl.addEventListener('mouseup', clearTextField);         // Clear the text field when the button is released
+resetButtonEl.addEventListener('click', clearData);                 // Clear all data when the reset button is clicked
+inputEl.addEventListener('keyup', debounce(minimumInput, 200));     // Check the input length after every key press. Now with debounce
 
 
 function sanitizeInput(input) {
