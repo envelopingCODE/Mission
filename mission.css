@@ -1755,3 +1755,56 @@ svg.minimalist-face {
 #addMission:hover::placeholder {
   color: rgba(134, 223, 255, 0.5);
 }
+
+
+/* Add this CSS to your stylesheet */
+
+/* Keyframes for vertical scanline animation */
+@keyframes scanline-move {
+  0% {
+    transform: translateY(-45px);
+    opacity: 0.2;
+  }
+  5% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 0.5;
+  }
+  95% {
+    opacity: 0.3;
+  }
+  100% {
+    transform: translateY(45px);
+    opacity: 0.2;
+  }
+}
+
+/* Keyframes for scanline glitch effect */
+@keyframes scanline-flicker {
+  0% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 0.1;
+  }
+  51% {
+    opacity: 0.5;
+  }
+  100% {
+    opacity: 0.3;
+  }
+}
+
+/* Apply the animation to the scanline */
+.scan-line-animation {
+  animation: scanline-move 3s linear infinite, scanline-flicker 0.5s infinite;
+  transform-origin: center;
+}
+
+/* Optional: Add a second scanline for a more complex effect */
+.scan-line-animation-secondary {
+  animation: scanline-move 3s linear infinite reverse, scanline-flicker 0.7s infinite;
+  animation-delay: 1.5s;
+  opacity: 0.15;
+}
