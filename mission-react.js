@@ -467,18 +467,36 @@ const expressions = {
       }
     }
   },
-  'happy': {
-    leftEye: 'M-30,-5 Q-12,-25 0,-5',   // Increased vertical curve height
-    rightEye: 'M0,-5 Q12,-25 30,-5',    // Matched increased vertical curve height
-    mouth: 'M-35,20 Q0,45 35,20',       // Taller, more expansive smile curve
-    color: '#86dfff',
-    emotional_metadata: {
-      energy_level: 0.8,                // Slightly increased energy
-      cognitive_state: 'joyful_resonance',  // More descriptive state
-      tension: 0.05,                    // Very low tension
-      happiness_depth: 0.7               // New metric to quantify emotional intensity
+ // Enhanced happy expression with more dynamic eye animation
+'happy': {
+  leftEye: {
+    path: 'M-30,-6 Q-16,-28 1,-6',   // More pronounced curve
+    blinkPath: 'M-30,-8 L0,-8',
+    animationParams: {
+      glowIntensity: {
+        values: '1;0.85;1',
+        duration: '2s'
+      }
     }
   },
+  rightEye: {
+    path: 'M0,-6 Q16,-28 31,-8',    // Matching curve
+    blinkPath: 'M0,-8 L30,-8',
+    animationParams: {
+      glowIntensity: {
+        values: '1;0.85;1',
+        duration: '2s'
+      }
+    }
+  },
+  mouth: 'M-35,20 Q0,45 35,20',       // Taller, more expansive smile curve  color: '#86dfff',
+  emotional_metadata: {
+    energy_level: 0.8,
+    cognitive_state: 'joyful_resonance',
+    tension: 0.05,
+    happiness_depth: 0.7
+  }
+},
   'excited': {
     leftEye: {
       path: 'M-30,-5 C-22,-25 -12,-35 0,-5',
@@ -716,6 +734,27 @@ const getBlurFilters = (expr) => {
     <feGaussianBlur key="2" stdDeviation="3" result="glow2"/>
   ];
 };
+
+
+// In your render function where the eyes are drawn
+{currentEmotion === 'happy' && (
+  <motion.circle
+    cx={0}
+    cy={0}
+    r={3}
+    fill="white"
+    opacity={0.8}
+    animate={{
+      opacity: [0.8, 1, 0.8],
+      scale: [1, 1.2, 1]
+    }}
+    transition={{
+      duration: 2,
+      repeat: Infinity,
+      ease: "easeInOut"
+    }}
+  />
+)}
 
 // Create the SVG component using motion if available, otherwise fallback to standard SVG
 const SVGComponent = motion ? motion.svg : 'svg';
