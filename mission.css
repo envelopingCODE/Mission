@@ -1043,6 +1043,8 @@ input[type="text"] {
     width: 8px;
     height: 8px;
     background: #00ffd5;
+    background: #2091a0ac;
+
     border-radius: 50%;
     animation: pulse 2s infinite;
   }
