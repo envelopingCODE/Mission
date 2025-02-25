@@ -196,6 +196,21 @@ const XPSelector = ({ onXPSelect, onCancel }) => {
     }
   };
 
+  // Function to handle clicking on XP labels
+  const handleXPLabelClick = (value) => {
+    if (value === -1) {
+      setShowCustomInput(true);
+      if (autoConfirmTimer) {
+        clearTimeout(autoConfirmTimer);
+      }
+    } else {
+      setShowCustomInput(false);
+      setSliderValue(value);
+      updateSliderPosition(value);
+      startAutoConfirmTimer(value);
+    }
+  };
+
   // =============================================
   // #8: MEMOIZED XP LABELS
   // =============================================
@@ -204,6 +219,7 @@ const XPSelector = ({ onXPSelect, onCancel }) => {
       React.createElement('div', {
         key: value,
         className: `xp-label ${value === sliderValue ? 'selected' : ''}`,
+        onClick: () => handleXPLabelClick(value), // Add click handler here
         style: {
           textAlign: 'center',
           minWidth: '100px',
@@ -214,7 +230,8 @@ const XPSelector = ({ onXPSelect, onCancel }) => {
           cursor: 'pointer',
           userSelect: 'none',
           WebkitTapHighlightColor: 'transparent',
-          position: 'relative'
+          position: 'relative',
+          zIndex: 10 // Ensure it's clickable by giving it a z-index
         }
       }, [
         React.createElement('span', {
@@ -238,7 +255,7 @@ const XPSelector = ({ onXPSelect, onCancel }) => {
           }
         }, label)
       ])
-    ), [sliderValue]
+    ), [sliderValue, handleXPLabelClick]
   );
 
   // =============================================
@@ -292,7 +309,9 @@ const XPSelector = ({ onXPSelect, onCancel }) => {
         gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))',
         gap: '12px',
         padding: '0 8px',
-        marginBottom: '20px'
+        marginBottom: '20px',
+        position: 'relative', // Ensure this container has position relative
+        zIndex: 5 // Ensure proper stacking context
       }
     }, xpLabels),
     showCustomInput && React.createElement('div', {
@@ -414,6 +433,18 @@ document.addEventListener('DOMContentLoaded', () => {
         transition: transform 0.2s;
         border: 2px solid rgba(255, 255, 255, 0.1);
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+      }
+
+      /* Add explicit hover state for XP labels */
+      .xp-label {
+        position: relative;
+        z-index: 10;
+      }
+      
+      .xp-label:hover {
+        transform: scale(1.1) !important;
+        color: #22d3ee !important;
+        transition: all 0.2s ease;
       }
 
       @media screen and (max-width: 600px) {

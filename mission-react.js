@@ -617,6 +617,7 @@ const expressions = {
       tension: 0.1
     }
   },
+  
   'heart-eyes': {
     leftEye: {
       path: 'M-12,-8 C-18,-14 -24,-14 -24,-8 C-24,-4 -18,0 -12,4 C-6,0 0,-4 0,-8 C0,-14 -6,-14 -12,-8',
@@ -627,8 +628,9 @@ const expressions = {
       blinkPath: 'M0,-8 L24,-8'
     },
     mouth: 'M-30,20 Q0,45 30,20',
-    color: '#ff69b4',
+    color: '#86dfff', // Changed from '#ff69b4' to match the default cyan color
     isHeartEyes: true,
+    eyeColor: '#ff69b4', // Added separate property for eye color
     emotional_metadata: {
       energy_level: 0.9,
       cognitive_state: 'euphoric_connection',
