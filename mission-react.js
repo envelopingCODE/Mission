@@ -108,7 +108,7 @@ React.useEffect(() => {
     }, 200);
     
     // Generate particles for excitement
-    generateParticles(currentEmotion === 'heart-eyes' ? 'heart' : 'sparkle');
+    generateParticles(currentEmotion === 'heart-eyes' ? '' : 'sparkle');
   }
   
   // React to emotion changes with appropriate pupil size
