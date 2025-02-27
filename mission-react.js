@@ -98,6 +98,8 @@ const [previousLevel, setPreviousLevel] = React.useState(1);
 const [microAnimationPhase, setMicroAnimationPhase] = React.useState(0);
 const [isGlitching, setIsGlitching] = React.useState(false);
 const [glitchOffset, setGlitchOffset] = React.useState({ x: 0, y: 0 });
+const [isHovered, setIsHovered] = React.useState(false);
+const [glowIntensity, setGlowIntensity] = React.useState(1);
 
 
 React.useEffect(() => {
@@ -314,6 +316,7 @@ React.useEffect(() => {
   };
 }, [isTracking]);
 
+
 // Add mouse tracking for eye movement
 React.useEffect(() => {
   const handleMouseMove = (e) => {
@@ -357,6 +360,22 @@ React.useEffect(() => {
     }
   };
 }, []);
+
+React.useEffect(() => {
+  if (isHovered) {
+    // Trigger special animation when hovered
+    setPupilSize(1.4);
+    if (Math.random() > 0.7) {
+      // 30% chance to change expression when hovered
+      const hoverEmotions = ['curious', 'playful', 'excited'];
+      setCurrentEmotion(hoverEmotions[Math.floor(Math.random() * hoverEmotions.length)]);
+    }
+  } else {
+    // Reset after hover ends if no other emotion is active
+    setPupilSize(1);
+  }
+}, [isHovered]);
+
 
 // Add this after the end of SECTION 3: Animation Effects
 // but before SECTION 4: Emotion Logic
@@ -954,7 +973,9 @@ return (
       transform: 'scale(1)',
       transition: 'opacity 0.5s ease, transform 0.5s ease'
     } : undefined}
-  >
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      >
     {/* Add dynamic animations and effects */}
     <style>
       {`
@@ -964,6 +985,7 @@ return (
           50% { transform: translateY(0px); opacity: 0.4; }
           100% { transform: translateY(45px); opacity: 0.15; }
         }
+          
         
         @keyframes scanlineFlicker {
           0%, 100% { opacity: 0.3; }
