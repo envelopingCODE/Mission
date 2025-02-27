@@ -95,9 +95,11 @@ const [isTracking, setIsTracking] = React.useState(false);
 // New states for enhanced animations
 const [pupilSize, setPupilSize] = React.useState(1);
 const [particles, setParticles] = React.useState([]);
+const [confettiParticles, setConfettiParticles] = React.useState([]);
+const [previousLevel, setPreviousLevel] = React.useState(1);
 const [microAnimationPhase, setMicroAnimationPhase] = React.useState(0);
 
-// Pupil dilation effect
+
 React.useEffect(() => {
   // Dilate pupils on task completion
   if (isTaskCompleted) {
@@ -107,9 +109,12 @@ React.useEffect(() => {
       setTimeout(() => setPupilSize(1), 800);
     }, 200);
     
-    // Generate particles for excitement
+    // Generate particles for excitement and confetti for celebration
     generateParticles(currentEmotion === 'heart-eyes' ? '' : 'sparkle');
   }
+  
+
+  
   
   // React to emotion changes with appropriate pupil size
   if (currentEmotion === 'curious') {
@@ -164,6 +169,64 @@ const generateParticles = (type) => {
     setParticles(prev => prev.filter(p => !newParticles.some(np => np.id === p.id)));
   }, 3000);
 };
+
+// Confetti generator function
+// Update your generateConfetti function with cyan colors
+const generateConfetti = () => {
+  const count = 20; // Number of confetti pieces
+  
+  // Create a cyan color palette with different shades and intensities
+  const cyanColors = [
+    '#00FFFF', // Bright cyan
+    '#00E0E0', // Standard cyan
+    '#00CCCC', // Medium cyan
+    '#00B8E0', // Cyan with slight blue shift
+    '#86DFFF', // Light cyan-blue (matching your existing robot color)
+    '#A7F0FF', // Very light cyan
+    '#00D8E6', // Cyan with slight teal shift
+    '#4DD0E1', // Lighter medium cyan
+    '#26C6DA'  // Darker medium cyan
+  ];
+  
+  const newParticles = Array.from({ length: count }, (_, i) => ({
+    id: `confetti-${Date.now()}-${i}`,
+    x: (Math.random() * 60) - 30,
+    y: (Math.random() * 60) - 30,
+    size: 1 + Math.random() * 2,
+    duration: 1 + Math.random() * 1.5,
+    type: 'confetti',
+    opacity: 0.7 + Math.random() * 0.3,
+    // Use a random color from our cyan palette
+    color: cyanColors[Math.floor(Math.random() * cyanColors.length)],
+    xDir: Math.random() > 0.5 ? 1 : -1,
+    yDir: Math.random() > 0.5 ? 1 : -1
+  }));
+  
+  setConfettiParticles(prev => [...prev, ...newParticles]);
+  
+  // Clear particles after animation
+  setTimeout(() => {
+    setConfettiParticles(prev => prev.filter(p => !newParticles.some(np => np.id === p.id)));
+  }, 3000);
+};
+
+
+// Add a new useEffect for level-up detection:
+React.useEffect(() => {
+  // Check if there was a level increase
+  if (currentLevel > previousLevel) {
+    console.log(`Level up! ${previousLevel} → ${currentLevel}`);
+    
+    // Generate lots of confetti for the level-up celebration
+    generateConfetti(); 
+    
+    // Maybe generate a second wave of confetti for extra celebration
+    setTimeout(() => generateConfetti(), 300);
+    
+    // Update previous level
+    setPreviousLevel(currentLevel);
+  }
+}, [currentLevel, previousLevel]);
 
 //################## SECTION 3: Animation Effects ##################
 React.useEffect(() => {
@@ -808,32 +871,41 @@ return (
           50% { transform: scale(1.02); }
         }
         
-        /* Particle animations */
-        @keyframes particleFloat {
-          0% { transform: translate(0, 0); opacity: 0; }
-          10% { opacity: 1; }
-          100% { 
-            transform: translate(
-              calc(var(--x-offset) * 15px), 
-              calc(var(--y-offset) * -20px)
-            ); 
-            opacity: 0;
-          }
-        }
-        
-        @keyframes heartFloat {
-          0% { transform: translate(0, 0) scale(0); opacity: 0; }
-          15% { transform: translate(0, -5px) scale(1); opacity: 1; }
-          100% { transform: translate(0, -40px) scale(0.5); opacity: 0; }
-        }
-        
-        /* Mouth gentle pulsing animation */
-        .mouth {
-          transform-origin: center;
-          animation: subtlePulse 3s ease-in-out infinite;
-        }
-      `}
-    </style>
+    
+    /* Particle animations */
+    @keyframes particleFloat {
+      0% { transform: translate(0, 0); opacity: 0; }
+      10% { opacity: 1; }
+      100% { 
+        transform: translate(
+          calc(var(--x-offset) * 15px), 
+          calc(var(--y-offset) * -20px)
+        ); 
+        opacity: 0;
+      }
+    }
+    
+    @keyframes heartFloat {
+      0% { transform: translate(0, 0) scale(0); opacity: 0; }
+      15% { transform: translate(0, -5px) scale(1); opacity: 1; }
+      100% { transform: translate(0, -40px) scale(0.5); opacity: 0; }
+    }
+    
+
+/* Confetti animation */
+@keyframes confettiSpin {
+  0% { opacity: 0; transform: translate(0,0) rotate(0deg); }
+  10% { opacity: 1; }
+  100% { opacity: 0; transform: translate(calc(var(--x-dir) * 30px), calc(var(--y-dir) * 40px)) rotate(360deg); }
+}
+    
+    /* Mouth gentle pulsing animation */
+    .mouth {
+      transform-origin: center;
+      animation: subtlePulse 3s ease-in-out infinite;
+    }
+  `}
+</style>
     
     <defs>
       {/* Base CRT Glow Filter */}
@@ -1090,6 +1162,25 @@ return (
           />
         )
       )}
+
+      {/* Confetti particles */}
+{confettiParticles.map(particle => (
+  <rect
+    key={particle.id}
+    x={particle.x - 2.5}
+    y={particle.y - 1}
+    width={5}
+    height={2}
+    rx={1}
+    fill={particle.color}
+    style={{
+      opacity: particle.opacity,
+      animation: `confettiSpin ${particle.duration}s ease-out forwards`,
+      '--x-dir': particle.xDir,
+      '--y-dir': particle.yDir
+    }}
+  />
+))}
     </g>
 
     {/* Enhanced scanline group */}
