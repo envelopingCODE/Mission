@@ -91,13 +91,13 @@ const [isBlinking, setIsBlinking] = React.useState(false);
 const [currentEmotion, setCurrentEmotion] = React.useState('curious');
 const [eyePosition, setEyePosition] = React.useState({ x: 0, y: 0 });
 const [isTracking, setIsTracking] = React.useState(false);
-
-// New states for enhanced animations
 const [pupilSize, setPupilSize] = React.useState(1);
 const [particles, setParticles] = React.useState([]);
 const [confettiParticles, setConfettiParticles] = React.useState([]);
 const [previousLevel, setPreviousLevel] = React.useState(1);
 const [microAnimationPhase, setMicroAnimationPhase] = React.useState(0);
+const [isGlitching, setIsGlitching] = React.useState(false);
+const [glitchOffset, setGlitchOffset] = React.useState({ x: 0, y: 0 });
 
 
 React.useEffect(() => {
@@ -168,6 +168,44 @@ const generateParticles = (type) => {
   setTimeout(() => {
     setParticles(prev => prev.filter(p => !newParticles.some(np => np.id === p.id)));
   }, 3000);
+};
+
+// Glitch Particles 
+const generateGlitchParticles = () => {
+  const count = 8; // Fewer particles for a subtle effect
+  const newParticles = Array.from({ length: count }, (_, i) => {
+    // Random angle and distance from center
+    const angle = Math.random() * Math.PI * 2;
+    const distance = 15 + Math.random() * 15;
+    
+    // Calculate position based on angle and distance
+    const x = Math.cos(angle) * distance;
+    const y = Math.sin(angle) * distance;
+    
+    return {
+      id: `glitch-${Date.now()}-${i}`,
+      x,
+      y,
+      size: 1 + Math.random() * 2,
+      duration: 0.3 + Math.random() * 0.5, // Short duration
+      type: 'glitch',
+      opacity: 0.6 + Math.random() * 0.4,
+      // Glitch specific properties
+      shape: Math.random() > 0.7 ? 'rect' : 'line',
+      color: Math.random() > 0.3 ? '#00ffff' : '#ff69b4', // Mostly cyan with occasional pink
+      blinkRate: 50 + Math.random() * 100, // How fast it flickers
+      xDir: Math.random() > 0.5 ? 1 : -1,
+      yDir: Math.random() > 0.5 ? 1 : -1
+    };
+  });
+  
+  // Add new glitch particles to state
+  setParticles(prev => [...prev, ...newParticles]);
+  
+  // Remove particles after animation completes
+  setTimeout(() => {
+    setParticles(prev => prev.filter(p => !newParticles.some(np => np.id === p.id)));
+  }, 1000); // Short lifetime for glitch particles
 };
 
 // Confetti generator function
@@ -320,6 +358,55 @@ React.useEffect(() => {
   };
 }, []);
 
+// Add this after the end of SECTION 3: Animation Effects
+// but before SECTION 4: Emotion Logic
+
+// Function to trigger a subtle glitch effect
+const triggerSubtleGlitch = () => {
+  if (!isGlitching) {
+    setIsGlitching(true);
+    
+    generateGlitchParticles();
+
+    // Create a sequence of subtle position shifts
+    const glitchSequence = [
+      { x: 0.8, y: -0.6 },   // Slight shift up-right
+      { x: -1, y: 0.3 },     // Slight shift down-left
+      { x: 0.5, y: 0.5 },    // Small shift down-right
+      { x: -0.4, y: -0.3 },  // Small shift up-left
+      { x: 0, y: 0 }         // Return to normal
+    ];
+    
+ // Optional: generate more particles during the sequence
+ setTimeout(() => {
+  if (Math.random() > 0.5) { // 50% chance for additional particles
+    generateGlitchParticles();
+  }
+}, 100);
+
+    // Execute the sequence with randomized timing
+    let stepIndex = 0;
+    
+    const executeGlitchStep = () => {
+      if (stepIndex < glitchSequence.length) {
+        setGlitchOffset(glitchSequence[stepIndex]);
+        
+        // Randomize timing between 40-120ms for natural glitch feel
+        const nextStepDelay = 40 + Math.random() * 80;
+        setTimeout(executeGlitchStep, nextStepDelay);
+        
+        stepIndex++;
+      } else {
+        // End glitching state
+        setIsGlitching(false);
+      }
+    };
+    
+    // Start the sequence
+    executeGlitchStep();
+  }
+};
+
 //################## SECTION 4: Emotion Logic ##################
 React.useEffect(() => {
   // First, determine the base emotion based on level and XP
@@ -354,8 +441,7 @@ React.useEffect(() => {
 }, [taskCompletionLevel, currentLevel, isTaskCompleted]);
 
 // Separate effect for handling input state
-// In Section 4: Emotion Logic
-// Replace the existing input handling effect with this new one
+
 React.useEffect(() => {
   const inputEl = document.getElementById('addMission');
   
@@ -426,6 +512,7 @@ React.useEffect(() => {
     }
   };
 
+  
   // Function to trigger random emotion
   const triggerRandomEmotion = () => {
     // Only show random emotions if we're in a base state
@@ -469,6 +556,31 @@ React.useEffect(() => {
     clearInterval(intervalId);
   };
 }, [currentLevel, taskCompletionLevel, isTaskCompleted, currentEmotion]);
+
+// Add at the end of SECTION 4: Emotion Logic (around line 480-490)
+// After all your other useEffect hooks related to emotions
+
+// Effect to trigger glitches when expression changes
+React.useEffect(() => {
+  // Check if the current emotion has a trigger function
+  if (currentExpression && 
+      currentExpression.triggerFunction && 
+      typeof currentExpression.triggerFunction === 'function') {
+    
+    // Call the trigger function
+    currentExpression.triggerFunction();
+    
+    // Set up interval for occasional additional glitches
+    const glitchInterval = setInterval(() => {
+      // 30% chance to glitch each interval when in glitched state
+      if (Math.random() < 0.3 && currentExpression.isGlitched) {
+        currentExpression.triggerFunction();
+      }
+    }, 2000); // Check every 2 seconds
+    
+    return () => clearInterval(glitchInterval);
+  }
+}, [currentExpression]);
 
 //################## SECTION 5: Expressions Configuration ##################
 const expressions = {
@@ -586,6 +698,10 @@ const expressions = {
     mouth: "M-25,20 Q0,35 25,20",
     color: "#00ffff",
     isGlitched: true,
+
+  // Add this new property
+  triggerFunction: triggerSubtleGlitch,
+  
     
     // Add the effects configuration
     effects: {
@@ -859,6 +975,7 @@ return (
         .scan-line-animation {
           animation: scanlineMove 4s linear infinite, scanlineFlicker 0.8s ease-in-out infinite;
         }
+          
         
         /* Micro-animations */
         @keyframes eyeShine {
@@ -891,6 +1008,32 @@ return (
       100% { transform: translate(0, -40px) scale(0.5); opacity: 0; }
     }
     
+
+       
+    /* Glitch animations */
+    @keyframes subtleColorGlitch {
+      0%, 100% { filter: brightness(1); }
+      33% { filter: brightness(1.1); }
+      66% { filter: brightness(0.9); }
+    }
+
+    .glitching-element {
+      animation: subtleColorGlitch 0.2s ease infinite;
+    }
+
+    
+@keyframes glitchFloat {
+  0% { opacity: 0; transform: translate(0,0); }
+  10% { opacity: 1; }
+  30% { transform: translate(calc(var(--x-dir, 1) * 5px), calc(var(--y-dir, 1) * -5px)); }
+  60% { transform: translate(calc(var(--x-dir, 1) * -3px), calc(var(--y-dir, 1) * 3px)); }
+  100% { opacity: 0; transform: translate(calc(var(--x-dir, 1) * 10px), calc(var(--y-dir, 1) * -10px)); }
+}
+
+@keyframes glitchBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
 
 /* Confetti animation */
 @keyframes confettiSpin {
@@ -1021,8 +1164,11 @@ return (
       }}
     >
       {/* Left Eye Group with pupil dilation */}
-      <g transform={`translate(${-25 + eyePosition.x}, ${-10 + eyePosition.y})`}>
-        {/* Main eye path */}
+      <g 
+  transform={`translate(${-25 + eyePosition.x + (isGlitching ? glitchOffset.x : 0)}, 
+                       ${-10 + eyePosition.y + (isGlitching ? glitchOffset.y : 0)})`}
+  className={currentExpression.isGlitched ? "glitching-element" : ""}
+>        {/* Main eye path */}
         <PathComponent
           d={typeof currentExpression.leftEye === 'string' ? 
              currentExpression.leftEye : 
@@ -1071,8 +1217,11 @@ return (
       </g>
 
       {/* Right Eye Group with same enhancements */}
-      <g transform={`translate(${25 + eyePosition.x}, ${-10 + eyePosition.y})`}>
-        <PathComponent
+      <g 
+  transform={`translate(${25 + eyePosition.x - (isGlitching ? glitchOffset.x : 0)}, 
+                       ${-10 + eyePosition.y + (isGlitching ? glitchOffset.y : 0)})`}
+  className={currentExpression.isGlitched ? "glitching-element" : ""}
+>        <PathComponent
           d={typeof currentExpression.rightEye === 'string' ? 
              currentExpression.rightEye : 
              isBlinking ? currentExpression.rightEye.blinkPath : currentExpression.rightEye.path}
@@ -1121,15 +1270,16 @@ return (
 
       {/* Enhanced Mouth with smoother transitions */}
       <PathComponent
-        d={currentExpression.mouth}
-        fill={currentExpression.color || "#86dfff"}
-        className="mouth"
-        animate={motion ? { d: currentExpression.mouth } : undefined}
-        style={{
-          transition: 'd 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)',
-          filter: 'drop-shadow(0 0 2px rgba(134, 223, 255, 0.5))'
-        }}
-      />
+  d={currentExpression.mouth}
+  fill={currentExpression.color || "#86dfff"}
+  className={`mouth ${currentExpression.isGlitched ? "glitching-element" : ""}`}
+  animate={motion ? { d: currentExpression.mouth } : undefined}
+  style={{
+    transition: 'd 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)',
+    filter: 'drop-shadow(0 0 2px rgba(134, 223, 255, 0.5))',
+    transform: isGlitching ? `translateX(${glitchOffset.x * 0.7}px) translateY(${glitchOffset.y * 0.5}px)` : ''
+  }}
+/>
     </g>
 
     {/* Particle Effects System */}
@@ -1162,6 +1312,52 @@ return (
           />
         )
       )}
+
+      {/* Particle Effects System */}
+<g className="particles">
+  {/* Your existing particles rendering */}
+  {particles.map(particle => {
+    if (particle.type === 'glitch') {
+      // Render glitch particles
+      if (particle.shape === 'rect') {
+        return (
+          <rect
+            key={particle.id}
+            x={particle.x - particle.size}
+            y={particle.y - particle.size}
+            width={particle.size * 2}
+            height={particle.size}
+            fill={particle.color}
+            style={{
+              opacity: particle.opacity,
+              animation: `glitchFloat ${particle.duration}s ease-out forwards, glitchBlink ${particle.blinkRate}ms step-end infinite`
+            }}
+          />
+        );
+      } else { // 'line'
+        return (
+          <line
+            key={particle.id}
+            x1={particle.x - particle.size * 2}
+            y1={particle.y}
+            x2={particle.x + particle.size * 2}
+            y2={particle.y}
+            stroke={particle.color}
+            strokeWidth={particle.size / 2}
+            style={{
+              opacity: particle.opacity,
+              animation: `glitchFloat ${particle.duration}s ease-out forwards, glitchBlink ${particle.blinkRate}ms step-end infinite`
+            }}
+          />
+        );
+      }
+    } else if (particle.type === 'heart') {
+      // Your existing heart particle rendering
+    } else {
+      // Your existing default particle rendering
+    }
+  })}
+</g>
 
       {/* Confetti particles */}
 {confettiParticles.map(particle => (
