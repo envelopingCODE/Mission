@@ -135,12 +135,9 @@ const CuteRobotFace = ({
   currentLevel = 1, 
   isTaskCompleted = false 
 }) => {
+
 //################## SECTION 2: State and Hooks ##################
 const [isBlinking, setIsBlinking] = React.useState(false);
-// Add refs for animation targeting
-const leftEyeRef = React.useRef(null);
-const rightEyeRef = React.useRef(null);
-const mouthRef = React.useRef(null);
 const faceWrapperRef = React.useRef(null);
 const [currentEmotion, setCurrentEmotion] = React.useState('curious');
 const [eyePosition, setEyePosition] = React.useState({ x: 0, y: 0 });
@@ -156,23 +153,27 @@ const [isHovered, setIsHovered] = React.useState(false);
 const [glowIntensity, setGlowIntensity] = React.useState(1);
 const previousEmotionRef = React.useRef('');
 
-
 // In your component after initial mounting
 React.useEffect(() => {
   if (window.CraftedMotion && window.CraftedMotion.microAnimations) {
+    // Get the element by ID instead of using a ref
+    const faceElement = document.getElementById('robot-face');
+    
     // Subtle "breathing" effect for the face
-    window.CraftedMotion.microAnimations.register(faceWrapperRef.current, {
-      property: 'transform',
-      amplitude: 0.3,
-      frequency: 0.1,
-      waveform: 'breathing',  // Special waveform that mimics breathing
-      onUpdate: (value) => {
-        if (faceWrapperRef.current) {
-          faceWrapperRef.current.style.transform = 
-            `scale(${1 + value * 0.005}) translateY(${value * 0.1}px)`;
+    if (faceElement) {
+      window.CraftedMotion.microAnimations.register(faceElement, {
+        property: 'transform',
+        amplitude: 0.3,
+        frequency: 0.1,
+        waveform: 'breathing',  // Special waveform that mimics breathing
+        onUpdate: (value) => {
+          if (faceElement) {
+            faceElement.style.transform = 
+              `scale(${1 + value * 0.005}) translateY(${value * 0.1}px)`;
+          }
         }
-      }
-    });
+      });
+    }
   }
 }, []);
 
@@ -609,12 +610,13 @@ React.useEffect(() => {
     
     // Use special biomimetic easing for more natural emotion shifts
     emotionTimeline
-      .add('#robot-mouth', { 
-        d: targetExpression.mouth 
-      }, { 
-        duration: 0.6, 
-        ease: window.CraftedMotion.EASING && window.CraftedMotion.EASING.gentleBreathe || 'easeOut'
-      });
+    .add('#robot-mouth', { 
+      d: targetExpression.mouth 
+    }, { 
+      duration: 0.6, 
+      ease: window.CraftedMotion.EASING && window.CraftedMotion.EASING.gentleBreathe || 'easeOut'
+    });
+    
       
     // For eyes, we need to check if they're objects or strings
     const leftEyePath = typeof targetExpression.leftEye === 'string' ? 
@@ -623,15 +625,15 @@ React.useEffect(() => {
     const rightEyePath = typeof targetExpression.rightEye === 'string' ? 
       targetExpression.rightEye : targetExpression.rightEye.path;
     
-    emotionTimeline
-      .add('#left-eye path', { 
+      emotionTimeline
+      .add('#left-eye-path', { 
         d: leftEyePath 
       }, { 
         at: 0.1, 
         duration: 0.5, 
         ease: window.CraftedMotion.EASING && window.CraftedMotion.EASING.softBounce || 'easeOut'
       })
-      .add('#right-eye path', { 
+      .add('#right-eye-path', { 
         d: rightEyePath 
       }, { 
         at: 0.1, 
@@ -1150,6 +1152,7 @@ const CircleComponent = motion ? motion.circle : 'circle';
 return (
 <SVGComponent 
   className="minimalist-face w-full h-full"
+  id="robot-face"  // Using ID instead of ref
   xmlns="http://www.w3.org/2000/svg"
   viewBox="-50 -50 100 100"
   initial={{ opacity: 0, scale: 0.8 }}
@@ -1158,7 +1161,6 @@ return (
     { ease: window.CraftedMotion.EASING.gentleBreathe, duration: 0.6 } : 
     { ease: "easeOut", duration: 0.5 }
   }
-  ref={faceWrapperRef}
   onMouseEnter={() => setIsHovered(true)}
   onMouseLeave={() => setIsHovered(false)}
 >
@@ -1374,7 +1376,6 @@ return (
       {/* Left Eye Group with pupil dilation */}
   <g 
     id="left-eye"
-    ref={leftEyeRef}
     transform={`translate(${-25 + eyePosition.x + (isGlitching ? glitchOffset.x : 0)}, 
                 ${-10 + eyePosition.y + (isGlitching ? glitchOffset.y : 0)})`}
     className={currentExpression.isGlitched ? "glitching-element" : ""}
@@ -1430,7 +1431,6 @@ return (
       {/* Right Eye Group with same enhancements */}
      <g 
     id="right-eye"
-    ref={rightEyeRef}
     transform={`translate(${25 + eyePosition.x - (isGlitching ? glitchOffset.x : 0)}, 
                 ${-10 + eyePosition.y + (isGlitching ? glitchOffset.y : 0)})`}
     className={currentExpression.isGlitched ? "glitching-element" : ""}
@@ -1485,7 +1485,6 @@ return (
       {/* Enhanced Mouth with smoother transitions */}
      <PathComponent
     id="robot-mouth"
-    ref={mouthRef}
     d={currentExpression.mouth}
     fill={currentExpression.color || "#86dfff"}
     className={`mouth ${currentExpression.isGlitched ? "glitching-element" : ""}`}
@@ -1892,3 +1891,9 @@ if (document.readyState === 'loading') {
 } else {
   initializeReactComponents();
 }
+
+
+
+
+
+

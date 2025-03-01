@@ -10,6 +10,7 @@
         <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" type="text/css" href="mission.css">
+    
     <title>Mission — Gamify your tasks</title>
 </head>
 <body>
@@ -21,9 +22,13 @@
         <div class="container2">
             <h1 class="widescreen">Objectives for today:</h1>
             <h1 class="mobile">Ops. for today:</h1>
+                <!-- To this: -->
             <label id="label1" for="addMission">Add objectives:</label>
+            <div class="input-wrapper">
             <input id="addMission" type="text" placeholder="">
-                        <button id="addMissionButton">Add Op.</button>
+            <!-- The icon will be inserted here by JavaScript -->
+            </div>
+             <button id="addMissionButton">Add Op.</button>
             <button id="resetButton">Wipe memory</button>
             <div id="xp-selector-mount"></div>
             <p><span id="errorMessage"></span></p>
@@ -56,8 +61,8 @@
             </div>
         </div>
         <div id="motivationalQuoteMobile" class="motivational-quote mobile"></div>
+        
     </div>
-
     <script src="mission.js"></script>
     <script type="text/babel" src="xp-selector-react.js"></script>
     <script type="text/babel" src="mission-react.js"></script>
