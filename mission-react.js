@@ -269,25 +269,36 @@ React.useEffect(() => {
 }, [currentLevel, previousLevel]);
 
 //################## SECTION 3: Animation Effects ##################
+// Enhanced blinking patterns
 React.useEffect(() => {
-  const blinkVariations = [
-    { duration: 100, interval: 3000 },   // Quick blink
-    { duration: 50, interval: 5000 },    // Rapid blink
-    { duration: 200, interval: 7000 }    // Longer, slower blink
-  ];
-
-  const randomBlinkStyle = blinkVariations[
-    Math.floor(Math.random() * blinkVariations.length)
-  ];
-
-  const blinkInterval = setInterval(() => {
-    setIsBlinking(true);
-    setTimeout(() => setIsBlinking(false), randomBlinkStyle.duration);
-  }, randomBlinkStyle.interval);
-
-  return () => clearInterval(blinkInterval);
-}, []);
-
+  // Natural blink patterns based on emotional state
+  const getBlinkPatternForEmotion = () => {
+    switch(currentEmotion) {
+      case 'curious': return [{ duration: 80, interval: 2200 }]; // Quick, frequent blinks
+      case 'sleepy': return [{ duration: 300, interval: 2000 }]; // Slow, heavy blinks
+      case 'excited': return [{ duration: 40, interval: 4000 }]; // Rare, quick blinks
+      case 'perplexed': return [
+        { duration: 100, interval: 700 }, // Double-blink pattern
+        { duration: 100, interval: 5000 }
+      ];
+      default: return [{ duration: 100, interval: 4000 }]; // Normal pattern
+    }
+  };
+  
+  const blinkPatterns = getBlinkPatternForEmotion();
+  const blinkIntervals = [];
+  
+  blinkPatterns.forEach(pattern => {
+    const intervalId = setInterval(() => {
+      setIsBlinking(true);
+      setTimeout(() => setIsBlinking(false), pattern.duration);
+    }, pattern.interval);
+    
+    blinkIntervals.push(intervalId);
+  });
+  
+  return () => blinkIntervals.forEach(clearInterval);
+}, [currentEmotion]);
 // Add natural eye movement
 React.useEffect(() => {
   const moveEyesRandomly = () => {

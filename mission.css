@@ -1812,7 +1812,6 @@ svg.minimalist-face {
 }
 
 
-// Add to the style section in SECTION 6
 @keyframes glowPulse {
   0%, 100% { filter: drop-shadow(0 0 3px rgba(0, 255, 255, 0.5)); }
   50% { filter: drop-shadow(0 0 8px rgba(0, 255, 255, 0.8)); }
