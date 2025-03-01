@@ -1,25 +1,55 @@
 // Access React and ReactDOM from global scope (already loaded in HTML)
 const React = window.React;
 const ReactDOM = window.ReactDOM;
-// Access Framer Motion (check browser console to see the actual global variable name)
-const { motion, AnimatePresence } = window.framerMotion || {};
 
-// Your components remain unchanged
+// Enhanced access to motion library - prioritize CraftedMotion if available
+const motion = window.CraftedMotion && window.CraftedMotion.motion ? 
+  window.CraftedMotion.motion : 
+  (window.framerMotion ? window.framerMotion.motion : null);
+  
+const AnimatePresence = window.CraftedMotion && window.CraftedMotion.AnimatePresence ? 
+  window.CraftedMotion.AnimatePresence : 
+  (window.framerMotion ? window.framerMotion.AnimatePresence : null);
+
+// Add helper functions for transitions
+const useSpringTransition = (config = 'gentle') => {
+  const springConfig = (window.CraftedMotion && window.CraftedMotion.Physics && 
+    window.CraftedMotion.Physics.SPRING_CONFIGS && 
+    window.CraftedMotion.Physics.SPRING_CONFIGS[config]) || 
+    { mass: 1, stiffness: 170, damping: 26 };
+  return { type: 'spring', ...springConfig };
+};
+
+const useOrganicTransition = (type = 'softBounce') => {
+  const easingOptions = (window.CraftedMotion && window.CraftedMotion.EASING) || {};
+  const easing = easingOptions[type] || easingOptions.easeOut || 'easeOut';
+  return { ease: easing, duration: 0.4 };
+};
+
+
+
+// Enhanced console logging for debugging
 console.log("Available globals:", {
   React: window.React,
   ReactDOM: window.ReactDOM,
   framerMotion: window.framerMotion,
-  FramerMotion: window.FramerMotion
+  FramerMotion: window.FramerMotion,
+  CraftedMotion: window.CraftedMotion,
+  hasEnhancedFeatures: !!(window.CraftedMotion && 
+    (window.CraftedMotion.microAnimations || window.CraftedMotion.timeline))
 });
 
-// Animation components with Framer Motion
+// Animation components with enhanced motion capabilities
 const AnimatedDiv = ({ children, initial, animate, className, ...props }) => {
   return (
     <motion.div
       className={className}
       initial={initial}
       animate={animate}
-      transition={{ ease: "easeOut", duration: 0.3 }}
+      transition={(window.CraftedMotion && window.CraftedMotion.EASING) ? 
+        { ease: window.CraftedMotion.EASING.softBounce, duration: 0.3 } : 
+        { ease: "easeOut", duration: 0.3 }
+      }
       {...props}
     >
       {children}
@@ -35,7 +65,10 @@ const AnimatedSVG = ({ children, className, initial, animate, ...props }) => {
       className={className}
       initial={initial}
       animate={animate}
-      transition={{ ease: "easeOut", duration: 0.5 }}
+      transition={(window.CraftedMotion && window.CraftedMotion.EASING) ? 
+        { ease: window.CraftedMotion.EASING.gentleBreathe, duration: 0.5 } : 
+        { ease: "easeOut", duration: 0.5 }
+      }
       {...props}
     >
       {children}
@@ -43,8 +76,14 @@ const AnimatedSVG = ({ children, className, initial, animate, ...props }) => {
   );
 };
 
-// Update the MotivationalOverlay component
+// Update the MotivationalOverlay component with enhanced animations
 const MotivationalOverlay = React.memo(({ message, isVisible }) => {
+  // Use spring physics if available
+  const entranceTransition = (window.CraftedMotion && window.CraftedMotion.Physics && 
+    window.CraftedMotion.Physics.SPRING_CONFIGS) ? 
+    { type: 'spring', ...window.CraftedMotion.Physics.SPRING_CONFIGS.gentle } : 
+    { duration: 0.5 };
+  
   return (
     <AnimatePresence>
       {isVisible && (
@@ -53,22 +92,32 @@ const MotivationalOverlay = React.memo(({ message, isVisible }) => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -20 }}
-          transition={{ duration: 0.5 }}
+          transition={entranceTransition}
         >
           <motion.div
             className="
-              bg-black bg-opacity-60 
-              text-cyan-400 
-              px-4 py-2 
-              rounded-lg 
-              shadow-lg 
+              bg-black bg-opacity-60
+              text-cyan-400
+              px-4 py-2
+              rounded-lg
+              shadow-lg
               backdrop-blur-sm
               border border-cyan-400
               text-center
               max-w-xs
             "
-            style={{
-              animation: 'glow 2s infinite linear'
+            initial={{ scale: 0.9 }}
+            animate={{ 
+              scale: 1,
+              boxShadow: [
+                "0 0 5px rgba(0, 255, 255, 0.3)",
+                "0 0 15px rgba(0, 255, 255, 0.5)",
+                "0 0 5px rgba(0, 255, 255, 0.3)"
+              ]
+            }}
+            transition={{
+              scale: entranceTransition,
+              boxShadow: { repeat: Infinity, duration: 2 }
             }}
           >
             {message}
@@ -88,6 +137,11 @@ const CuteRobotFace = ({
 }) => {
 //################## SECTION 2: State and Hooks ##################
 const [isBlinking, setIsBlinking] = React.useState(false);
+// Add refs for animation targeting
+const leftEyeRef = React.useRef(null);
+const rightEyeRef = React.useRef(null);
+const mouthRef = React.useRef(null);
+const faceWrapperRef = React.useRef(null);
 const [currentEmotion, setCurrentEmotion] = React.useState('curious');
 const [eyePosition, setEyePosition] = React.useState({ x: 0, y: 0 });
 const [isTracking, setIsTracking] = React.useState(false);
@@ -100,7 +154,27 @@ const [isGlitching, setIsGlitching] = React.useState(false);
 const [glitchOffset, setGlitchOffset] = React.useState({ x: 0, y: 0 });
 const [isHovered, setIsHovered] = React.useState(false);
 const [glowIntensity, setGlowIntensity] = React.useState(1);
+const previousEmotionRef = React.useRef('');
 
+
+// In your component after initial mounting
+React.useEffect(() => {
+  if (window.CraftedMotion && window.CraftedMotion.microAnimations) {
+    // Subtle "breathing" effect for the face
+    window.CraftedMotion.microAnimations.register(faceWrapperRef.current, {
+      property: 'transform',
+      amplitude: 0.3,
+      frequency: 0.1,
+      waveform: 'breathing',  // Special waveform that mimics breathing
+      onUpdate: (value) => {
+        if (faceWrapperRef.current) {
+          faceWrapperRef.current.style.transform = 
+            `scale(${1 + value * 0.005}) translateY(${value * 0.1}px)`;
+        }
+      }
+    });
+  }
+}, []);
 
 React.useEffect(() => {
   // Dilate pupils on task completion
@@ -114,8 +188,6 @@ React.useEffect(() => {
     // Generate particles for excitement and confetti for celebration
     generateParticles(currentEmotion === 'heart-eyes' ? '' : 'sparkle');
   }
-  
-
   
   
   // React to emotion changes with appropriate pupil size
@@ -151,26 +223,54 @@ React.useEffect(() => {
   return () => clearInterval(interval);
 }, []);
 
-// Particle generator function
+// Enhanced particle generator with physics when available
 const generateParticles = (type) => {
-  const count = type === 'heart' ? 8 : 12;
-  const newParticles = Array.from({ length: count }, (_, i) => ({
-    id: `${type}-${Date.now()}-${i}`,
-    x: (Math.random() * 60) - 30,
-    y: type === 'heart' ? -10 : (Math.random() * 60) - 30,
-    size: type === 'heart' ? 3 + Math.random() * 2 : 1 + Math.random() * 2,
-    duration: 1 + Math.random() * 1.5,
-    type,
-    opacity: 0.7 + Math.random() * 0.3
-  }));
-  
-  setParticles(prev => [...prev, ...newParticles]);
-  
-  // Clear particles after animation
-  setTimeout(() => {
-    setParticles(prev => prev.filter(p => !newParticles.some(np => np.id === p.id)));
-  }, 3000);
-};
+  if (window.CraftedMotion && window.CraftedMotion.Physics && 
+      window.CraftedMotion.Physics.particles) {
+    const count = type === 'heart' ? 8 : 12;
+    const particleOptions = {
+      gravity: type === 'heart' ? 0.05 : 0.1,
+      friction: 0.98,
+      randomness: 0.7,
+      lifespan: 150,
+      colorFn: () => type === 'heart' ? '#ff69b4' : '#86dfff'
+    };
+    
+    const particleSystem = window.CraftedMotion.Physics.particles(count, particleOptions);
+    
+    // Update particles in state
+    const intervalId = setInterval(() => {
+      const updatedParticles = particleSystem.update();
+      if (updatedParticles.length > 0) {
+        setParticles(prev => [...prev, ...updatedParticles]);
+      } else {
+        clearInterval(intervalId);
+      }
+    }, 16);
+    
+    // Clear interval after animation completes
+    setTimeout(() => clearInterval(intervalId), 3000);
+  } else {
+    // Existing particle generation as fallback
+    const count = type === 'heart' ? 8 : 12;
+    const newParticles = Array.from({ length: count }, (_, i) => ({
+      id: `${type}-${Date.now()}-${i}`,
+      x: (Math.random() * 60) - 30,
+      y: type === 'heart' ? -10 : (Math.random() * 60) - 30,
+      size: type === 'heart' ? 3 + Math.random() * 2 : 1 + Math.random() * 2,
+      duration: 1 + Math.random() * 1.5,
+      type,
+      opacity: 0.7 + Math.random() * 0.3
+    }));
+    
+    setParticles(prev => [...prev, ...newParticles]);
+    
+    setTimeout(() => {
+      setParticles(prev => prev.filter(p => !newParticles.some(np => np.id === p.id)));
+    }, 3000);
+  }
+};    
+
 
 // Glitch Particles 
 const generateGlitchParticles = () => {
@@ -387,6 +487,25 @@ React.useEffect(() => {
   }
 }, [isHovered]);
 
+// Enhanced task completion animation using CraftedMotion timeline
+React.useEffect(() => {
+  if (isTaskCompleted && window.CraftedMotion && window.CraftedMotion.timeline) {
+    const timeline = window.CraftedMotion.timeline({
+      duration: 0.5,
+      ease: 'backOut'
+    });
+    
+    // Set up the sequence of animations
+    timeline
+    .add('#left-eye', { scaleY: 1.2, scaleX: 1 }, { duration: 0.3 })
+    .add('#right-eye', { scaleY: 1.2, scaleX: 1 }, { at: 0, duration: 0.3 })
+    .add('#robot-mouth', { d: expressions[currentEmotion].mouth }, { at: 0.1 })
+    .add(['#left-eye', '#right-eye'], { scaleY: 1, scaleX: 1 }, { at: 0.4 });
+    // Play the timeline
+    timeline.play();
+  }
+}, [isTaskCompleted, currentEmotion]);
+
 
 // Add this after the end of SECTION 3: Animation Effects
 // but before SECTION 4: Emotion Logic
@@ -438,6 +557,9 @@ const triggerSubtleGlitch = () => {
 };
 
 //################## SECTION 4: Emotion Logic ##################
+// Add this at the beginning of SECTION 2 with your other state variables
+
+// Then modify the emotion transition logic in SECTION 4
 React.useEffect(() => {
   // First, determine the base emotion based on level and XP
   let baseEmotion = 'neutral';
@@ -454,6 +576,9 @@ React.useEffect(() => {
     }
   }
 
+  // Store the current emotion before we change it
+  const prevEmotion = previousEmotionRef.current;
+
   // Handle task completion animations
   if (isTaskCompleted) {
     if (currentLevel >= 2) {
@@ -468,7 +593,57 @@ React.useEffect(() => {
   } else {
     setCurrentEmotion(baseEmotion);
   }
+  
+  // Update the previous emotion ref after setting the new emotion
+  previousEmotionRef.current = currentEmotion;
+  
+  // Add this block for enhanced emotion transitions
+  // Only run when emotion actually changes
+  if (prevEmotion !== baseEmotion && !isTaskCompleted && 
+      window.CraftedMotion && window.CraftedMotion.timeline) {
+    
+    const emotionTimeline = window.CraftedMotion.timeline();
+    
+    // Get the expressions for proper path values
+    const targetExpression = expressions[baseEmotion] || expressions.neutral;
+    
+    // Use special biomimetic easing for more natural emotion shifts
+    emotionTimeline
+      .add('#robot-mouth', { 
+        d: targetExpression.mouth 
+      }, { 
+        duration: 0.6, 
+        ease: window.CraftedMotion.EASING && window.CraftedMotion.EASING.gentleBreathe || 'easeOut'
+      });
+      
+    // For eyes, we need to check if they're objects or strings
+    const leftEyePath = typeof targetExpression.leftEye === 'string' ? 
+      targetExpression.leftEye : targetExpression.leftEye.path;
+      
+    const rightEyePath = typeof targetExpression.rightEye === 'string' ? 
+      targetExpression.rightEye : targetExpression.rightEye.path;
+    
+    emotionTimeline
+      .add('#left-eye path', { 
+        d: leftEyePath 
+      }, { 
+        at: 0.1, 
+        duration: 0.5, 
+        ease: window.CraftedMotion.EASING && window.CraftedMotion.EASING.softBounce || 'easeOut'
+      })
+      .add('#right-eye path', { 
+        d: rightEyePath 
+      }, { 
+        at: 0.1, 
+        duration: 0.5, 
+        ease: window.CraftedMotion.EASING && window.CraftedMotion.EASING.softBounce || 'easeOut'
+      });
+      
+    emotionTimeline.play();
+  }
+  
 }, [taskCompletionLevel, currentLevel, isTaskCompleted]);
+
 
 // Separate effect for handling input state
 
@@ -973,20 +1148,20 @@ const PathComponent = motion ? motion.path : 'path';
 const CircleComponent = motion ? motion.circle : 'circle';
 
 return (
-  <SVGComponent 
-    className="minimalist-face w-full h-full"
-    xmlns="http://www.w3.org/2000/svg"
-    viewBox="-50 -50 100 100"
-    initial={{ opacity: 0, scale: 0.8 }}
-    animate={{ opacity: 1, scale: 1 }}
-    style={!motion ? {
-      opacity: 1,
-      transform: 'scale(1)',
-      transition: 'opacity 0.5s ease, transform 0.5s ease'
-    } : undefined}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-      >
+<SVGComponent 
+  className="minimalist-face w-full h-full"
+  xmlns="http://www.w3.org/2000/svg"
+  viewBox="-50 -50 100 100"
+  initial={{ opacity: 0, scale: 0.8 }}
+  animate={{ opacity: 1, scale: 1 }}
+  transition={(window.CraftedMotion && window.CraftedMotion.EASING) ? 
+    { ease: window.CraftedMotion.EASING.gentleBreathe, duration: 0.6 } : 
+    { ease: "easeOut", duration: 0.5 }
+  }
+  ref={faceWrapperRef}
+  onMouseEnter={() => setIsHovered(true)}
+  onMouseLeave={() => setIsHovered(false)}
+>
     {/* Add dynamic animations and effects */}
     <style>
       {`
@@ -1197,11 +1372,14 @@ return (
       }}
     >
       {/* Left Eye Group with pupil dilation */}
-      <g 
-  transform={`translate(${-25 + eyePosition.x + (isGlitching ? glitchOffset.x : 0)}, 
-                       ${-10 + eyePosition.y + (isGlitching ? glitchOffset.y : 0)})`}
-  className={currentExpression.isGlitched ? "glitching-element" : ""}
->        {/* Main eye path */}
+  <g 
+    id="left-eye"
+    ref={leftEyeRef}
+    transform={`translate(${-25 + eyePosition.x + (isGlitching ? glitchOffset.x : 0)}, 
+                ${-10 + eyePosition.y + (isGlitching ? glitchOffset.y : 0)})`}
+    className={currentExpression.isGlitched ? "glitching-element" : ""}
+  >
+        {/* Main eye path */}
         <PathComponent
           d={typeof currentExpression.leftEye === 'string' ? 
              currentExpression.leftEye : 
@@ -1250,11 +1428,14 @@ return (
       </g>
 
       {/* Right Eye Group with same enhancements */}
-      <g 
-  transform={`translate(${25 + eyePosition.x - (isGlitching ? glitchOffset.x : 0)}, 
-                       ${-10 + eyePosition.y + (isGlitching ? glitchOffset.y : 0)})`}
-  className={currentExpression.isGlitched ? "glitching-element" : ""}
->        <PathComponent
+     <g 
+    id="right-eye"
+    ref={rightEyeRef}
+    transform={`translate(${25 + eyePosition.x - (isGlitching ? glitchOffset.x : 0)}, 
+                ${-10 + eyePosition.y + (isGlitching ? glitchOffset.y : 0)})`}
+    className={currentExpression.isGlitched ? "glitching-element" : ""}
+  >
+        <PathComponent
           d={typeof currentExpression.rightEye === 'string' ? 
              currentExpression.rightEye : 
              isBlinking ? currentExpression.rightEye.blinkPath : currentExpression.rightEye.path}
@@ -1302,17 +1483,24 @@ return (
       </g>
 
       {/* Enhanced Mouth with smoother transitions */}
-      <PathComponent
-  d={currentExpression.mouth}
-  fill={currentExpression.color || "#86dfff"}
-  className={`mouth ${currentExpression.isGlitched ? "glitching-element" : ""}`}
-  animate={motion ? { d: currentExpression.mouth } : undefined}
-  style={{
-    transition: 'd 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)',
-    filter: 'drop-shadow(0 0 2px rgba(134, 223, 255, 0.5))',
-    transform: isGlitching ? `translateX(${glitchOffset.x * 0.7}px) translateY(${glitchOffset.y * 0.5}px)` : ''
-  }}
-/>
+     <PathComponent
+    id="robot-mouth"
+    ref={mouthRef}
+    d={currentExpression.mouth}
+    fill={currentExpression.color || "#86dfff"}
+    className={`mouth ${currentExpression.isGlitched ? "glitching-element" : ""}`}
+    animate={motion ? { d: currentExpression.mouth } : undefined}
+    transition={(window.CraftedMotion && window.CraftedMotion.EASING) ? 
+      { ease: window.CraftedMotion.EASING.softBounce, duration: 0.4 } : 
+      { ease: "easeOut", duration: 0.4 }
+    }
+    style={{
+      transition: 'd 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)',
+      filter: 'drop-shadow(0 0 2px rgba(134, 223, 255, 0.5))',
+      transform: isGlitching ? `translateX(${glitchOffset.x * 0.7}px) translateY(${glitchOffset.y * 0.5}px)` : ''
+    }}
+  />
+
     </g>
 
     {/* Particle Effects System */}
@@ -1652,6 +1840,22 @@ const CyberpunkInterface = () => {
 const initializeReactComponents = () => {
   // First, ensure we're running in a browser environment
   if (typeof window === 'undefined') return;
+  
+  // Check if CraftedMotion is properly loaded
+  console.log("Motion libraries available:", {
+    CraftedMotion: !!window.CraftedMotion,
+    framerMotion: !!window.framerMotion,
+    FramerMotion: !!window.FramerMotion
+  });
+  
+  if (window.CraftedMotion) {
+    console.log("CraftedMotion features:", {
+      microAnimations: !!window.CraftedMotion.microAnimations,
+      timeline: !!window.CraftedMotion.timeline,
+      pathUtils: !!window.CraftedMotion.pathUtils,
+      physics: !!window.CraftedMotion.Physics
+    });
+  }
 
   // Get our container element
   const container = document.getElementById('react-mission-control');
@@ -1679,6 +1883,8 @@ const initializeReactComponents = () => {
     }
   }
 };
+
+
 
 // Ensure the DOM is fully loaded before we initialize
 if (document.readyState === 'loading') {
