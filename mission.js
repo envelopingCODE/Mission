@@ -1925,7 +1925,7 @@ function setupHoverBehavior() {
         }
     });
     
- /*   // Mouse leave - collapse after delay
+    // Mouse leave - collapse after delay
     DOM.container.addEventListener('mouseleave', () => {
         if (expandTimeout) {
             clearTimeout(expandTimeout);
@@ -1937,7 +1937,7 @@ function setupHoverBehavior() {
                 DOM.container.classList.remove('expanded');
             }, 1000);
         }
-    });*/
+    });
 } 
 
 // ===== 3D CAROUSEL IMPLEMENTATION =====
