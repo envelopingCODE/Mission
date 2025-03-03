@@ -1769,7 +1769,7 @@ const CyberpunkInterface = () => {
           transition: 'opacity 0.3s ease'
         } : undefined}
       >
-        <div>Mission AI v2.3</div>
+        <div>Mission VI v2.3</div>
         <div>PrimerOS 0.9.5</div>
       </AnimatedDiv>
   
