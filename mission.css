@@ -1831,14 +1831,14 @@ svg.minimalist-face {
   margin: 20px 0;
   border: 1px solid rgba(134, 223, 255, 0.3);
   border-radius: 5px;
-  background-color: rgba(0, 0, 0, 0.5);
+  background-color: rgba(0, 0, 0, 0.319);
   overflow: hidden;
   transition: all 0.3s ease;
 }
 
 .distraction-header {
   padding: 10px 15px;
-  background-color: rgba(0, 0, 0, 0.7);
+  background-color: rgba(0, 0, 0, 0.349);
   border-bottom: 1px solid rgba(134, 223, 255, 0.3);
   cursor: pointer;
   transition: background-color 0.2s ease;
@@ -2875,7 +2875,7 @@ svg.minimalist-face {
   display: flex;
   justify-content: center;
   padding: 5px 10px;
-  background-color: rgba(0, 0, 0, 0.5);
+  background-color: rgba(0, 0, 0, 0.23);
   border-bottom: 1px solid rgba(134, 223, 255, 0.2);
   margin-bottom: 10px;
 }
