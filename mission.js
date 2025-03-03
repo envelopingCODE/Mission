@@ -12,6 +12,10 @@ const completionSound = document.getElementById('completionSound'); // Get the s
 const levelUpSound = document.getElementById('levelUpSound') // Get the sound element for level up
 const addMissionSound = document.getElementById('addMissionSound') // Get the sound element for adding missions
 const initializingSound = document.getElementById('initializingSound') // Get the sound element for initializing
+const swipeSound = document.getElementById('swipeSound'); // Get the sound element for initializing
+const addNeuralSound = document.getElementById('addNeuralSound'); // Get the sound element for initializing
+
+
 const mediaQuery = window.matchMedia('(max-width: 600px)');
 
 let xpSelectorCallback = null;
@@ -944,6 +948,11 @@ function playInitSound(){
     initializingSound.play(); // Play the completion sound
 };
 
+function playSwipeSound() {
+    swipeSound.currentTime = 0; // Reset the sound to the beginning
+    swipeSound.play(); // Play the completion sound
+};
+
 
 
 const motivationalQuotes = [
@@ -1100,8 +1109,1453 @@ function typeAdditionalMessage(messageIndex) {
     } else {
         console.error("Message index out of bounds."); // Log an error if the index is invalid
     }
+}// Optimized version with performance improvements and bug fixes
+
+//################## SECTION 11: Distraction Capture System ##################
+
+// ===== CONSTANTS & ELEMENT SELECTORS =====
+const DOM = {
+    // Core container elements - will be populated on initialization
+    container: null,
+    header: null,
+    input: null,
+    saveButton: null,
+    list: null,
+    clearButton: null,
+    carouselContainer: null,
+    carouselView: null,
+    listView: null,
+    viewToggle: null,
+    listViewBtn: null,
+    carouselViewBtn: null,
+    listView: null,
+    carouselView: null,
+}
+
+// ===== STATE VARIABLES =====
+let expandTimeout = null;
+let collapseTimeout = null;
+let currentFilter = 'all';
+let distractionsCache = null; // Cache for distractions to reduce localStorage reads
+
+// ===== CONSTANTS =====
+const TIMEFRAMES = {
+    NOW: 'now',
+    BREAK: 'break',
+    LATER: 'later', 
+    TOMORROW: 'tomorrow'
+};
+
+const PRIORITIES = {
+    HIGH: 'high',
+    NORMAL: 'normal',
+    LOW: 'low'
+};
+
+const FILTERS = {
+    ALL: 'all',
+    HIGH: 'high',
+    NORMAL: 'normal',
+    LOW: 'low'
+};
+
+// Category keywords for intelligent classification
+const KEYWORDS = {
+    CATEGORY_1: [
+        'client', 'marketing', 'sales', 'money', 'revenue', 'income', 'finance', 
+        'financial', 'invest', 'payment', 'invoice', 'bill', 'budget', 'fund',
+        'asset', 'profit', 'earning', 'sell', 'customer', 'promotion', 'campaign'
+    ],
+    CATEGORY_2: [
+        'study', 'homework', 'assignment', 'research', 'paper', 'thesis', 'exam', 
+        'class', 'course', 'lecture', 'learn', 'education', 'school', 'college', 
+        'university', 'degree', 'grade', 'academic', 'read', 'book', 'code',
+        'programming', 'project', 'deadline', 'professor', 'teacher', 'student'
+    ],
+    CATEGORY_3: [
+        'health', 'exercise', 'workout', 'fitness', 'gym', 'meditation', 'yoga', 
+        'run', 'jog', 'walk', 'sleep', 'rest', 'relax', 'journal', 'diet', 'meal', 
+        'food', 'nutrition', 'doctor', 'appointment', 'medicine', 'therapy',
+        'mental', 'wellness', 'mindfulness', 'breathe', 'calm', 'peace', 'balance'
+    ]
+};
+
+// ===== HELPER FUNCTIONS =====
+function escapeHTML(str) {
+    if (!str) return '';
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+}
+
+function truncateText(text, maxLength = 60) {
+    if (!text) return '';
+    if (text.length <= maxLength) return text;
+    return text.substring(0, maxLength) + '...';
+}
+
+function formatTimestamp(timestamp) {
+    try {
+        return new Date(timestamp).toLocaleTimeString([], { 
+            hour: '2-digit', 
+            minute: '2-digit' 
+        });
+    } catch (e) {
+        console.error('Error formatting timestamp:', e);
+        return 'Invalid time';
+    }
+}
+
+function playAddNeuralSound() {
+ 
+        // Ensure swipeSound is an audio element and exists
+        if (swipeSound && typeof addNeuralSound.play === 'function') {
+            try {
+                // Reset the sound to the beginning and play
+                addNeuralSound.currentTime = 0;
+                addNeuralSound.play().catch(error => {
+                    console.warn('Error playing addNeural sound:', error);
+                });
+            } catch (error) {
+                console.warn('Error playing addNeuralsound:', error);
+            }
+        }
+    }
+
+// ===== DATA MANAGEMENT =====
+function getDistractions() {
+    // Use cache if available to prevent excessive localStorage reads
+    if (distractionsCache !== null) {
+        return distractionsCache;
+    }
+    
+    try {
+        const distractions = localStorage.getItem('distractions');
+        distractionsCache = distractions ? JSON.parse(distractions) : [];
+        return distractionsCache;
+    } catch (e) {
+        console.error('Error reading distractions from localStorage:', e);
+        return [];
+    }
+}
+
+function saveDistractions(distractions) {
+    try {
+        // Update cache
+        distractionsCache = distractions;
+        // Save to localStorage
+        localStorage.setItem('distractions', JSON.stringify(distractions));
+        return true;
+    } catch (e) {
+        console.error('Error saving distractions to localStorage:', e);
+        return false;
+    }
+}
+
+function updateDistractionProperty(id, property, value) {
+    if (!id || !property) return false;
+    
+    let distractions = getDistractions();
+    const index = distractions.findIndex(d => d.id === parseInt(id));
+    
+    if (index !== -1) {
+        distractions[index][property] = value;
+        const success = saveDistractions(distractions);
+        
+        if (success) {
+            // Preserve the current carousel view
+            if (carouselInstance && carouselInstance.cards.length > 0) {
+                // Find the index of the current card being edited
+                const currentCardIndex = carouselInstance.cards.findIndex(
+                    card => parseInt(card.dataset.id) === id
+                );
+                
+                // Update the carousel to maintain the current card's position
+                if (currentCardIndex !== -1) {
+                    carouselInstance.currentIndex = currentCardIndex;
+                }
+            }
+            
+            // Use targeted update instead of full refresh when possible
+            updateSingleDistraction(distractions[index]);
+            
+            // Optional: Update both list and carousel views
+            refreshUI();
+            
+            return true;
+        }
+    }
+    
+    return false;
+}
+
+function deleteDistraction(id) {
+    if (!id) return false;
+    
+    let distractions = getDistractions();
+    const index = distractions.findIndex(d => d.id === parseInt(id));
+    
+    if (index !== -1) {
+        // Remove the item from the array
+        distractions.splice(index, 1);
+        const success = saveDistractions(distractions);
+        
+        if (success) {
+            // Remove element from DOM for better performance than full refresh
+            const itemElement = document.querySelector(`.distraction-item[data-id="${id}"]`);
+            if (itemElement) {
+                itemElement.classList.add('removing');
+                setTimeout(() => {
+                    itemElement.remove();
+                    
+                    // Check if we need to show "no distractions" message
+                    const container = document.getElementById('distraction-items-container');
+                    if (container && distractions.length === 0) {
+                        showNoDistractions(container);
+                    }
+                }, 300);
+            } else {
+                // If we can't find the element, do a full refresh
+                refreshUI();
+            }
+            
+            // Update carousel view
+            updateCarouselView();
+            
+            return true;
+        }
+    }
+    
+    return false;
+}
+
+// ===== TARGETED UPDATES =====
+function updateSingleDistraction(distraction) {
+    // Find existing item in DOM
+    const itemElement = document.querySelector(`.distraction-item[data-id="${distraction.id}"]`);
+    if (!itemElement) {
+        // If element doesn't exist, do a full refresh
+        refreshUI();
+        return;
+    }
+    
+    // Update priority classes
+    itemElement.classList.remove('priority-high', 'priority-normal', 'priority-low');
+    if (distraction.priority) {
+        itemElement.classList.add(`priority-${distraction.priority}`);
+    }
+    
+    // Update timeframe classes
+    itemElement.classList.remove('now', 'break', 'later', 'tomorrow');
+    if (distraction.timeframe) {
+        itemElement.classList.add(distraction.timeframe);
+    }
+    
+    // Update priority buttons
+    const priorityBtns = itemElement.querySelectorAll('.priority-btn');
+    priorityBtns.forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.priority === distraction.priority);
+    });
+    
+    // Update timeframe selector
+    const selectElement = itemElement.querySelector('.delay-select');
+    if (selectElement) {
+        selectElement.value = distraction.timeframe;
+    }
+}
+
+function showNoDistractions(container) {
+    const emptyMessage = document.createElement('div');
+    emptyMessage.className = 'no-distractions';
+    emptyMessage.textContent = 'Neural buffer empty...';
+    container.appendChild(emptyMessage);
+}
+
+// ===== CATEGORIZATION & MISSION CONVERSION =====
+function categorizeText(text) {
+    if (!text) return null;
+    
+    const lowerText = text.toLowerCase();
+    
+    // Check for matches in each category
+    for (const keyword of KEYWORDS.CATEGORY_1) {
+        if (lowerText.includes(keyword)) return '1.';
+    }
+    
+    for (const keyword of KEYWORDS.CATEGORY_2) {
+        if (lowerText.includes(keyword)) return '2.';
+    }
+    
+    for (const keyword of KEYWORDS.CATEGORY_3) {
+        if (lowerText.includes(keyword)) return '3.';
+    }
+    
+    return null; // No category match
+}
+
+function convertDistractionToMission(id, text) {
+    if (!id || !text) {
+        console.error('Invalid id or text for conversion');
+        return false;
+    }
+    
+    // Close XP selector if open
+    if (typeof closeXPSelector === 'function') {
+        closeXPSelector();
+    }
+    
+    const convertCallback = (xpValue) => {
+        addMissionFromDistraction(text, xpValue);
+        deleteDistraction(id);
+        if (typeof playAddMissionSound === 'function') {
+            playAddMissionSound();
+        }
+    };
+    
+    // Show the XP selector
+    if (typeof window.showXPSelector === 'function') {
+        window.showXPSelector(convertCallback);
+    } else {
+        console.error('XP Selector not initialized');
+    }
+}
+
+function addMissionFromDistraction(text, xpValue) {
+    if (!text || !xpValue) {
+        console.error('Missing text or XP value');
+        return false;
+    }
+    
+    // Ensure sanitizeInput function exists
+    if (typeof sanitizeInput !== 'function') {
+        console.error('sanitizeInput function not found');
+        return false;
+    }
+    
+    // Check for existing category or categorize intelligently
+    const hasPrefix = /^[123]\./.test(text);
+    const modifiedText = hasPrefix ? text : 
+                        (categorizeText(text) ? `${categorizeText(text)} ${text}` : text);
+    
+    const sanitizedInput = sanitizeInput(modifiedText);
+    
+    // Store original callback
+    const tempXpCallback = window.xpSelectorCallback;
+    
+    // Create mission with temporary callback
+    window.xpSelectorCallback = (xp) => {
+        // Restore original callback
+        window.xpSelectorCallback = tempXpCallback;
+        
+        try {
+            // Process the mission text
+            const modifiedMission = typeof TaskSystem !== 'undefined' && TaskSystem.modifyMissionText ? 
+                TaskSystem.modifyMissionText(sanitizedInput) : sanitizedInput;
+                
+            const prefix = modifiedMission.match(/^(\d+\.)/)?.[0];
+            const prefixClass = prefix && typeof TaskSystem !== 'undefined' && TaskSystem.getClassForPrefix ? 
+                TaskSystem.getClassForPrefix(prefix) : 'prefix-default';
+            
+            // Create mission element
+            const newEl = document.createElement("li");
+            
+            // Set HTML content based on whether we have a category prefix
+            if (prefix) {
+                newEl.innerHTML = `<span class="${prefixClass}">${modifiedMission.split(':')[0]}:</span> ${modifiedMission.split(':')[1]} — ${xpValue} XP`;
+            } else {
+                newEl.innerHTML = `<span class="prefix-default">${modifiedMission}</span> — ${xpValue} XP`;
+            }
+            
+            // Add necessary attributes and event listeners
+            newEl.className = "mission";
+            newEl.dataset.xp = xpValue;
+            
+            // Add drag functionality if handleDragStart exists
+            if (typeof handleDragStart === 'function') {
+                newEl.draggable = true;
+                newEl.addEventListener('dragstart', handleDragStart);
+                newEl.addEventListener('dragend', handleDragEnd);
+                newEl.addEventListener('dragover', handleDragOver);
+                newEl.addEventListener('drop', handleDrop);
+                
+                // Add touch events for mobile
+                newEl.addEventListener('touchstart', handleTouchStart);
+                newEl.addEventListener('touchmove', handleTouchMove);
+                newEl.addEventListener('touchend', handleTouchEnd);
+            }
+            
+            // Set up click handler if available
+            if (typeof createMissionClickHandler === 'function') {
+                createMissionClickHandler(newEl);
+            }
+            
+            // Add to mission list
+            if (typeof missionListEl !== 'undefined' && missionListEl) {
+                missionListEl.appendChild(newEl);
+                
+                // Activate with animation
+                setTimeout(() => {
+                    newEl.classList.add("active");
+                    if (typeof saveMissions === 'function') {
+                        saveMissions();
+                    }
+                }, 10);
+            }
+        } catch (e) {
+            console.error('Error creating mission from distraction:', e);
+        }
+    };
+    
+    // Execute callback with the XP value
+    window.xpSelectorCallback(xpValue);
+    
+    // Record in task frequency system
+    if (typeof TaskSystem !== 'undefined' && typeof TaskSystem.recordTask === 'function') {
+        TaskSystem.recordTask(modifiedText);
+    }
+    
+    return true;
+}
+
+// ===== UI COMPONENTS =====
+function createDistractionItem(distraction, index) {
+    if (!distraction || !distraction.id) {
+        console.error('Invalid distraction object:', distraction);
+        return null;
+    }
+    
+    const item = document.createElement('div');
+    item.className = 'distraction-item';
+    item.dataset.id = distraction.id;
+    
+    // Add classes for priority and timeframe
+    if (distraction.priority) {
+        item.classList.add(`priority-${distraction.priority}`);
+    }
+    
+    if (distraction.timeframe) {
+        item.classList.add(distraction.timeframe);
+    }
+    
+    // Create timeframe selector
+    const timeframeSelector = createTimeframeSelector(distraction);
+    
+    // Format time
+    const timeStr = formatTimestamp(distraction.timestamp);
+    
+    // Add index display for 3D list effect
+    const indexNum = (index + 1).toString().padStart(2, '0');
+    
+    // Create truncated text for mobile with full text in data attribute
+    const truncatedText = truncateText(distraction.text);
+    const isLongText = distraction.text && distraction.text.length > truncatedText.length;
+    
+    // Build HTML with expandable text for mobile and item number
+    item.innerHTML = `
+        <div class="distraction-index">${indexNum}</div>
+        <div class="distraction-text ${isLongText ? 'expandable' : ''}" 
+             data-full-text="${escapeHTML(distraction.text)}">
+            ${escapeHTML(truncatedText)}
+            ${isLongText ? '<span class="expand-text">⤵</span>' : ''}
+        </div>
+        <div class="distraction-controls">
+            <div class="distraction-time">${timeStr}</div>
+            <button class="distraction-convert tooltip" data-tooltip="Convert to Mission">⚡</button>
+            <div class="priority-controls">
+                <button class="priority-btn ${distraction.priority === PRIORITIES.HIGH ? 'active' : ''}" 
+                        data-priority="${PRIORITIES.HIGH}" data-tooltip="High">⬆</button>
+                <button class="priority-btn ${distraction.priority === PRIORITIES.NORMAL ? 'active' : ''}" 
+                        data-priority="${PRIORITIES.NORMAL}" data-tooltip="Normal">■</button>
+                <button class="priority-btn ${distraction.priority === PRIORITIES.LOW ? 'active' : ''}" 
+                        data-priority="${PRIORITIES.LOW}" data-tooltip="Low">⬇</button>
+            </div>
+            <button class="distraction-delete tooltip" data-tooltip="Delete">×</button>
+        </div>
+    `;
+    
+    // Add the timeframe selector
+    const controlsDiv = item.querySelector('.distraction-controls');
+    if (controlsDiv && timeframeSelector) {
+        controlsDiv.insertBefore(timeframeSelector, controlsDiv.firstChild);
+    }
+    
+    // Add event listeners
+    setupItemEventListeners(item, distraction);
+    
+    return item;
+}
+
+function createTimeframeSelector(distraction) {
+    if (!distraction) return null;
+    
+    const select = document.createElement('select');
+    select.className = 'delay-select';
+    select.innerHTML = `
+        <option value="${TIMEFRAMES.NOW}" ${distraction.timeframe === TIMEFRAMES.NOW ? 'selected' : ''}>Now</option>
+        <option value="${TIMEFRAMES.BREAK}" ${distraction.timeframe === TIMEFRAMES.BREAK ? 'selected' : ''}>Next Break</option>
+        <option value="${TIMEFRAMES.LATER}" ${distraction.timeframe === TIMEFRAMES.LATER ? 'selected' : ''}>Later</option>
+        <option value="${TIMEFRAMES.TOMORROW}" ${distraction.timeframe === TIMEFRAMES.TOMORROW ? 'selected' : ''}>Tomorrow</option>
+    `;
+    
+    select.addEventListener('change', function() {
+        updateDistractionProperty(distraction.id, 'timeframe', this.value);
+    });
+    
+    return select;
+}
+
+function setupItemEventListeners(item, distraction) {
+    if (!item || !distraction) return;
+    
+    // Expandable text for mobile
+    const textElement = item.querySelector('.distraction-text');
+    if (textElement && textElement.classList.contains('expandable')) {
+        textElement.addEventListener('click', function() {
+            if (this.classList.contains('expanded')) {
+                this.textContent = truncateText(distraction.text);
+                this.innerHTML += '<span class="expand-text">⤵</span>';
+                this.classList.remove('expanded');
+            } else {
+                this.textContent = this.dataset.fullText;
+                this.innerHTML += '<span class="expand-text">⤴</span>';
+                this.classList.add('expanded');
+            }
+        });
+    }
+    
+    // Delete button
+    const deleteBtn = item.querySelector('.distraction-delete');
+    if (deleteBtn) {
+        deleteBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            deleteDistraction(distraction.id);
+        });
+    }
+    
+    // Convert button
+    const convertBtn = item.querySelector('.distraction-convert');
+    if (convertBtn) {
+        convertBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            convertDistractionToMission(distraction.id, distraction.text);
+        });
+    }
+    
+    // Priority buttons
+    const priorityBtns = item.querySelectorAll('.priority-btn');
+    priorityBtns.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            updateDistractionProperty(distraction.id, 'priority', btn.dataset.priority);
+        });
+    });
+}
+
+// ===== MAIN FUNCTIONS =====
+function saveDistraction() {
+    if (!DOM.input) {
+        console.error('Input element not found');
+        return false;
+    }
+    
+    const distractionText = DOM.input.value.trim();
+    if (distractionText === '') return false;
+    
+    // Create distraction object
+    const distraction = {
+        id: Date.now(),
+        text: distractionText,
+        timestamp: new Date().toISOString(),
+        priority: PRIORITIES.NORMAL,
+        timeframe: TIMEFRAMES.BREAK
+    };
+    
+    // Add to localStorage
+    const distractions = getDistractions();
+    distractions.unshift(distraction); // Add to beginning of array
+    const success = saveDistractions(distractions);
+    
+    if (success) {
+        // Clear input and play sound
+        DOM.input.value = '';
+        DOM.input.focus();
+        playAddNeuralSound();
+        
+        // Use incremental update for better performance
+        incrementalUIUpdate(distraction);
+        
+        return true;
+    }
+    
+    return false;
+}
+
+// Incremental update for better performance
+function incrementalUIUpdate(newDistraction) {
+    if (!newDistraction) return;
+    
+    // Check if list view container exists
+    const itemsContainer = document.getElementById('distraction-items-container');
+    
+    if (itemsContainer) {
+        // Create new item
+        const item = createDistractionItem(newDistraction);
+        if (item) {
+            // Remove empty message if it exists
+            const emptyMessage = itemsContainer.querySelector('.no-distractions');
+            if (emptyMessage) {
+                emptyMessage.remove();
+            }
+            
+            // Add animation class
+            item.classList.add('new-distraction');
+            
+            // Add to beginning of list
+            itemsContainer.insertBefore(item, itemsContainer.firstChild);
+            
+            // Apply filter to ensure it's visible if it should be
+            if (currentFilter !== FILTERS.ALL && newDistraction.priority !== currentFilter) {
+                item.style.display = 'none';
+            }
+        }
+    } else {
+        // If container doesn't exist, do a full refresh
+        renderListView();
+    }
+    
+    // Update carousel view
+    updateCarouselView();
+}
+
+// Function to refresh all UI components
+function refreshUI() {
+    renderListView(); // Update the list view
+    
+    // Only update carousel if it's currently visible
+    if (DOM.carouselView && DOM.carouselView.classList.contains('active')) {
+        updateCarouselView();
+    }
+}
+
+function updateListPerspective() {
+    if (!DOM.list) return;
+    
+    const scrollPosition = DOM.list.scrollTop;
+    const itemsContainer = document.getElementById('distraction-items-container');
+    if (!itemsContainer) return;
+    
+    const items = itemsContainer.querySelectorAll('.distraction-item');
+    
+    items.forEach((item, index) => {
+        const rect = item.getBoundingClientRect();
+        const distanceFromCenter = Math.abs(rect.top + rect.height/2 - window.innerHeight/2);
+        const maxDistance = window.innerHeight/2;
+        
+        if (distanceFromCenter < maxDistance) {
+            // Calculate scale and elevation based on distance from center
+            const scale = 1 + ((maxDistance - distanceFromCenter) / maxDistance) * 0.05;
+            const translateZ = ((maxDistance - distanceFromCenter) / maxDistance) * 10;
+            
+            // Apply transformations
+            item.style.transform = `translateZ(${translateZ}px) scale(${scale})`;
+            item.style.opacity = 0.7 + ((maxDistance - distanceFromCenter) / maxDistance) * 0.3;
+            
+            // Add a selected class to the most centered item
+            if (distanceFromCenter < 50) {
+                item.classList.add('selected');
+            } else {
+                item.classList.remove('selected');
+            }
+        } else {
+            // Reset transformation for items far from center
+            item.style.transform = 'translateZ(5px) scale(1)';
+            item.style.opacity = 0.7;
+            item.classList.remove('selected');
+        }
+    });
+}
+
+function renderListView() {
+    if (!DOM.list) {
+        console.error('List container not found');
+        return;
+    }
+    
+    const distractions = getDistractions();
+    
+    // Create document fragment for better performance
+    const fragment = document.createDocumentFragment();
+    
+    // Create and add filter controls
+    const filterContainer = document.createElement('div');
+    filterContainer.className = 'distraction-filters';
+    filterContainer.innerHTML = `
+        <button class="filter-btn ${currentFilter === FILTERS.ALL ? 'active' : ''}" 
+                data-filter="${FILTERS.ALL}">All</button>
+        <button class="filter-btn ${currentFilter === FILTERS.HIGH ? 'active' : ''}" 
+                data-filter="${FILTERS.HIGH}">High</button>
+        <button class="filter-btn ${currentFilter === FILTERS.NORMAL ? 'active' : ''}" 
+                data-filter="${FILTERS.NORMAL}">Normal</button>
+        <button class="filter-btn ${currentFilter === FILTERS.LOW ? 'active' : ''}" 
+                data-filter="${FILTERS.LOW}">Low</button>
+    `;
+    
+    // Add single event listener using event delegation
+    filterContainer.addEventListener('click', (event) => {
+        const btn = event.target.closest('.filter-btn');
+        if (!btn) return;
+        
+        // Update active class
+        filterContainer.querySelectorAll('.filter-btn').forEach(button => {
+            button.classList.remove('active');
+        });
+        btn.classList.add('active');
+        
+        // Set filter and rerender
+        currentFilter = btn.dataset.filter;
+        applyFilter();
+    });
+    
+    fragment.appendChild(filterContainer);
+    
+    // Create container for items that will be filtered
+    const itemsContainer = document.createElement('div');
+    itemsContainer.className = 'distraction-items-container';
+    itemsContainer.id = 'distraction-items-container';
+    
+    // If no distractions, show empty message
+    if (distractions.length === 0) {
+        const emptyMessage = document.createElement('div');
+        emptyMessage.className = 'no-distractions';
+        emptyMessage.textContent = 'Neural buffer empty...';
+        itemsContainer.appendChild(emptyMessage);
+    } else {
+        // Create all distraction items with index for 3D effect
+        distractions.forEach((distraction, index) => {
+            const item = createDistractionItem(distraction, index);
+            if (item) {
+                // Add animation class to newest item
+                if (index === 0) {
+                    item.classList.add('new-distraction');
+                }
+                
+                itemsContainer.appendChild(item);
+            }
+        });
+    }
+    
+    fragment.appendChild(itemsContainer);
+    
+    // Clear existing list and add the fragment
+    DOM.list.innerHTML = '';
+    DOM.list.appendChild(fragment);
+    
+    // Apply current filter
+    applyFilter();
+    
+    // Add scroll event for 3D perspective effect
+    DOM.list.addEventListener('scroll', updateListPerspective);
+    
+    // Initialize perspective effect
+    requestAnimationFrame(() => {
+        updateListPerspective();
+    });
+}
+
+function applyFilter() {
+    const container = document.getElementById('distraction-items-container');
+    if (!container) return;
+    
+    const distractions = getDistractions();
+    
+    // Get all items
+    const items = container.querySelectorAll('.distraction-item');
+    let visibleCount = 0;
+    
+    // Show/hide based on filter
+    items.forEach(item => {
+        const id = parseInt(item.dataset.id);
+        const distraction = distractions.find(d => d.id === id);
+        
+        if (!distraction) return;
+        
+        if (currentFilter === FILTERS.ALL || distraction.priority === currentFilter) {
+            item.style.display = '';
+            visibleCount++;
+        } else {
+            item.style.display = 'none';
+        }
+    });
+    
+    // If no items visible after filtering, show message
+    if (visibleCount === 0 && distractions.length > 0) {
+        // Remove existing no-match message if it exists
+        const existingMessage = container.querySelector('.no-distractions');
+        if (existingMessage) {
+            existingMessage.remove();
+        }
+        
+        const noMatchMessage = document.createElement('div');
+        noMatchMessage.className = 'no-distractions';
+        noMatchMessage.textContent = 'No distractions match the current filter';
+        container.appendChild(noMatchMessage);
+    }
+}
+
+function setupHoverBehavior() {
+    if (!DOM.container) {
+        console.error('Distraction container not found');
+        return;
+    }
+    
+    // Mouse enter - expand after delay
+    DOM.container.addEventListener('mouseenter', () => {
+        if (collapseTimeout) {
+            clearTimeout(collapseTimeout);
+            collapseTimeout = null;
+        }
+        
+        if (!DOM.container.classList.contains('expanded')) {
+            expandTimeout = setTimeout(() => {
+                DOM.container.classList.add('expanded');
+                if (DOM.container.classList.contains('expanded') && DOM.input) {
+                    DOM.input.focus();
+                }
+            }, 500);
+        }
+    });
+    
+ /*   // Mouse leave - collapse after delay
+    DOM.container.addEventListener('mouseleave', () => {
+        if (expandTimeout) {
+            clearTimeout(expandTimeout);
+            expandTimeout = null;
+        }
+        
+        if (DOM.container.classList.contains('expanded')) {
+            collapseTimeout = setTimeout(() => {
+                DOM.container.classList.remove('expanded');
+            }, 1000);
+        }
+    });*/
+} 
+
+// ===== 3D CAROUSEL IMPLEMENTATION =====
+class DistractionCarousel {
+    constructor() {
+        this.container = null;
+        this.carousel = null;
+        this.prevBtn = null;
+        this.nextBtn = null;
+        this.cards = [];
+        this.currentIndex = 0;
+        this.radius = 250;
+        this.theta = 0;
+        this.touchStartX = 0;
+        this.isInitialized = false;
+        this.rotationDirection = 0; // Track rotation direction for smoother transitions
+        this.scrollThreshold = 0; // To track scroll wheel movement
+    }
+    
+    initialize(container) {
+        if (!container) {
+            console.error('Carousel container is null');
+            return;
+        }
+        
+        this.container = container;
+        this.carousel = container.querySelector('.carousel');
+        
+        if (!this.carousel) {
+            console.error('Carousel element not found');
+            return;
+        }
+        
+        // Set up navigation buttons
+        this.prevBtn = container.querySelector('.prev-btn');
+        this.nextBtn = container.querySelector('.next-btn');
+        
+        if (this.prevBtn && this.nextBtn) {
+            // Bind events
+            this.prevBtn.addEventListener('click', () => this.rotateCarousel('prev'));
+            this.nextBtn.addEventListener('click', () => this.rotateCarousel('next'));
+        }
+        
+        // Add scroll wheel support to the entire carousel container
+        // This ensures interaction works anywhere in the carousel area
+        const carouselContainer = container.querySelector('.carousel-container');
+        if (carouselContainer) {
+            carouselContainer.addEventListener('wheel', (e) => {
+                // Only prevent default and handle scroll if mouse is over the carousel
+                if (this.isMouseOverCarousel(e)) {
+                    e.preventDefault(); // Prevent page scrolling
+                    this.handleScrollWheel(e);
+                }
+            }, { passive: false });
+        }
+        
+        // Add touch/swipe support
+        this.carousel.addEventListener('touchstart', (e) => {
+            this.touchStartX = e.touches[0].clientX;
+        }, { passive: true });
+        
+        this.carousel.addEventListener('touchend', (e) => {
+            const touchEndX = e.changedTouches[0].clientX;
+            const diffX = this.touchStartX - touchEndX;
+            
+            if (Math.abs(diffX) > 50) { // Only register as swipe if movement is significant
+                if (diffX > 0) {
+                    this.rotateCarousel('next');
+                } else {
+                    this.rotateCarousel('prev');
+                }
+            }
+        }, { passive: true });
+        
+        this.isInitialized = true;
+    }
+    
+    // New method to check if mouse is over the carousel
+    isMouseOverCarousel(event) {
+        const carouselContainer = event.currentTarget;
+        const rect = carouselContainer.getBoundingClientRect();
+        
+        return (
+            event.clientX >= rect.left &&
+            event.clientX <= rect.right &&
+            event.clientY >= rect.top &&
+            event.clientY <= rect.bottom
+        );
+    }
+    
+    handleScrollWheel(e) {
+        // Accumulate scroll delta
+        this.scrollThreshold += e.deltaY;
+    
+        // Use a threshold to prevent too-frequent rotations
+        const rotationThreshold = 100; // Adjust this value to control scroll sensitivity
+    
+        if (Math.abs(this.scrollThreshold) >= rotationThreshold) {
+            // Determine rotation direction based on scroll direction
+            const direction = this.scrollThreshold > 0 ? 'next' : 'prev';
+            
+            // Rotate carousel
+            this.rotateCarousel(direction);
+    
+            // Reset scroll threshold
+            this.scrollThreshold = 0;
+        }
+    }
+
+    
+    // Update the carousel with distractions
+    updateCards(distractions) {
+        if (!this.isInitialized || !this.carousel) {
+            console.error('Carousel not initialized');
+            return;
+        }
+        
+        // Only update if the carousel is currently visible
+        const carouselView = this.container.closest('.carousel-view');
+        if (carouselView && !carouselView.classList.contains('active')) {
+            return;
+        }
+        
+        // Clear existing cards
+        this.carousel.innerHTML = '';
+        this.cards = [];
+        
+        // Use document fragment for better performance
+        const fragment = document.createDocumentFragment();
+        
+        // Create a card for each distraction
+        distractions.forEach((distraction) => {
+            const card = this.createCard(distraction);
+            if (card) {
+                fragment.appendChild(card);
+                this.cards.push(card);
+            }
+        });
+        
+        if (this.cards.length === 0) {
+            // If no cards, show a message
+            const emptyMessage = document.createElement('div');
+            emptyMessage.className = 'no-distractions';
+            emptyMessage.textContent = 'Neural buffer empty...';
+            emptyMessage.style.position = 'absolute';
+            emptyMessage.style.top = '50%';
+            emptyMessage.style.left = '50%';
+            emptyMessage.style.transform = 'translate(-50%, -50%)';
+            fragment.appendChild(emptyMessage);
+        } else {
+            // Set carousel parameters based on number of cards
+            this.theta = 360 / this.cards.length;
+            this.radius = Math.max(250, Math.min(400, this.cards.length * 40)); // Adjust radius based on number of cards
+        }
+        
+        // Add all the cards at once
+        this.carousel.appendChild(fragment);
+        
+        // Reset current index
+        this.currentIndex = 0;
+        
+        // Position cards in a circle
+        this.arrangeCards();
+        
+        // Activate the front card
+        this.updateActiveCard();
+    }
+    
+    createCard(distraction) {
+        if (!distraction || !distraction.id) {
+            console.error('Invalid distraction object for card creation');
+            return null;
+        }
+        
+        const card = document.createElement('div');
+        card.className = `distraction-card priority-${distraction.priority} ${distraction.timeframe}`;
+        card.dataset.id = distraction.id;
+        
+        let timeframeName = distraction.timeframe === TIMEFRAMES.NOW ? 'Now' : 
+                          distraction.timeframe === TIMEFRAMES.BREAK ? 'Next Break' :
+                          distraction.timeframe === TIMEFRAMES.LATER ? 'Later Today' : 'Tomorrow';
+        
+        // Format timestamp
+        const timestamp = distraction.timestamp ? new Date(distraction.timestamp) : new Date();
+        const timeStr = formatTimestamp(timestamp);
+        
+        // Create card content with edit capability
+        card.innerHTML = `
+            <div class="timeframe-badge">${timeframeName}</div>
+            <div class="distraction-card-text" contenteditable="false">${escapeHTML(distraction.text)}</div>
+            <div class="distraction-card-footer">
+                <div class="distraction-card-time">${timeStr}</div>
+                <div class="distraction-card-actions">
+                    <button class="distraction-edit tooltip" data-tooltip="Edit Note">✎</button>
+                    <button class="distraction-convert tooltip" data-tooltip="Convert to Mission">⚡</button>
+                    <button class="distraction-delete tooltip" data-tooltip="Delete">×</button>
+                </div>
+            </div>
+        `;
+        
+        // Edit functionality
+        const textElement = card.querySelector('.distraction-card-text');
+        const editButton = card.querySelector('.distraction-edit');
+        
+        // Store original text for cancel functionality
+        let originalText = distraction.text;
+        let isEditing = false;
+    
+        // Function to enter edit mode
+        const enterEditMode = () => {
+            if (isEditing) return;
+            
+            isEditing = true;
+            textElement.contentEditable = true;
+            textElement.focus();
+            textElement.classList.add('editing');
+            
+            // Select all text when entering edit mode
+            const range = document.createRange();
+            range.selectNodeContents(textElement);
+            window.getSelection().removeAllRanges();
+            window.getSelection().addRange(range);
+        };
+    
+        // Function to exit edit mode and save
+        const exitEditMode = (save = true) => {
+            if (!isEditing) return;
+            
+            const newText = textElement.textContent.trim();
+            
+            if (save && newText && newText !== originalText) {
+                // Update the distraction in localStorage
+                updateDistractionProperty(distraction.id, 'text', newText);
+                
+                // Optional: Play a subtle sound to indicate save
+                if (typeof playAddNeuralSound === 'function') {
+                    playAddNeuralSound();
+                }
+                
+                // Update original text
+                originalText = newText;
+            } else if (!save) {
+                // Revert to original text
+                textElement.textContent = originalText;
+            }
+            
+            // Exit edit mode
+            isEditing = false;
+            textElement.contentEditable = false;
+            textElement.classList.remove('editing');
+        };
+    
+        // Edit button click handler
+        editButton.addEventListener('click', enterEditMode);
+    
+        // Add keyboard event listeners
+        textElement.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault(); // Prevent new line
+                exitEditMode(true); // Save changes
+            } else if (e.key === 'Escape') {
+                exitEditMode(false); // Cancel changes
+            }
+        });
+    
+        // Blur event to save changes when focus is lost
+        textElement.addEventListener('blur', () => {
+            if (isEditing) {
+                exitEditMode(true);
+            }
+        });
+        
+        // Add event listeners for other actions
+        card.querySelector('.distraction-convert')?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            convertDistractionToMission(distraction.id, distraction.text);
+        });
+        
+        card.querySelector('.distraction-delete')?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            deleteDistraction(distraction.id);
+        });
+        
+        return card;
+    }
+
+
+    // Enhanced card arrangement with more pronounced 3D effect
+    arrangeCards() {
+        if (!this.cards.length || !this.carousel) return;
+
+        const totalCards = this.cards.length;
+        this.theta = 360 / totalCards;
+        const baseRadius = 250; // Increased radius for better spread
+        const cardSpread = 3; // More aggressive card spread
+
+        requestAnimationFrame(() => {
+            this.cards.forEach((card, index) => {
+                // More dramatic 3D rotation
+                const angle = this.theta * index - (this.currentIndex * this.theta);
+                const radians = angle * Math.PI / 180;
+
+                // Enhanced 3D positioning
+                const x = Math.sin(radians) * baseRadius * cardSpread;
+                const z = Math.cos(radians) * baseRadius;
+                
+                // More pronounced scaling and opacity based on position
+                const frontness = Math.abs(Math.cos(radians));
+                const scale = 1 - (0.3 * (1 - frontness)); // More dramatic scaling
+                const opacity = 0.4 + (0.6 * frontness); // More dramatic opacity
+
+                card.style.transform = `
+                    translate3d(${x}px, 0, ${z}px) 
+                    rotateY(${angle}deg) 
+                    scale(${scale})
+                `;
+                card.style.opacity = opacity;
+                card.style.zIndex = Math.floor(100 * frontness);
+
+                // Highlight active card
+                if (index === this.currentIndex) {
+                    card.classList.add('active');
+                    card.style.transform += ' scale(1.1)'; // Slightly larger active card
+                    card.style.opacity = 1;
+                } else {
+                    card.classList.remove('active');
+                }
+            });
+
+            // Adjust carousel container for better 3D perspective
+            this.carousel.style.transform = `translateZ(-${baseRadius * 1.5}px)`;
+        });
+    }
+
+    // Enhanced rotation method
+    rotateCarousel(direction) {
+        if (this.cards.length <= 1) return;
+
+        // Determine rotation direction
+        this.rotationDirection = direction === 'next' ? 1 : -1;
+
+        // Update current index with wrap-around
+        this.currentIndex = (this.currentIndex + this.rotationDirection + this.cards.length) % this.cards.length;
+
+        // Rearrange cards with smooth transition
+        this.arrangeCards();
+
+        // Play slide sound
+        this.playRotationFeedback();
+    }
+
+   
+    playRotationFeedback() {
+        // Ensure swipeSound is an audio element and exists
+        if (swipeSound && typeof swipeSound.play === 'function') {
+            try {
+                // Reset the sound to the beginning and play
+                swipeSound.currentTime = 0;
+                swipeSound.play().catch(error => {
+                    console.warn('Error playing swipe sound:', error);
+                });
+            } catch (error) {
+                console.warn('Error playing swipe sound:', error);
+            }
+        }
+    }
+
+    // Enhanced touch/swipe handling
+    setupTouchHandling() {
+        let startX = 0;
+        let endX = 0;
+
+        this.carousel.addEventListener('touchstart', (e) => {
+            startX = e.touches[0].clientX;
+        }, { passive: true });
+
+        this.carousel.addEventListener('touchend', (e) => {
+            endX = e.changedTouches[0].clientX;
+            const swipeDistance = startX - endX;
+
+            // More forgiving swipe threshold
+            if (Math.abs(swipeDistance) > 50) {
+                this.rotateCarousel(swipeDistance > 0 ? 'next' : 'prev');
+            }
+        }, { passive: true });
+    }
+    
+    // Update which card is active
+    updateActiveCard() {
+        this.cards.forEach((card, index) => {
+            if (index === this.currentIndex) {
+                card.classList.add('active');
+            } else {
+                card.classList.remove('active');
+            }
+        });
+    }
+}
+  
+// Create singleton carousel instance
+const carouselInstance = new DistractionCarousel();
+
+// Function to update the carousel view
+function updateCarouselView() {
+    // Make sure carousel view exists
+    if (!DOM.carouselView) return;
+    
+    // If this is the active view, update the carousel
+    if (DOM.carouselView.classList.contains('active')) {
+        carouselInstance.updateCards(getDistractions());
+    }
+}
+
+// ===== EVENT LISTENERS =====
+function setupEventListeners() {
+    // Toggle container expansion on header click
+    if (DOM.header) {
+        DOM.header.addEventListener('click', () => {
+            if (DOM.container) {
+                DOM.container.classList.toggle('expanded');
+                if (DOM.container.classList.contains('expanded') && DOM.input) {
+                    DOM.input.focus();
+                }
+            }
+        });
+    }
+
+        // View toggle functionality
+        if (DOM.listViewBtn && DOM.carouselViewBtn && DOM.carouselView && DOM.listView) {
+            DOM.listViewBtn.addEventListener('click', () => {
+                DOM.listViewBtn.classList.add('active');
+                DOM.carouselViewBtn.classList.remove('active');
+                DOM.listView.classList.add('active');
+                DOM.carouselView.classList.remove('active');
+            });
+            
+            DOM.carouselViewBtn.addEventListener('click', () => {
+                DOM.carouselViewBtn.classList.add('active');
+                DOM.listViewBtn.classList.remove('active');
+                DOM.carouselView.classList.add('active');
+                DOM.listView.classList.remove('active');
+                
+                // Update carousel when switched to this view
+                carouselInstance.updateCards(getDistractions());
+            });
+        }
+    
+    // Save distraction on button click
+    if (DOM.saveButton) {
+        DOM.saveButton.addEventListener('click', saveDistraction);
+    }
+    
+    // Save on Enter key
+    if (DOM.input) {
+        DOM.input.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                saveDistraction();
+            }
+        });
+    }
+    
+    // Clear all distractions
+    if (DOM.clearButton) {
+        DOM.clearButton.addEventListener('click', () => {
+            if (confirm('Clear neural buffer? This action cannot be undone.')) {
+                localStorage.removeItem('distractions');
+                distractionsCache = []; // Clear cache
+                refreshUI();
+                if (typeof playResetDataSound === 'function') {
+                    playResetDataSound();
+                }
+            }
+        });
+    }
+    
+    // View toggle functionality (list/carousel)
+    const listViewBtn = document.querySelector('.list-view-btn');
+    const carouselViewBtn = document.querySelector('.carousel-view-btn');
+    
+    if (listViewBtn && carouselViewBtn && DOM.carouselView && DOM.listView) {
+        listViewBtn.addEventListener('click', () => {
+            listViewBtn.classList.add('active');
+            carouselViewBtn.classList.remove('active');
+            DOM.carouselView.classList.remove('active');
+            DOM.listView.classList.add('active');
+        });
+        
+        carouselViewBtn.addEventListener('click', () => {
+            carouselViewBtn.classList.add('active');
+            listViewBtn.classList.remove('active');
+            DOM.carouselView.classList.add('active');
+            DOM.listView.classList.remove('active');
+            
+            // Initialize and update carousel when switched to
+            if (!carouselInstance.isInitialized) {
+                carouselInstance.initialize(DOM.carouselView);
+            }
+            carouselInstance.updateCards(getDistractions());
+        });
+    }
+    
+    // Add keyboard navigation for carousel
+    document.addEventListener('keydown', (e) => {
+        // Skip if input has focus or carousel isn't visible
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+        if (!DOM.carouselView || !DOM.carouselView.classList.contains('active')) return;
+        
+        if (e.key === 'ArrowLeft') carouselInstance.rotateCarousel('prev');
+        if (e.key === 'ArrowRight') carouselInstance.rotateCarousel('next');
+    });
+}
+
+// ===== INITIALIZATION =====
+function createDOMStructure() {
+    // Create main container
+    const container = document.createElement('div');
+    container.id = 'distraction-capture-container';
+    container.className = 'distraction-capture-container';
+    
+    // Create header and input section
+    container.innerHTML = `
+        <div class="distraction-header">
+            <h3>Neural Buffer</h3>
+            <div class="distraction-subtitle">Capture distracting thoughts here</div>
+        </div>
+        <div class="distraction-input-section">
+            <input type="text" id="distractionInput" placeholder="Enter distracting thought...">
+            <button id="saveDistraction">Buffer</button>
+        </div>
+        <div class="view-toggle">
+            <button class="view-btn list-view-btn active">List View</button>
+            <button class="view-btn carousel-view-btn">3D View</button>
+        </div>
+        <div class="view-container">
+            <div class="list-view active" id="distractionsList"></div>
+            <div class="carousel-view">
+                <div class="carousel-container">
+                    <div class="carousel"></div>
+                    <div class="carousel-navigation">
+                        <button class="prev-btn">←</button>
+                        <button class="next-btn">→</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="distraction-footer">
+            <button id="clearAllDistractions">Clear Buffer</button>
+        </div>
+    `;
+    
+    // Find a suitable place to insert the container
+    const targetElement = document.querySelector('.missions-grid');
+    if (targetElement) {
+        targetElement.parentNode.insertBefore(container, targetElement.nextSibling);
+        return container;
+    }
+    
+    // Fallback - append to body
+    document.body.appendChild(container);
+    return container;
 }
 
 
+// Add this to your initDistractionSystem function to initialize the view toggle
+function initDistractionSystem() {
+    // Get existing elements
+    const container = document.getElementById('distraction-capture-container');
+    
+    if (!container) {
+        console.error('Distraction container not found');
+        return;
+    }
+    
+    // Set up DOM references
+    DOM.container = container;
+    DOM.header = container.querySelector('.distraction-header');
+    DOM.input = container.querySelector('#distractionInput');
+    DOM.saveButton = container.querySelector('#saveDistraction');
+    DOM.list = container.querySelector('#distractionsList');
+    DOM.clearButton = container.querySelector('#clearAllDistractions');
+    
+    // Add new view toggle references
+    DOM.viewToggle = container.querySelector('.view-toggle');
+    DOM.listViewBtn = container.querySelector('.list-view-btn');
+    DOM.carouselViewBtn = container.querySelector('.carousel-view-btn');
+    DOM.listView = container.querySelector('.list-view');
+    DOM.carouselView = container.querySelector('.carousel-view');
+    
+    // Set up event listeners
+    setupEventListeners();
+    
+    // Initialize the carousel
+    carouselInstance.initialize(DOM.carouselView);
+    
+    // Render initial list
+    refreshUI();
+    
+    // Set up hover behavior for desktop
+    setupHoverBehavior();
+    
+    console.log('Distraction Capture System initialized');
+}
 
 
+// Initialize when DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+    // Short delay to ensure other scripts have loaded
+    setTimeout(initDistractionSystem, 500);
+});
+
+// Export functions for global access
+window.DistractionSystem = {
+    init: initDistractionSystem,
+    save: saveDistraction,
+    convert: convertDistractionToMission,
+    clear: () => {
+        localStorage.removeItem('distractions');
+        distractionsCache = [];
+        refreshUI();
+    }
+};

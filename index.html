@@ -45,12 +45,56 @@
             <p>Current High Score: <span id="highScore">0</span> XP</p>
         </div>
         <br>
+        <div id="distraction-capture-container" class="distraction-container">
+            <div class="distraction-header">
+                <h2>Neural Buffer <span class="mobile">+</span><span class="widescreen">(click to expand)</span></h2>
+            </div>
+            
+            <!-- Add view toggle buttons here -->
+            <div class="view-toggle">
+                <button class="view-btn list-view-btn active">List View</button>
+                <button class="view-btn carousel-view-btn">3D View</button>
+            </div>
+            
+            <div class="distraction-content">
+                <!-- Create a container for both views -->
+                <div class="view-container">
+                    <!-- List view (initially active) -->
+                    <div class="list-view active" id="distractionsList">
+                        <!-- Distractions will be displayed here -->
+                    </div>
+                    
+                    <!-- 3D Carousel view (initially hidden) -->
+                    <div class="carousel-view">
+                        <div class="carousel-container">
+                            <div class="carousel"></div>
+                            <div class="carousel-navigation">
+                                <button class="prev-btn">←</button>
+                                <button class="next-btn">→</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="distraction-input-wrapper">
+                    <input id="distractionInput" type="text" placeholder="Capture distracting thought...">
+                    <button id="saveDistraction">Store</button>
+                </div>
+                
+                <div class="distraction-controls">
+                    <button id="clearAllDistractions">Clear Buffer</button>
+                </div>
+            </div>
+        </div>
         <br>
         <audio id="completionSound" src="Completion.mp3" preload="auto"></audio>
         <audio id="levelUpSound" src="levelUpSound.mp3" preload="auto"></audio>
         <audio id="resetDataSound" src="eraseSound.mp3" preload="auto"></audio>
         <audio id="addMissionSound" src="addMissionSound.mp3" preload="auto"></audio>
         <audio id="initializingSound" src="initializingSound.mp3" preload="auto"></audio>
+        <audio id="addNeuralSound" src="ui-click-43196.mp3" preload="auto"></audio>
+        <audio id="swipeSound" src="fast-swipe-48158.mp3" preload="auto"></audio>
+
         <div id="motivationalQuoteWidescreen" class="motivational-quote widescreen"></div>
         <div class="missions-grid">
             <div class="grid-item-1">
