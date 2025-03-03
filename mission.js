@@ -1925,7 +1925,7 @@ function setupHoverBehavior() {
         }
     });
     
-   // Mouse leave - collapse after delay
+ /*   // Mouse leave - collapse after delay
     DOM.container.addEventListener('mouseleave', () => {
         if (expandTimeout) {
             clearTimeout(expandTimeout);
@@ -1937,7 +1937,7 @@ function setupHoverBehavior() {
                 DOM.container.classList.remove('expanded');
             }, 1000);
         }
-    });
+    });*/
 } 
 
 // ===== 3D CAROUSEL IMPLEMENTATION =====
@@ -2226,51 +2226,67 @@ class DistractionCarousel {
 
 
     // Enhanced card arrangement with more pronounced 3D effect
-    arrangeCards() {
-        if (!this.cards.length || !this.carousel) return;
+    // Updated arrangeCards() method that preserves original card styling and glow
+// while showing adjacent cards
 
-        const totalCards = this.cards.length;
-        this.theta = 360 / totalCards;
-        const baseRadius = 250; // Increased radius for better spread
-        const cardSpread = 3; // More aggressive card spread
+arrangeCards() {
+    if (!this.cards.length || !this.carousel) return;
 
-        requestAnimationFrame(() => {
-            this.cards.forEach((card, index) => {
-                // More dramatic 3D rotation
-                const angle = this.theta * index - (this.currentIndex * this.theta);
-                const radians = angle * Math.PI / 180;
-
-                // Enhanced 3D positioning
-                const x = Math.sin(radians) * baseRadius * cardSpread;
-                const z = Math.cos(radians) * baseRadius;
-                
-                // More pronounced scaling and opacity based on position
-                const frontness = Math.abs(Math.cos(radians));
-                const scale = 1 - (0.3 * (1 - frontness)); // More dramatic scaling
-                const opacity = 0.4 + (0.6 * frontness); // More dramatic opacity
-
-                card.style.transform = `
-                    translate3d(${x}px, 0, ${z}px) 
-                    rotateY(${angle}deg) 
-                    scale(${scale})
-                `;
-                card.style.opacity = opacity;
-                card.style.zIndex = Math.floor(100 * frontness);
-
-                // Highlight active card
-                if (index === this.currentIndex) {
-                    card.classList.add('active');
-                    card.style.transform += ' scale(1.1)'; // Slightly larger active card
-                    card.style.opacity = 1;
-                } else {
-                    card.classList.remove('active');
-                }
-            });
-
-            // Adjust carousel container for better 3D perspective
-            this.carousel.style.transform = `translateZ(-${baseRadius * 1.5}px)`;
+    const totalCards = this.cards.length;
+    this.theta = 360 / totalCards;
+    
+    // Use a smaller offset to keep cards closer together
+    const cardOffset = 60; // Horizontal distance between cards
+    
+    requestAnimationFrame(() => {
+        this.cards.forEach((card, index) => {
+            // Calculate position relative to current card
+            const indexDiff = index - this.currentIndex;
+            
+            // Handle wrap-around for a circular carousel
+            const wrappedDiff = indexDiff < -Math.floor(totalCards/2) ? 
+                indexDiff + totalCards : 
+                (indexDiff > Math.floor(totalCards/2) ? indexDiff - totalCards : indexDiff);
+            
+            // Calculate horizontal position based on distance from current card
+            const xPos = wrappedDiff * cardOffset;
+            
+            // Calculate z-index and opacity based on distance from current
+            const distance = Math.abs(wrappedDiff);
+            const zIndex = 100 - distance * 10;
+            
+            // Ensure center card is fully opaque (1)
+            // and side cards are more transparent (max 0.7)
+            const opacity = distance === 0 ? 1 : Math.max(0.3, 0.7 - (distance * 0.15));
+            
+            // Scale down cards that aren't current
+            const scale = distance === 0 ? 1 : 0.85 - (distance * 0.05);
+            
+            // Apply rotation for a subtle 3D effect
+            const rotation = wrappedDiff * 5; // Degrees
+            
+            // Apply all transformations
+            card.style.transform = `
+                translateX(${xPos}px)
+                translateZ(${-distance * 20}px)
+                rotateY(${rotation}deg)
+                scale(${scale})
+            `;
+            
+            // Set opacity and z-index
+            card.style.opacity = opacity;
+            card.style.zIndex = zIndex;
+            
+            // Add/remove active class without manually changing box-shadow
+            // This preserves your original styling/glow from CSS
+            if (index === this.currentIndex) {
+                card.classList.add('active');
+            } else {
+                card.classList.remove('active');
+            }
         });
-    }
+    });
+}
 
     // Enhanced rotation method
     rotateCarousel(direction) {
