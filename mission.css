@@ -1838,7 +1838,7 @@ svg.minimalist-face {
 
 .distraction-header {
   padding: 10px 15px;
-  background-color: rgba(0, 0, 0, 0.349);
+  background-color: rgba(0, 0, 0, 0.112);
   border-bottom: 1px solid rgba(134, 223, 255, 0.3);
   cursor: pointer;
   transition: background-color 0.2s ease;

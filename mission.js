@@ -1729,11 +1729,11 @@ function incrementalUIUpdate(newDistraction) {
 
 // Function to refresh all UI components
 function refreshUI() {
-    renderListView(); // Update the list view
-    
-    // Only update carousel if it's currently visible
-    if (DOM.carouselView && DOM.carouselView.classList.contains('active')) {
+    // Update both views, but maintain the current view's state
+    if (DOM.carouselView.classList.contains('active')) {
         updateCarouselView();
+    } else {
+        renderListView();
     }
 }
 
@@ -2365,26 +2365,28 @@ function setupEventListeners() {
         });
     }
 
-        // View toggle functionality
-        if (DOM.listViewBtn && DOM.carouselViewBtn && DOM.carouselView && DOM.listView) {
-            DOM.listViewBtn.addEventListener('click', () => {
-                DOM.listViewBtn.classList.add('active');
-                DOM.carouselViewBtn.classList.remove('active');
-                DOM.listView.classList.add('active');
-                DOM.carouselView.classList.remove('active');
-            });
+    if (DOM.listViewBtn && DOM.carouselViewBtn && DOM.carouselView && DOM.listView) {
+        DOM.listViewBtn.addEventListener('click', () => {
+            DOM.listViewBtn.classList.add('active');
+            DOM.carouselViewBtn.classList.remove('active');
+            DOM.carouselView.classList.remove('active');
+            DOM.listView.classList.add('active');
             
-            DOM.carouselViewBtn.addEventListener('click', () => {
-                DOM.carouselViewBtn.classList.add('active');
-                DOM.listViewBtn.classList.remove('active');
-                DOM.carouselView.classList.add('active');
-                DOM.listView.classList.remove('active');
-                
-                // Update carousel when switched to this view
-                carouselInstance.updateCards(getDistractions());
-            });
-        }
-    
+            // Render list view
+            renderListView();
+        });
+        
+        DOM.carouselViewBtn.addEventListener('click', () => {
+            DOM.carouselViewBtn.classList.add('active');
+            DOM.listViewBtn.classList.remove('active');
+            DOM.carouselView.classList.add('active');
+            DOM.listView.classList.remove('active');
+            
+            // Update carousel when switched to
+            carouselInstance.updateCards(getDistractions());
+        });
+    }
+
     // Save distraction on button click
     if (DOM.saveButton) {
         DOM.saveButton.addEventListener('click', saveDistraction);
@@ -2467,26 +2469,23 @@ function createDOMStructure() {
             <input type="text" id="distractionInput" placeholder="Enter distracting thought...">
             <button id="saveDistraction">Buffer</button>
         </div>
-        <div class="view-toggle">
-            <button class="view-btn list-view-btn active">List View</button>
-            <button class="view-btn carousel-view-btn">3D View</button>
-        </div>
-        <div class="view-container">
-            <div class="list-view active" id="distractionsList"></div>
-            <div class="carousel-view">
-                <div class="carousel-container">
-                    <div class="carousel"></div>
-                    <div class="carousel-navigation">
-                        <button class="prev-btn">←</button>
-                        <button class="next-btn">→</button>
-                    </div>
+           <div class="view-toggle">
+        <button class="view-btn list-view-btn">List View</button>
+        <button class="view-btn carousel-view-btn active">3D View</button>
+    </div>
+    <div class="view-container">
+        <div class="list-view" id="distractionsList"></div>
+        <div class="carousel-view active">
+            <div class="carousel-container">
+                <div class="carousel"></div>
+                <div class="carousel-navigation">
+                    <button class="prev-btn">←</button>
+                    <button class="next-btn">→</button>
                 </div>
             </div>
         </div>
-        <div class="distraction-footer">
-            <button id="clearAllDistractions">Clear Buffer</button>
-        </div>
-    `;
+    </div>
+`;
     
     // Find a suitable place to insert the container
     const targetElement = document.querySelector('.missions-grid');
@@ -2529,17 +2528,23 @@ function initDistractionSystem() {
     // Set up event listeners
     setupEventListeners();
     
-    // Initialize the carousel
-    carouselInstance.initialize(DOM.carouselView);
+      // Initialize the carousel
+      carouselInstance.initialize(DOM.carouselView);
     
-    // Render initial list
-    refreshUI();
-    
-    // Set up hover behavior for desktop
-    setupHoverBehavior();
-    
-    console.log('Distraction Capture System initialized');
-}
+      // Render initial view as 3D Carousel
+      carouselInstance.updateCards(getDistractions());
+      
+      // Ensure carousel view is active
+      DOM.listView.classList.remove('active');
+      DOM.carouselView.classList.add('active');
+      DOM.listViewBtn.classList.remove('active');
+      DOM.carouselViewBtn.classList.add('active');
+      
+      // Set up hover behavior for desktop
+      setupHoverBehavior();
+      
+      console.log('Distraction Capture System initialized');
+  }
 
 
 // Initialize when DOM is ready
