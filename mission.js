@@ -1925,7 +1925,7 @@ function setupHoverBehavior() {
         }
     });
     
-    // Mouse leave - collapse after delay
+   // Mouse leave - collapse after delay
     DOM.container.addEventListener('mouseleave', () => {
         if (expandTimeout) {
             clearTimeout(expandTimeout);
@@ -2306,20 +2306,26 @@ arrangeCards() {
     }
 
    
-    playRotationFeedback() {
-        // Ensure swipeSound is an audio element and exists
-        if (swipeSound && typeof swipeSound.play === 'function') {
-            try {
-                // Reset the sound to the beginning and play
-                swipeSound.currentTime = 0;
-                swipeSound.play().catch(error => {
-                    console.warn('Error playing swipe sound:', error);
-                });
-            } catch (error) {
+playRotationFeedback() {
+    // Ensure swipeSound is an audio element and exists
+    if (swipeSound && typeof swipeSound.play === 'function') {
+        try {
+            // Reset the sound to the beginning
+            swipeSound.currentTime = 0;
+            
+            // Set the volume to a lower level (0.3 = 30% volume)
+            // You can adjust this value between 0.0 (silent) and 1.0 (full volume)
+            swipeSound.volume = 0.4;
+            
+            // Play the sound
+            swipeSound.play().catch(error => {
                 console.warn('Error playing swipe sound:', error);
-            }
+            });
+        } catch (error) {
+            console.warn('Error playing swipe sound:', error);
         }
     }
+}
 
     // Enhanced touch/swipe handling
     setupTouchHandling() {
