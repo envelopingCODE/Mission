@@ -138,7 +138,6 @@ const CuteRobotFace = ({
 
 //################## SECTION 2: State and Hooks ##################
 const [isBlinking, setIsBlinking] = React.useState(false);
-const faceWrapperRef = React.useRef(null);
 const [currentEmotion, setCurrentEmotion] = React.useState('curious');
 const [eyePosition, setEyePosition] = React.useState({ x: 0, y: 0 });
 const [isTracking, setIsTracking] = React.useState(false);
@@ -152,6 +151,7 @@ const [glitchOffset, setGlitchOffset] = React.useState({ x: 0, y: 0 });
 const [isHovered, setIsHovered] = React.useState(false);
 const [glowIntensity, setGlowIntensity] = React.useState(1);
 const previousEmotionRef = React.useRef('');
+
 
 // In your component after initial mounting
 React.useEffect(() => {
@@ -473,37 +473,42 @@ React.useEffect(() => {
   };
 }, []);
 
-React.useEffect(() => {
-  if (isHovered) {
-    // Trigger special animation when hovered
-    setPupilSize(1.4);
-    if (Math.random() > 0.7) {
-      // 30% chance to change expression when hovered
-      const hoverEmotions = ['curious', 'playful', 'excited'];
-      setCurrentEmotion(hoverEmotions[Math.floor(Math.random() * hoverEmotions.length)]);
-    }
-  } else {
-    // Reset after hover ends if no other emotion is active
-    setPupilSize(1);
-  }
-}, [isHovered]);
-
 // Enhanced task completion animation using CraftedMotion timeline
 React.useEffect(() => {
   if (isTaskCompleted && window.CraftedMotion && window.CraftedMotion.timeline) {
-    const timeline = window.CraftedMotion.timeline({
-      duration: 0.5,
-      ease: 'backOut'
-    });
+    // Check if elements exist before creating the timeline
+    const leftEye = document.getElementById('left-eye');
+    const rightEye = document.getElementById('right-eye');
+    const robotMouth = document.getElementById('robot-mouth');
     
-    // Set up the sequence of animations
-    timeline
-    .add('#left-eye', { scaleY: 1.2, scaleX: 1 }, { duration: 0.3 })
-    .add('#right-eye', { scaleY: 1.2, scaleX: 1 }, { at: 0, duration: 0.3 })
-    .add('#robot-mouth', { d: expressions[currentEmotion].mouth }, { at: 0.1 })
-    .add(['#left-eye', '#right-eye'], { scaleY: 1, scaleX: 1 }, { at: 0.4 });
-    // Play the timeline
-    timeline.play();
+    if (!leftEye || !rightEye || !robotMouth) {
+      console.warn('Animation elements not found in DOM');
+      return;
+    }
+    
+    try {
+      const timeline = window.CraftedMotion.timeline({
+        duration: 0.5,
+        ease: 'backOut'
+      });
+      
+      // Set up the sequence of animations
+      timeline
+      .add('#left-eye', { scaleY: 1.2, scaleX: 1 }, { duration: 0.3 })
+      .add('#right-eye', { scaleY: 1.2, scaleX: 1 }, { at: 0, duration: 0.3 });
+      
+      // Only add mouth animation if the element has a 'd' attribute
+      if (robotMouth.getAttribute('d')) {
+        timeline.add('#robot-mouth', { d: expressions[currentEmotion].mouth }, { at: 0.1 });
+      }
+      
+      timeline.add(['#left-eye', '#right-eye'], { scaleY: 1, scaleX: 1 }, { at: 0.4 });
+      
+      // Play the timeline with error handling
+      timeline.play();
+    } catch (error) {
+      console.warn('Error in animation timeline:', error);
+    }
   }
 }, [isTaskCompleted, currentEmotion]);
 
@@ -788,6 +793,8 @@ React.useEffect(() => {
     return () => clearInterval(glitchInterval);
   }
 }, [currentExpression]);
+
+
 
 //################## SECTION 5: Expressions Configuration ##################
 const expressions = {
@@ -1681,7 +1688,195 @@ const CyberpunkInterface = () => {
   }, []);
 
   
- 
+React.useEffect(() => {
+  // Create a function to handle task completion and notify React component
+  window.notifyTaskCompletion = (taskDetails) => {
+    // Create and dispatch a custom event with the task details
+    const event = new CustomEvent('taskCompleted', { detail: taskDetails });
+    document.dispatchEvent(event);
+    
+    // This will also trigger setIsTaskCompleted for the robot face animation
+    setIsTaskCompleted(true);
+    setTimeout(() => setIsTaskCompleted(false), 2000);
+  };
+  
+  return () => {
+    // Clean up the global reference when component unmounts
+    delete window.notifyTaskCompletion;
+  };
+}, []);
+
+//################## SECTION N: Achievement Notification System ##################
+const UnifiedNotificationOverlay = React.memo(({ 
+  motivationalMessage = '', 
+  isMotivationalVisible = false,
+  taskCompletionLevel = 0, 
+  currentLevel = 1 
+}) => {
+  const [currentMessage, setCurrentMessage] = React.useState('');
+  const [isDisplaying, setIsDisplaying] = React.useState(false);
+  const [queue, setQueue] = React.useState([]);
+  const processedTaskIdsRef = React.useRef(new Set());
+  const [bubbleVisibility, setBubbleVisibility] = React.useState(false);
+
+  // Comprehensive message generation function
+  const generateMessage = React.useCallback((task) => {
+    // Detailed message templates based on priority and context
+    const messageTemplates = {
+      high: [
+        `🚀 High-Priority Mission Accomplished: "${task.title}"!`,
+        `💥 Critical Task Crushed: "${task.title}"!`,
+        `🏆 Top-Tier Objective Completed: "${task.title}"!`,
+        `⚡ Breakthrough Achievement: "${task.title}"!`
+      ],
+      medium: [
+        `✅ Solid Progress: "${task.title}" Completed!`,
+        `🌟 Mission Milestone: "${task.title}" Conquered!`,
+        `👍 Steady Win: "${task.title}" Finished!`,
+        `🔋 Productive Moment: "${task.title}" Done!`
+      ],
+      low: [
+        `🍃 Gentle Progress: "${task.title}" Completed`,
+        `🌱 Small Step Forward: "${task.title}" Finished`,
+        `🌈 Steady Improvement: "${task.title}" Done`,
+        `📌 Task Cleared: "${task.title}"`
+      ],
+      normal: [
+        `🎉 Mission Accomplished: "${task.title}"!`,
+        `✨ Task Completed: "${task.title}"!`,
+        `🚀 You Did It: "${task.title}" is Finished!`,
+        `💯 Another Task Down: "${task.title}" Completed!`
+      ]
+    };
+
+    // Select appropriate template set based on priority
+    const templates = messageTemplates[task.priority] || messageTemplates.normal;
+    
+    // Return a random message from the set
+    return templates[Math.floor(Math.random() * templates.length)];
+  }, []);
+  
+  // Listen for task completion events
+  React.useEffect(() => {
+    const handleTaskCompletedEvent = (e) => {
+      const task = e.detail;
+      
+      // Validate task and prevent duplicate notifications
+      if (!task || !task.id || processedTaskIdsRef.current.has(task.id)) {
+        return;
+      }
+      
+      // Generate message
+      const message = generateMessage(task);
+      
+      // Add to queue and mark as processed
+      setQueue(prev => [...prev, { message, id: task.id }]);
+      processedTaskIdsRef.current.add(task.id);
+    };
+    
+    // Add the event listener
+    document.addEventListener('taskCompleted', handleTaskCompletedEvent);
+    
+    // Cleanup on unmount
+    return () => {
+      document.removeEventListener('taskCompleted', handleTaskCompletedEvent);
+    };
+  }, [generateMessage]); 
+  
+  // Process the queue
+  React.useEffect(() => {
+    // If we're not displaying a message and we have messages in queue
+    if (!isDisplaying && queue.length > 0) {
+      // Display the first message
+      const { message, id } = queue[0];
+      setCurrentMessage(message);
+      setIsDisplaying(true);
+      setBubbleVisibility(true);
+      
+      // Remove the message from queue after display time
+      const timer = setTimeout(() => {
+        setIsDisplaying(false);
+        setBubbleVisibility(false);
+        setQueue(prev => prev.slice(1));
+        processedTaskIdsRef.current.delete(id);
+      }, 5000); // 5 seconds display time
+      
+      return () => clearTimeout(timer);
+    }
+  }, [isDisplaying, queue]);
+
+  // Monitor for motivational messages as well
+  React.useEffect(() => {
+    if (isMotivationalVisible && motivationalMessage) {
+      console.log("Showing motivational message:", motivationalMessage);
+      setCurrentMessage(motivationalMessage);
+      setIsDisplaying(true);
+      setBubbleVisibility(true);
+      
+      const timer = setTimeout(() => {
+        setIsDisplaying(false);
+        setBubbleVisibility(false);
+      }, 5000); // 5 seconds display time
+      
+      return () => clearTimeout(timer);
+    }
+  }, [isMotivationalVisible, motivationalMessage]);
+
+  // Fallback render
+  return (
+    <div className="chat-bubble-container">
+      <div 
+        className={`chat-bubble ${bubbleVisibility ? 'visible' : ''}`}
+      >
+        {currentMessage}
+      </div>
+    </div>
+  );
+});
+
+
+
+
+// Add a function to handle task completion notifications
+// This should be placed in the CyberpunkInterface component:
+
+React.useEffect(() => {
+  // Create a function to handle task completion and notify React component
+  window.notifyTaskCompletion = (taskDetails) => {
+    // Create and dispatch a custom event with the task details
+    const event = new CustomEvent('taskCompleted', { detail: taskDetails });
+    document.dispatchEvent(event);
+    
+    // This will also trigger setIsTaskCompleted for the robot face animation
+    setIsTaskCompleted(true);
+    setTimeout(() => setIsTaskCompleted(false), 2000);
+  };
+  
+  return () => {
+    // Clean up the global reference when component unmounts
+    delete window.notifyTaskCompletion;
+  };
+}, []);
+
+// Place this inside the return statement of CyberpunkInterface, 
+// replacing the existing UnifiedNotificationOverlay component:
+
+<div className="minimalist-face-wrapper w-32 h-32 relative">
+  <CuteRobotFace 
+    taskCompletionLevel={taskCompletionLevel}
+    currentLevel={currentLevel}
+    isTaskCompleted={isTaskCompleted}
+  />
+  
+  <UnifiedNotificationOverlay 
+    motivationalMessage={motivationalMessage}
+    isMotivationalVisible={showMessage}
+    taskCompletionLevel={taskCompletionLevel}
+    currentLevel={currentLevel}
+  />
+</div>
+
+
   //################## SECTION 8: Interface Effects ##################
   React.useEffect(() => {
     const intervals = [];
@@ -1801,26 +1996,30 @@ const CyberpunkInterface = () => {
       </div>
   
       <AnimatedDiv 
-        className="robot-companion-container flex flex-col items-center mt-4 relative"
-        initial={motion ? { y: 20, opacity: 0 } : undefined}
-        animate={motion ? { y: 0, opacity: 1 } : undefined}
-        style={!motion ? {
-          opacity: 1,
-          transform: 'translateY(0)',
-          transition: 'opacity 0.5s ease, transform 0.5s ease'
-        } : undefined}
-      >
-        <div className="minimalist-face-wrapper w-32 h-32 relative">
-          <CuteRobotFace 
-            taskCompletionLevel={taskCompletionLevel}
-            currentLevel={currentLevel}
-            isTaskCompleted={isTaskCompleted}
-          />
-          <MotivationalOverlay 
-            message={motivationalMessage}
-            isVisible={showMessage}
-          />
-        </div>
+  className="robot-companion-container flex flex-col items-center mt-4 relative"
+  initial={motion ? { y: 20, opacity: 0 } : undefined}
+  animate={motion ? { y: 0, opacity: 1 } : undefined}
+  style={!motion ? {
+    opacity: 1,
+    transform: 'translateY(0)',
+    transition: 'opacity 0.5s ease, transform 0.5s ease'
+  } : undefined}
+>
+  <div className="minimalist-face-wrapper w-32 h-32 relative">
+    <CuteRobotFace 
+      taskCompletionLevel={taskCompletionLevel}
+      currentLevel={currentLevel}
+      isTaskCompleted={isTaskCompleted}
+    />
+    
+    <UnifiedNotificationOverlay 
+      motivationalMessage={motivationalMessage}
+      isMotivationalVisible={showMessage}
+      taskCompletionLevel={taskCompletionLevel}
+      currentLevel={currentLevel}
+    />
+  </div>
+
       </AnimatedDiv>
        
       <div 

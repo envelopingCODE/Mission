@@ -264,15 +264,15 @@ body {
 
 
 
-
 .robot-companion-container {
   margin-top: 0;
-  margin-bottom: 0;
+  margin-bottom: 0; /* Remove bottom margin */
   display: flex;
   justify-content: center;
   align-items: center;
-  max-width: 360px;
-  margin: auto;
+  max-width: none; /* Remove max-width constraint */
+  width: 100%; /* Allow full width */
+  position: relative; /* Ensure absolute positioning works correctly */
 }
 
 .minimalist-face-wrapper {
@@ -971,28 +971,6 @@ input[type="text"] {
 
 
 
-
-.cyber-container {
-    background: rgba(0, 0, 0, 0.83);
-    border: 1px solid rgba(0, 255, 255, 0.1);
-    padding: 1.5rem;
-    color: #00ffd5;
-    font-family: 'Courier New', monospace;
-    position: relative;
-    overflow: hidden;
-    margin: 1rem 0;
-    margin-bottom: 0%;
-    padding-bottom: 0px;
-    max-height: 300px;
-    box-shadow: 0 0 20px rgba(0, 255, 255, 0.1);
-  }
-  
-  .cyber-header {
-    position: relative;
-    margin-bottom: 2rem;
-    padding-bottom: 1rem;
-    /*border-bottom: 1px solid rgba(0, 255, 255, 0.1); */
-  }
   
   .cyber-line {
     position: absolute;
@@ -3330,3 +3308,123 @@ svg.minimalist-face {
   background: rgba(255, 85, 85, 0.2);
   color: #ff5555;
 }
+
+
+
+
+/* Achievement Notifcation SECTION 7 */
+/* Chat bubble animations */
+/* Enhanced Chat Bubble Styles */
+.robot-companion-container {
+  position: relative;
+  height: 100%;
+  width: 100%;
+}
+.chat-bubble-container {
+  position: absolute;
+  bottom: -2rem; /* Adjust this value to position just below the avatar */
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;}
+
+  
+
+.cyber-container {
+  background: rgba(0, 0, 0, 0.83);
+  border: 1px solid rgba(0, 255, 255, 0.1);
+  padding: 1.5rem;
+  color: #00ffd5;
+  font-family: 'Courier New', monospace;
+  position: relative;
+  overflow: visible;
+  margin: 1rem 0;
+  margin-bottom: 0%;
+  padding-bottom: 10px;
+  max-height: 360px;
+  box-shadow: 0 0 20px rgba(0, 255, 255, 0.1);
+}
+
+.cyber-header {
+  position: relative;
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  /*border-bottom: 1px solid rgba(0, 255, 255, 0.1); */
+}
+
+  .robot-companion-container {
+      top:60px;
+  position: relative;
+  width: 100%;
+  max-width: 360px;
+  margin: auto;
+  z-index: 10; /* Ensure it's above other elements */
+}
+
+.minimalist-face-wrapper {
+  width: 100%;
+  margin: auto;
+  position: relative;
+  padding-bottom:90px;
+  
+}
+
+.chat-bubble-container {
+  position: fixed; /* Changed from absolute to fixed */
+  bottom: 60px; /* Adjust based on your specific layout */
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 250px;
+  z-index: 5; /* Below the robot but above other elements */
+  pointer-events: none;
+}
+
+
+
+
+.chat-bubble {
+  background-color: #007AFF; /* Classic iPhone blue */
+  color: white;
+  padding: 10px 15px;
+  border-radius: 18px;
+  font-size: 14px;
+  text-align: center;
+  position: relative;
+  line-height: 1.4;
+  word-wrap: break-word;
+  max-width: 100%;
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+  display: none;
+  box-shadow: 0 4px 10px rgba(0, 122, 255, 0.3); /* Subtle shadow */
+}
+
+.chat-bubble.visible {
+  opacity: 1;
+  transform: translateY(0);
+  display: block;
+}
+
+/* Chat bubble triangle/pointer */
+.chat-bubble::after {
+  content: '';
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 10px solid transparent;
+  border-right: 10px solid transparent;
+  border-bottom: 10px solid #007AFF;
+}
+
+
+
+.chat-bubble.visible {
+  animation: 
+    bubblePulse 1s ease-in-out infinite;
+}
+
+

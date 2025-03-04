@@ -94,36 +94,73 @@ xpMeterEl.addEventListener('click', clearXP);
 missionButtonEl.addEventListener('mouseup', clearTextField);         // Clear the text field when the button is released
 resetButtonEl.addEventListener('click', clearData);                 // Clear all data when the reset button is clicked
 inputEl.addEventListener('keyup', debounce(minimumInput, 200));     // Check the input length after every key press. Now with debounce
-
-
+// Task Completion Notification System
 function sanitizeInput(input) {
     return input.trim().replace(/<[^>]*>?/gm, ''); // Trim and sanitize input
 }
 
-const motivationalMessages = [  
-    "Great Job! 🎉", "Way to go! 👍", "You deserve a small break soon! ☕", 
-    "Excellent! 🌟", "You'll be done in no time! ⏳", "Success! 🏆", 
-    "You're unstoppable! 🚀", "Yay! 🎊", "Keep up the great work! 💪", 
-    "You're doing amazing! 🌈", "Almost there, keep pushing! 💪", 
-    "Fantastic effort! 👏", "You're on the right track! 🛤️", 
-    "Stay focused, you're doing great! 🧠", "Believe in yourself! 🌠", 
-    "You're capable of amazing things! 🏅", "Keep the momentum going! 🔄", 
-    "You're making a difference! 🌍", "One step at a time! 👣", 
+// Motivational messages array
+window.motivationalMessages = [  
+    "Great Job! 🎉", "Way to go! 👍", "You deserve a small break soon! ☕",
+    "Excellent! 🌟", "You'll be done in no time! ⏳", "Success! 🏆",
+    "You're unstoppable! 🚀", "Yay! 🎊", "Keep up the great work! 💪",
+    "You're doing amazing! 🌈", "Almost there, keep pushing! 💪",
+    "Fantastic effort! 👏", "You're on the right track! 🛤️",
+    "Stay focused, you're doing great! 🧠", "Believe in yourself! 🌠",
+    "You're capable of amazing things! 🏅", "Keep the momentum going! 🔄",
+    "You're making a difference! 🌍", "One step at a time! 👣",
     "Stay positive and keep going! 😊", "You got this! ✊"
-]; // List of motivational messages to display
+];
 
+// Task Completion Display Function
 function displayRandomMessage() {
-    const randomMessage = motivationalMessages[Math.floor(Math.random() * motivationalMessages.length)]; // Select a random message
-    const messageElement = document.createElement("div"); // Create a new div element
-    messageElement.textContent = randomMessage; // Set the text content of the div to the random message
-    messageElement.classList.add("motivational-message"); // Add a class to the div for styling
-
-    document.body.appendChild(messageElement); // Add the div to the body
-
-    setTimeout(() => {
-        messageElement.remove(); // Remove the div after 3 seconds
-    }, 3000);
+    const randomMessage = window.motivationalMessages[
+        Math.floor(Math.random() * window.motivationalMessages.length)
+    ];
+   
+    // If we have the React notification system available, use it
+    if (typeof window.notifyTaskCompletion === 'function') {
+        // Create a task-like object for the motivational message
+        const motivationalTask = {
+            id: 'motivational-' + Date.now(),
+            title: randomMessage,
+            priority: 'normal',
+            completedAt: new Date().toISOString()
+        };
+       
+        // Send to React component
+        window.notifyTaskCompletion(motivationalTask);
+    } else {
+        // Fallback to the original DOM-based display method
+        const messageElement = document.createElement("div");
+        messageElement.textContent = randomMessage;
+        messageElement.classList.add("motivational-message");
+        document.body.appendChild(messageElement);
+        setTimeout(() => {
+            messageElement.remove();
+        }, 3000);
+    }
 }
+
+// Global task completion notification function
+window.notifyTaskCompletion = (taskDetails) => {
+    // Sanitize input to prevent XSS
+    const sanitizedTask = {
+        id: sanitizeInput(taskDetails.id || 'unknown-task'),
+        title: sanitizeInput(taskDetails.title || 'Completed Task'),
+        priority: ['high', 'medium', 'low', 'normal'].includes(taskDetails.priority) 
+            ? taskDetails.priority 
+            : 'normal',
+        completedAt: taskDetails.completedAt || new Date().toISOString()
+    };
+
+    // Create and dispatch a custom event with the task details
+    const event = new CustomEvent('taskCompleted', { detail: sanitizedTask });
+    document.dispatchEvent(event);
+};
+
+// Expose display function globally if needed
+window.displayRandomMessage = displayRandomMessage;
 
 
 // Function to smoothly scroll to the XP meter
@@ -136,15 +173,81 @@ function scrollToXPMeter() {
 }
 
 // Modify the mission click event listener in the loadMissions and addMission functions
+
+
+// Keep track of recently notified task IDs to prevent duplicate notifications
+const recentlyNotifiedTasks = new Set();
+
+
 function createMissionClickHandler(element) {
     element.addEventListener('click', function(e) {
+        // Stop event propagation to prevent multiple triggers
+        e.stopPropagation();
+        
         const xp = parseInt(e.target.dataset.xp);
+        
+        // Create a unique ID for this task
+        const taskId = Date.now();
+        
+        // Check if we've already processed this element
+        if (element.dataset.processed === "true") {
+            console.log("Task already processed, preventing duplicate handling");
+            return;
+        }
+        
+        // Mark this element as processed
+        element.dataset.processed = "true";
+        
+        // Extract mission text (everything before the XP value)
+        const missionText = e.target.innerText.split(' — ')[0].trim();
+        
+        // Get prefix class to determine priority
+        const prefixSpan = e.target.querySelector('span');
+        const priority = prefixSpan ? 
+                       (prefixSpan.className.includes('prefix-1') ? 'high' : 
+                        prefixSpan.className.includes('prefix-2') ? 'medium' : 
+                        prefixSpan.className.includes('prefix-3') ? 'low' : 'normal') 
+                       : 'normal';
+        
+        // Create task object
+        const taskDetails = {
+            id: taskId,
+            title: missionText,
+            xp: xp,
+            priority: priority,
+            completedAt: new Date().toISOString()
+        };
+        
+        // Check if we've already notified for this task
+        if (recentlyNotifiedTasks.has(missionText)) {
+            console.log("Already notified for this task, skipping duplicate notification");
+        } else {
+            // Add to recently notified tasks
+            recentlyNotifiedTasks.add(missionText);
+            
+            // Clear this task from the set after some time to prevent memory leaks
+            setTimeout(() => {
+                recentlyNotifiedTasks.delete(missionText);
+            }, 30000); // 30 seconds
+            
+            // Notify the React component about task completion if the function exists
+            if (typeof window.notifyTaskCompletion === 'function') {
+                try {
+                    console.log("Notifying completion of task:", taskDetails);
+                    window.notifyTaskCompletion(taskDetails);
+                } catch (error) {
+                    console.error("Error notifying task completion:", error);
+                }
+            }
+        }
+        
+        // Continue with original functionality
         addXp(xp);
         e.target.remove();
         saveMissions();
         displayRandomMessage();
         playCompletionSound();
-        scrollToXPMeter(); // Add scroll to XP meter when mission is completed
+        scrollToXPMeter();
     });
 }
 
@@ -1925,7 +2028,7 @@ function setupHoverBehavior() {
         }
     });
     
-   // Mouse leave - collapse after delay
+ /*   // Mouse leave - collapse after delay
     DOM.container.addEventListener('mouseleave', () => {
         if (expandTimeout) {
             clearTimeout(expandTimeout);
@@ -1937,7 +2040,7 @@ function setupHoverBehavior() {
                 DOM.container.classList.remove('expanded');
             }, 1000);
         }
-    });
+    });*/
 } 
 
 // ===== 3D CAROUSEL IMPLEMENTATION =====
