@@ -473,6 +473,23 @@ React.useEffect(() => {
   };
 }, []);
 
+
+
+React.useEffect(() => {
+  if (isHovered) {
+    // Trigger special animation when hovered
+    setPupilSize(1.4);
+    if (Math.random() > 0.7) {
+      // 30% chance to change expression when hovered
+      const hoverEmotions = ['curious', 'playful', 'excited'];
+      setCurrentEmotion(hoverEmotions[Math.floor(Math.random() * hoverEmotions.length)]);
+    }
+  } else {
+    // Reset after hover ends if no other emotion is active
+    setPupilSize(1);
+  }
+}, [isHovered]);
+
 // Enhanced task completion animation using CraftedMotion timeline
 React.useEffect(() => {
   if (isTaskCompleted && window.CraftedMotion && window.CraftedMotion.timeline) {
