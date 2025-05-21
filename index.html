@@ -1,115 +1,141 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
+  <head>
     <!-- Load React first -->
     <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
     <script src="libs/crafted-motion.js"></script>
 
-        <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" type="text/css" href="mission.css">
-    
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" type="text/css" href="mission.css" />
+
     <title>Mission — Gamify your tasks</title>
-</head>
-<body>
+  </head>
+  <body>
     <!-- Add the blur overlay -->
     <div class="blur-overlay"></div>
-    
+
     <!-- Wrap all content in a main content container -->
     <div class="content container">
-        <div class="container2">
-            <h1 class="widescreen">Objectives for today:</h1>
-            <h1 class="mobile">Ops. for today:</h1>
-                <!-- To this: -->
-            <label id="label1" for="addMission">Add objectives:</label>
-            <div class="input-wrapper">
-            <input id="addMission" type="text" placeholder="">
-            <!-- The icon will be inserted here by JavaScript -->
-            </div>
-             <button id="addMissionButton">Add Op.</button>
-            <button id="resetButton">Wipe memory</button>
-            <div id="xp-selector-mount"></div>
-            <p><span id="errorMessage"></span></p>
+      <div class="container2">
+        <h1 class="widescreen">Objectives for today:</h1>
+        <h1 class="mobile">Ops. for today:</h1>
+        <!-- To this: -->
+        <label id="label1" for="addMission">Add objectives:</label>
+        <div class="input-wrapper">
+          <input id="addMission" type="text" placeholder="" />
+          <!-- The icon will be inserted here by JavaScript -->
         </div>
-        <div id="distraction-capture-container" class="distraction-container">
-            <div class="distraction-header">
-                <h2>Neural Capture Feed <span class="mobile">+</span><span class="widescreen">+</span></h2>
-            </div>
-            
-            <!-- Add view toggle buttons here -->
-            <div class="view-toggle">
-                <button class="view-btn list-view-btn active">List View</button>
-                <button class="view-btn carousel-view-btn">3D View</button>
-            </div>
-            
-            <div class="distraction-content">
-                <!-- Create a container for both views -->
-                <div class="view-container">
-                    <!-- List view (initially active) -->
-                    <div class="list-view active" id="distractionsList">
-                        <!-- Distractions will be displayed here -->
-                    </div>
-                    
-                    <!-- 3D Carousel view (initially hidden) -->
-                    <div class="carousel-view">
-                        <div class="carousel-container">
-                            <div class="carousel"></div>
-                            <div class="carousel-navigation">
-                                <button class="prev-btn">←</button>
-                                <button class="next-btn">→</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="distraction-input-wrapper">
-                    <input id="distractionInput" type="text" placeholder="Capture distracting thought...">
-                    <button id="saveDistraction">Store</button>
-                </div>
-                
-                <div class="distraction-controls">
-                    <button id="clearAllDistractions">Clear Buffer</button>
-                </div>
-            </div>
-        </div>
-        <div id="react-mission-control"></div>
-       
-        <br>
-        <div id="output"></div>
-        <P id="xpText">LEVEL UP</P>
-        <div id="xp-meter-container">
-            <div id="xp-meter">0 XP</div>
-        </div>
-        <div id="leaderboard">
-            <p>Current High Score: <span id="highScore">0</span> XP</p>
-        </div>
-        <br>
-       
-        <br>
-        <audio id="completionSound" src="Completion.mp3" preload="auto"></audio>
-        <audio id="levelUpSound" src="levelUpSound.mp3" preload="auto"></audio>
-        <audio id="resetDataSound" src="eraseSound.mp3" preload="auto"></audio>
-        <audio id="addMissionSound" src="addMissionSound.mp3" preload="auto"></audio>
-        <audio id="initializingSound" src="initializingSound.mp3" preload="auto"></audio>
-        <audio id="addNeuralSound" src="ui-click-43196.mp3" preload="auto"></audio>
-        <audio id="swipeSound" src="swipe-132084.mp3" preload="auto"></audio>
+        <button id="addMissionButton">Add Op.</button>
+        <button id="resetButton">Wipe memory</button>
+        <div id="earliest-display"></div>
 
-        <div id="motivationalQuoteWidescreen" class="motivational-quote widescreen"></div>
-        <div class="missions-grid">
-            <div class="grid-item-1">
-                <h2>Stored missions</h2>
-            </div>
-            <div class="grid-item-2">
-                <ul id="missionList"></ul>
-            </div>
+        <button id="readyButton">Send ready signal</button>
+
+        <div id="xp-selector-mount"></div>
+        <p><span id="errorMessage"></span></p>
+      </div>
+      <div id="distraction-capture-container" class="distraction-container">
+        <div class="distraction-header">
+          <h2>
+            Neural Capture Feed <span class="mobile">+</span
+            ><span class="widescreen">+</span>
+          </h2>
         </div>
-        <div id="motivationalQuoteMobile" class="motivational-quote mobile"></div>
-        
+
+        <!-- Add view toggle buttons here -->
+        <div class="view-toggle">
+          <button class="view-btn list-view-btn active">List View</button>
+          <button class="view-btn carousel-view-btn">3D View</button>
+        </div>
+
+        <div class="distraction-content">
+          <!-- Create a container for both views -->
+          <div class="view-container">
+            <!-- List view (initially active) -->
+            <div class="list-view active" id="distractionsList">
+              <!-- Distractions will be displayed here -->
+            </div>
+
+            <!-- 3D Carousel view (initially hidden) -->
+            <div class="carousel-view">
+              <div class="carousel-container">
+                <div class="carousel"></div>
+                <div class="carousel-navigation">
+                  <button class="prev-btn">←</button>
+                  <button class="next-btn">→</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="distraction-input-wrapper">
+            <input
+              id="distractionInput"
+              type="text"
+              placeholder="Capture distracting thought..."
+            />
+            <button id="saveDistraction">Store</button>
+          </div>
+
+          <div class="distraction-controls">
+            <button id="clearAllDistractions">Clear Buffer</button>
+          </div>
+        </div>
+      </div>
+      <div id="react-mission-control"></div>
+
+      <br />
+      <div id="output"></div>
+      <p id="xpText">LEVEL UP</p>
+      <div id="xp-meter-container">
+        <div id="xp-meter">0 XP</div>
+      </div>
+      <div id="leaderboard">
+        <p>Current High Score: <span id="highScore">0</span> XP</p>
+      </div>
+      <br />
+
+      <br />
+      <audio id="completionSound" src="Completion.mp3" preload="auto"></audio>
+      <audio id="levelUpSound" src="levelUpSound.mp3" preload="auto"></audio>
+      <audio id="resetDataSound" src="eraseSound.mp3" preload="auto"></audio>
+      <audio
+        id="addMissionSound"
+        src="addMissionSound.mp3"
+        preload="auto"
+      ></audio>
+      <audio
+        id="initializingSound"
+        src="initializingSound.mp3"
+        preload="auto"
+      ></audio>
+      <audio
+        id="addNeuralSound"
+        src="ui-click-43196.mp3"
+        preload="auto"
+      ></audio>
+      <audio id="swipeSound" src="swipe-132084.mp3" preload="auto"></audio>
+
+      <div
+        id="motivationalQuoteWidescreen"
+        class="motivational-quote widescreen"
+      ></div>
+      <div class="missions-grid">
+        <div class="grid-item-1">
+          <h2>Stored missions</h2>
+        </div>
+        <div class="grid-item-2">
+          <ul id="missionList"></ul>
+        </div>
+      </div>
+      <div id="motivationalQuoteMobile" class="motivational-quote mobile"></div>
+      <button id="clearAllDistractions">Clear Buffer</button>
     </div>
     <script src="mission.js"></script>
     <script type="text/babel" src="xp-selector-react.js"></script>
     <script type="text/babel" src="mission-react.js"></script>
-</body>
+  </body>
 </html>
