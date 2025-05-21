@@ -1127,7 +1127,7 @@ function disableReadyButton() {
   readyButtonEl.classList.add("disabled");
 
   // Update text to show it's been used
-  readyButtonEl.textContent = "Out of flares for today";
+  readyButtonEl.textContent = "Out of flares";
 
   // Disable the button functionality
   readyButtonEl.disabled = true;

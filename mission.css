@@ -574,7 +574,7 @@ input[type="text"] {
 #readyButton.disabled {
   background: linear-gradient(
     135deg,
-    rgba(16, 221, 50, 0.2),
+    rgba(0, 19, 20, 0.156),
     rgba(2, 29, 19, 0.2)
   );
   border: 2px solid rgba(16, 221, 50, 0.1);
