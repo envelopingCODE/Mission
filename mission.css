@@ -1862,7 +1862,7 @@ body {
 
 /* Free-Floating Avatar Container */
 .minimalist-face-wrapper {
-  position: flex;
+  display: flex;
   width: 100%;
   height: 100%;
   max-width: none;
@@ -3411,7 +3411,6 @@ svg.minimalist-face {
 .view-container {
   position: relative;
   min-height: 200px;
-  min-width: none;
 }
 
 .list-view,
