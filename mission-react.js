@@ -952,12 +952,12 @@ const CuteRobotFace = ({
     // subtle head/bob sync, brighter center glow, and occasional double-blink.
     happy: {
       leftEye: {
+        // Mirrored exactly from right eye
         path: "M-28,-6 A14,10 0 1,1 -4,-6",
-        blinkPath: "M-28,-8 L-2,-8",
+        blinkPath: "M-28,-8 L-4,-8",
         animationParams: {
           glowIntensity: { values: "1;0.92;1", duration: "2s" },
           floatOffset: { range: [-0.8, 1.2], duration: "2.6s" },
-          // Eye smile now includes dynamic squint
           eyeSmile: {
             values: "0;1;0;0",
             duration: "3.2s",
@@ -967,13 +967,13 @@ const CuteRobotFace = ({
             values: "14;10;14",
             duration: "3.2s",
             easing: "ease-in-out",
-          }, // modulates Y radius
+          },
           gaze: { range: [-3, 3], interval: [1100, 2600], step: "random" },
         },
       },
       rightEye: {
         path: "M4,-6 A14,10 0 1,1 28,-6",
-        blinkPath: "M2,-8 L28,-8",
+        blinkPath: "M4,-8 L28,-8",
         animationParams: {
           glowIntensity: { values: "1;0.92;1", duration: "2s" },
           floatOffset: { range: [-0.7, 1.1], duration: "2.7s" },
@@ -990,8 +990,7 @@ const CuteRobotFace = ({
           gaze: { range: [-3, 3], interval: [1100, 2600], step: "random" },
         },
       },
-
-      mouth: "M-32,20 Q0,42 32,20",
+      mouth: "M-33,20 Q0,42 33,20",
 
       emotional_metadata: {
         energy_level: 0.9,
@@ -1094,8 +1093,9 @@ const CuteRobotFace = ({
         tension: 0.4,
       },
     },
+
     playful: {
-      leftEye: "M-25,-5 Q-10,-20 0,-5", // Raised eyebrow effect
+      leftEye: "M-28,-6 A14,10 0 1,1 -5,-6",
       rightEye: "M-25,-5 L25,-5 0,-6", // Mischievous wink
       mouth: "M-35,20 Q0,45 35,20 Q15,10 -35,20", // Asymmetrical, sly smile
       color: "#86dfff",
