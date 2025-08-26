@@ -781,7 +781,7 @@ const CuteRobotFace = ({
   React.useEffect(() => {
     const handleReset = () => {
       setCurrentEmotion("perplexed");
-      setTimeout(() => setCurrentEmotion("neutral"), 2000);
+      setTimeout(() => setCurrentEmotion("neutral"), 1800);
     };
 
     const resetButton = document.getElementById("resetButton");
