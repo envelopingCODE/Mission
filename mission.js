@@ -13,6 +13,8 @@ const addMissionSound = document.getElementById("addMissionSound"); // Get the s
 const initializingSound = document.getElementById("initializingSound"); // Get the sound element for initializing
 const swipeSound = document.getElementById("swipeSound"); // Get the sound element for initializing
 const addNeuralSound = document.getElementById("addNeuralSound"); // Get the sound element for initializing
+const dailyWrapButton = document.getElementById("dailyWrapButton"); // NEW
+const dailyWrapModal = document.getElementById("dailyWrapModal"); // NEW
 
 const mediaQuery = window.matchMedia("(max-width: 600px)");
 
@@ -226,6 +228,19 @@ function createMissionClickHandler(element) {
       priority: priority,
       completedAt: new Date().toISOString(),
     };
+
+    // Track task for daily wrap
+    trackDailyTask(taskDetails);
+
+    // In trackDailyTask() - now extracts category from prefix
+    let category = "general";
+    if (taskDetails.title.startsWith("1.")) {
+      category = "financial";
+    } else if (taskDetails.title.startsWith("2.")) {
+      category = "academic";
+    } else if (taskDetails.title.startsWith("3.")) {
+      category = "life";
+    }
 
     // Check if we've already notified for this task
     if (recentlyNotifiedTasks.has(missionText)) {
@@ -3164,6 +3179,347 @@ document.addEventListener("DOMContentLoaded", () => {
   // Short delay to ensure other scripts have loaded
   setTimeout(initDistractionSystem, 500);
 });
+
+// ========================================
+// DAILY WRAP SYSTEM - INSERT THIS COMPLETE SECTION
+// ========================================
+// Location: In mission.js, after line ~3164 (after distraction system, before DistractionSystem export)
+
+// #1 DAILY WRAP SYSTEM - Track completed tasks
+function getTodayKey() {
+  return new Date().toISOString().split("T")[0];
+}
+
+function trackDailyTask(taskDetails) {
+  const todayKey = getTodayKey();
+  const dailyTasksKey = `dailyTasks_${todayKey}`;
+
+  let todayTasks = JSON.parse(localStorage.getItem(dailyTasksKey)) || [];
+  todayTasks.push(taskDetails);
+
+  localStorage.setItem(dailyTasksKey, JSON.stringify(todayTasks));
+}
+
+// #2 Generate Daily Wrap Summary
+function generateDailyWrap() {
+  const todayKey = getTodayKey();
+  const dailyTasksKey = `dailyTasks_${todayKey}`;
+  const todayTasks = JSON.parse(localStorage.getItem(dailyTasksKey)) || [];
+
+  const currentXp = parseInt(localStorage.getItem("currentXp")) || 0;
+  const currentLevel = parseInt(localStorage.getItem("currentLevel")) || 1;
+
+  // Calculate stats
+  const totalXP = todayTasks.reduce((sum, task) => sum + task.xp, 0);
+  const totalTasks = todayTasks.length;
+
+  const priorityBreakdown = {
+    high: todayTasks.filter((t) => t.priority === "high").length,
+    medium: todayTasks.filter((t) => t.priority === "medium").length,
+    low: todayTasks.filter((t) => t.priority === "low").length,
+    normal: todayTasks.filter((t) => t.priority === "normal").length,
+  };
+
+  const topTask = todayTasks.sort((a, b) => b.xp - a.xp)[0];
+
+  // Generate motivational insights
+  let insight = "";
+  if (totalTasks === 0) {
+    insight =
+      "Ready to conquer tomorrow? Every journey begins with a single mission.";
+  } else if (totalTasks < 3) {
+    insight = "Quality over quantity. You're building momentum.";
+  } else if (totalTasks < 7) {
+    insight = "Solid productivity. You're in the zone!";
+  } else if (totalTasks < 12) {
+    insight = "Exceptional performance. You're operating at peak efficiency.";
+  } else {
+    insight = "Legendary status achieved. You're a productivity powerhouse!";
+  }
+
+  return {
+    todayTasks,
+    currentXp,
+    currentLevel,
+    totalXP,
+    totalTasks,
+    priorityBreakdown,
+    topTask,
+    insight,
+    date: new Date().toLocaleDateString("en-US", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    }),
+  };
+}
+
+// #3 Display Daily Wrap Modal with animations
+function showDailyWrap() {
+  const wrapData = generateDailyWrap();
+  const modal = document.getElementById("dailyWrapModal");
+  const innerContent = document.getElementById("dailyWrapInner");
+
+  // Build the wrap display
+  let html = `
+    <div class="wrap-header">
+      <h1 class="wrap-title">Daily Mission Report</h1>
+      <p class="wrap-date">${wrapData.date}</p>
+    </div>
+    
+    <div class="wrap-stats-grid">
+      <div class="wrap-stat-card stat-missions">
+        <div class="stat-number">${wrapData.totalTasks}</div>
+        <div class="stat-label">Missions Completed</div>
+      </div>
+      
+      <div class="wrap-stat-card stat-xp">
+        <div class="stat-number">${wrapData.totalXP}</div>
+        <div class="stat-label">XP Earned Today</div>
+      </div>
+      
+      <div class="wrap-stat-card stat-level">
+        <div class="stat-number">LVL ${wrapData.currentLevel}</div>
+        <div class="stat-label">Current Level</div>
+      </div>
+    </div>
+    
+    ${
+      wrapData.totalTasks > 0
+        ? `
+      <div class="wrap-section">
+        <h3 class="wrap-section-title">Priority Breakdown</h3>
+        <div class="priority-bars">
+          ${
+            wrapData.priorityBreakdown.high > 0
+              ? `
+            <div class="priority-bar">
+              <span class="priority-label prefix-1">HIGH PRIORITY</span>
+              <div class="bar-container">
+                <div class="bar-fill bar-high" style="width: ${
+                  (wrapData.priorityBreakdown.high / wrapData.totalTasks) * 100
+                }%"></div>
+              </div>
+              <span class="priority-count">${
+                wrapData.priorityBreakdown.high
+              }</span>
+            </div>
+          `
+              : ""
+          }
+          ${
+            wrapData.priorityBreakdown.medium > 0
+              ? `
+            <div class="priority-bar">
+              <span class="priority-label prefix-2">MEDIUM</span>
+              <div class="bar-container">
+                <div class="bar-fill bar-medium" style="width: ${
+                  (wrapData.priorityBreakdown.medium / wrapData.totalTasks) *
+                  100
+                }%"></div>
+              </div>
+              <span class="priority-count">${
+                wrapData.priorityBreakdown.medium
+              }</span>
+            </div>
+          `
+              : ""
+          }
+          ${
+            wrapData.priorityBreakdown.low > 0
+              ? `
+            <div class="priority-bar">
+              <span class="priority-label prefix-3">LOW</span>
+              <div class="bar-container">
+                <div class="bar-fill bar-low" style="width: ${
+                  (wrapData.priorityBreakdown.low / wrapData.totalTasks) * 100
+                }%"></div>
+              </div>
+              <span class="priority-count">${
+                wrapData.priorityBreakdown.low
+              }</span>
+            </div>
+          `
+              : ""
+          }
+          ${
+            wrapData.priorityBreakdown.normal > 0
+              ? `
+            <div class="priority-bar">
+              <span class="priority-label">STANDARD</span>
+              <div class="bar-container">
+                <div class="bar-fill bar-normal" style="width: ${
+                  (wrapData.priorityBreakdown.normal / wrapData.totalTasks) *
+                  100
+                }%"></div>
+              </div>
+              <span class="priority-count">${
+                wrapData.priorityBreakdown.normal
+              }</span>
+            </div>
+          `
+              : ""
+          }
+        </div>
+      </div>
+      
+      ${
+        wrapData.topTask
+          ? `
+        <div class="wrap-section">
+          <h3 class="wrap-section-title">Top Mission</h3>
+          <div class="top-task">
+            <div class="top-task-title">${wrapData.topTask.title}</div>
+            <div class="top-task-xp">${wrapData.topTask.xp} XP</div>
+          </div>
+        </div>
+      `
+          : ""
+      }
+    `
+        : ""
+    }
+    
+    <div class="wrap-insight">
+      <p>${wrapData.insight}</p>
+    </div>
+    
+    <div class="wrap-actions">
+      <button id="resetDayButton" class="wrap-btn wrap-btn-primary">
+        Reset for Tomorrow →
+      </button>
+      <button id="closeWrapButton" class="wrap-btn wrap-btn-secondary">
+        Continue Today
+      </button>
+    </div>
+  `;
+
+  innerContent.innerHTML = html;
+  modal.classList.add("active");
+
+  // Add staggered animation to stat cards
+  setTimeout(() => {
+    const statCards = document.querySelectorAll(".wrap-stat-card");
+    statCards.forEach((card, index) => {
+      setTimeout(() => {
+        card.classList.add("animate-in");
+      }, index * 150);
+    });
+  }, 100);
+
+  // Add event listeners for new buttons
+  document
+    .getElementById("resetDayButton")
+    ?.addEventListener("click", resetDayAndXP);
+  document
+    .getElementById("closeWrapButton")
+    ?.addEventListener("click", closeDailyWrap);
+
+  // Play level up sound for the wrap reveal
+  if (levelUpSound) {
+    levelUpSound.currentTime = 0;
+    levelUpSound
+      .play()
+      .catch((err) => console.log("Audio play prevented:", err));
+  }
+}
+
+// #4 Reset Day and XP
+function resetDayAndXP() {
+  // Archive today's tasks with timestamp
+  const todayKey = getTodayKey();
+  const dailyTasksKey = `dailyTasks_${todayKey}`;
+  const archiveKey = `archive_${todayKey}`;
+
+  const todayTasks = localStorage.getItem(dailyTasksKey);
+  if (todayTasks) {
+    localStorage.setItem(archiveKey, todayTasks);
+  }
+
+  // Clear today's active tasks
+  localStorage.removeItem(dailyTasksKey);
+
+  // Reset XP to 0 for new day
+  localStorage.setItem("currentXp", 0);
+  localStorage.setItem("currentLevel", 1);
+
+  // Update display
+  const xpMeterEl = document.getElementById("xp-meter");
+  if (xpMeterEl) {
+    xpMeterEl.dataset.xp = 0;
+    updateXpMeter(0);
+  }
+
+  // Show success message
+  showResetConfirmation();
+  closeDailyWrap();
+
+  // Play initializing sound
+  if (initializingSound) {
+    initializingSound.currentTime = 0;
+    initializingSound
+      .play()
+      .catch((err) => console.log("Audio play prevented:", err));
+  }
+}
+
+// #5 Show reset confirmation
+function showResetConfirmation() {
+  const messageEl = document.createElement("div");
+  messageEl.className = "daily-reset-message";
+  messageEl.innerHTML = `
+    <div class="reset-message-content">
+      <div class="reset-icon">↻</div>
+      <div class="reset-text">
+        <strong>New day initialized</strong>
+        <p>Level reset to 1. Ready for fresh missions.</p>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(messageEl);
+
+  setTimeout(() => {
+    messageEl.classList.add("show");
+  }, 10);
+
+  setTimeout(() => {
+    messageEl.classList.remove("show");
+    setTimeout(() => {
+      messageEl.remove();
+    }, 300);
+  }, 3000);
+}
+
+// #6 Close Daily Wrap Modal
+function closeDailyWrap() {
+  const modal = document.getElementById("dailyWrapModal");
+  modal.classList.remove("active");
+}
+
+// #7 Initialize Daily Wrap Button
+if (dailyWrapButton) {
+  dailyWrapButton.addEventListener("click", showDailyWrap);
+}
+
+// Close modal when clicking the X
+document.addEventListener("click", (e) => {
+  if (e.target.classList.contains("wrap-close")) {
+    closeDailyWrap();
+  }
+});
+
+// Close modal when clicking outside
+dailyWrapModal?.addEventListener("click", (e) => {
+  if (e.target === dailyWrapModal) {
+    closeDailyWrap();
+  }
+});
+
+// ========================================
+// END OF DAILY WRAP SYSTEM
+// ========================================
 
 // Export functions for global access
 window.DistractionSystem = {
