@@ -572,6 +572,7 @@ input[type="text"] {
 
 /* Disabled ready button styling */
 #readyButton.disabled {
+  display: none;
   background: linear-gradient(
     135deg,
     rgba(0, 19, 20, 0.156),
@@ -4367,11 +4368,18 @@ svg.minimalist-face {
 
 /* Button styling for Daily Wrap button in main interface */
 #dailyWrapButton {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  display: flex;
+  background: linear-gradient(135deg, #00ff87 0%, #764ba2 100%);
   box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
 }
 
 #dailyWrapButton:hover {
   background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
   box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+}
+
+#center {
+  display: flex;
+  align-items: center;
+  justify-content: space-evenly;
 }
