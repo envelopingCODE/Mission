@@ -1402,20 +1402,21 @@ input[type="text"] {
 /* Holographic Effects */
 .hologram {
   position: relative;
-  &::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: linear-gradient(
-      45deg,
-      rgba(0, 255, 0, 0.1) 0%,
-      rgba(0, 255, 0, 0) 100%
-    );
-    pointer-events: none;
-  }
+}
+
+.hologram::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    45deg,
+    rgba(0, 255, 0, 0.1) 0%,
+    rgba(0, 255, 0, 0) 100%
+  );
+  pointer-events: none;
 }
 
 /* Glitch Effect */
@@ -4743,7 +4744,7 @@ svg.minimalist-face {
   backdrop-filter: blur(20px);
   border: 1.5px solid rgba(0, 180, 216, 0.3);
   border-radius: 12px;
-  color: #00b4d8;
+  color: #23f0ac;
   font-size: 14px;
   font-weight: 600;
   text-transform: uppercase;

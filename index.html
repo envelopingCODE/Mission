@@ -39,6 +39,7 @@
         <div id="xp-selector-mount"></div>
         <p><span id="errorMessage"></span></p>
       </div>
+
       <div id="distraction-capture-container" class="distraction-container">
         <div class="distraction-header">
           <h2>
@@ -87,6 +88,7 @@
           </div>
         </div>
       </div>
+
       <div id="react-mission-control"></div>
 
       <br />
@@ -104,33 +106,33 @@
 
       <div class="daily-wrap-button-container">
         <button id="dailyWrapButton" class="cyber-wrap-button">
-          <div class="button-content">
-            <span class="button-icon"></span>
-            <span class="button-text">Daily Wrapped</span>
-          </div>
-        <div class="button-hud">
-  <div class="hud-scanline"></div> <!-- ADD THIS LINE -->
-  <div class="hud-line hud-line-top"></div>
-  <div class="hud-stats">
-    <div class="hud-stat">
-      <span class="hud-stat-label">TODAY</span>
-      <span class="hud-stat-value" id="hudTodayTasks">0</span>
-    </div>
-    <div class="hud-stat">
-      <span class="hud-stat-label">XP</span>
-      <span class="hud-stat-value" id="hudTodayXP">0</span>
-    </div>
-    <div class="hud-stat">
-      <span class="hud-stat-label">LVL</span>
-      <span class="hud-stat-value" id="hudCurrentLevel">1</span>
-    </div>
-  </div>
-  <div class="hud-line hud-line-bottom"></div>
-</div>
-          </div>
+          <span class="button-icon"></span>
+          <span class="button-text">Daily Wrapped</span>
         </button>
+
+        <div class="button-hud">
+          <div class="hud-scanline"></div>
+          <div class="hud-line hud-line-top"></div>
+          <div class="hud-stats">
+            <div class="hud-stat">
+              <span class="hud-stat-label">TODAY</span>
+              <span class="hud-stat-value" id="hudTodayTasks">0</span>
+            </div>
+            <div class="hud-stat">
+              <span class="hud-stat-label">XP</span>
+              <span class="hud-stat-value" id="hudTodayXP">0</span>
+            </div>
+            <div class="hud-stat">
+              <span class="hud-stat-label">LVL</span>
+              <span class="hud-stat-value" id="hudCurrentLevel">1</span>
+            </div>
+          </div>
+          <div class="hud-line hud-line-bottom"></div>
+        </div>
       </div>
+
       <br />
+
       <audio id="completionSound" src="Completion.mp3" preload="auto"></audio>
       <audio id="levelUpSound" src="levelUpSound.mp3" preload="auto"></audio>
       <audio id="resetDataSound" src="eraseSound.mp3" preload="auto"></audio>
@@ -155,6 +157,7 @@
         id="motivationalQuoteWidescreen"
         class="motivational-quote widescreen"
       ></div>
+
       <div class="missions-grid">
         <div class="grid-item-1">
           <h2>Stored missions</h2>
@@ -163,11 +166,11 @@
           <ul id="missionList"></ul>
         </div>
       </div>
+
       <div id="motivationalQuoteMobile" class="motivational-quote mobile"></div>
     </div>
 
     <!-- Daily Wrap Modal -->
-    <!-- NEW SECTION STARTS -->
     <div id="dailyWrapModal" class="daily-wrap-modal">
       <div class="daily-wrap-content">
         <div class="wrap-close">×</div>
@@ -175,7 +178,6 @@
       </div>
     </div>
 
-    <!-- NEW SECTION ENDS -->
     <script src="mission.js"></script>
     <script type="text/babel" src="xp-selector-react.js"></script>
     <script type="text/babel" src="mission-react.js"></script>
