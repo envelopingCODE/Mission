@@ -13,12 +13,86 @@ const addMissionSound = document.getElementById("addMissionSound"); // Get the s
 const initializingSound = document.getElementById("initializingSound"); // Get the sound element for initializing
 const swipeSound = document.getElementById("swipeSound"); // Get the sound element for initializing
 const addNeuralSound = document.getElementById("addNeuralSound"); // Get the sound element for initializing
-const dailyWrapButton = document.getElementById("dailyWrapButton"); // NEW
 const dailyWrapModal = document.getElementById("dailyWrapModal"); // NEW
 
 const mediaQuery = window.matchMedia("(max-width: 600px)");
 
 let xpSelectorCallback = null;
+
+("use strict"); // Strict mode helps catch common coding errors and "unsafe" actions
+
+// ========================================
+// CENTRALIZED CATEGORY SYSTEM - Single Source of Truth
+// ========================================
+const CATEGORY_CONFIG = {
+  1: {
+    prefix: "1.",
+    title: "Secure Funding",
+    shortName: "Financial",
+    description: "Financial and resource acquisition tasks",
+    color: "rgba(26, 228, 46, 0.835)",
+    emoji: "💰",
+    weight: 700,
+    defaultTasks: [
+      "1. Do SoME marketing",
+      "1. Obtain new Client",
+      "1. Prevent loss of assets",
+    ],
+  },
+  2: {
+    prefix: "2.",
+    title: "Graduate",
+    shortName: "Academic",
+    description: "Academic and educational goals",
+    color: "rgba(20, 255, 208, 0.835)",
+    emoji: "🎓",
+    weight: 600,
+    defaultTasks: [
+      "2. Study for one unit",
+      "2. Code for one unit",
+      "2. Complete paper",
+    ],
+  },
+  3: {
+    prefix: "3.",
+    title: "Optimal State",
+    shortName: "Life Optimization",
+    description: "Personal wellness and optimization",
+    color: "rgba(26, 211, 228, 0.892)",
+    emoji: "⚡",
+    weight: 600,
+    defaultTasks: ["3. Morning meditation", "3. TRX", "3. Journal"],
+  },
+  general: {
+    prefix: null,
+    title: "General Tasks",
+    shortName: "General",
+    description: "Various tasks and goals",
+    color: "rgba(255, 255, 255, 0.6)",
+    emoji: "✨",
+    weight: 400,
+    defaultTasks: [],
+  },
+};
+
+// Helper function to get category by prefix
+function getCategoryByPrefix(prefix) {
+  if (!prefix) return CATEGORY_CONFIG["general"];
+  const categoryKey = prefix.replace(".", "");
+  return CATEGORY_CONFIG[categoryKey] || CATEGORY_CONFIG["general"];
+}
+
+// Helper function to get category key from task title
+function getCategoryKeyFromTitle(title) {
+  if (title.startsWith("1.")) return "1";
+  if (title.startsWith("2.")) return "2";
+  if (title.startsWith("3.")) return "3";
+  return "general";
+}
+
+// ========================================
+// END OF CATEGORY SYSTEM
+// ========================================
 
 // Create a single shared AudioContext for all audio operations
 const audioContext = new (window.AudioContext || window.webkitAudioContext)();
@@ -232,6 +306,9 @@ function createMissionClickHandler(element) {
     // Track task for daily wrap
     trackDailyTask(taskDetails);
 
+    // Update the button HUD
+    updateWrapButtonHUD();
+
     // In trackDailyTask() - now extracts category from prefix
     let category = "general";
     if (taskDetails.title.startsWith("1.")) {
@@ -357,42 +434,22 @@ function closeXPSelector() {
 
 const TaskSystem = {
   taskFrequency: new Map(),
-  categories: {
-    "1.": {
-      prefix: "1.",
-      title: "Secure Funding",
-      description: "Financial and resource acquisition tasks",
-      color: "rgba(26, 228, 46, 0.835)",
-      weight: 700,
-      defaultTasks: [
-        "1. Do SoME marketing",
-        "1. Obtain new Client",
-        "1. Prevent loss of assets",
-      ],
-    },
-    "2.": {
-      prefix: "2.",
-      title: "Graduate",
-      description: "Academic and educational goals",
-      color: "rgba(20, 255, 208, 0.835)",
-      weight: 600,
-      defaultTasks: [
-        "2. Study for one unit",
-        "2. Code for one unit",
-        "2. Complete paper",
-      ],
-    },
-    "3.": {
-      prefix: "3.",
-      title: "Optimal State",
-      description: "Personal wellness and optimization",
-      color: "rgba(26, 211, 228, 0.892)",
-      weight: 600,
-      defaultTasks: ["3. Morning meditation", "3. TRX", "3. Journal"],
-    },
+
+  // Use the centralized config instead of duplicating
+  get categories() {
+    const cats = {};
+    Object.keys(CATEGORY_CONFIG).forEach((key) => {
+      if (key !== "general") {
+        cats[CATEGORY_CONFIG[key].prefix] = CATEGORY_CONFIG[key];
+      }
+    });
+    return cats;
   },
+
   fadeTimeout: null,
   cycleTimeout: null,
+
+  // ... rest of TaskSystem stays the same
 
   init() {
     try {
@@ -3178,14 +3235,13 @@ function initDistractionSystem() {
 document.addEventListener("DOMContentLoaded", () => {
   // Short delay to ensure other scripts have loaded
   setTimeout(initDistractionSystem, 500);
+  updateWrapButtonHUD(); // Update HUD on page load
 });
-
 // ========================================
-// DAILY WRAP SYSTEM - INSERT THIS COMPLETE SECTION
+// DAILY WRAP SYSTEM - SPOTIFY WRAPPED STYLE
 // ========================================
-// Location: In mission.js, after line ~3164 (after distraction system, before DistractionSystem export)
 
-// #1 DAILY WRAP SYSTEM - Track completed tasks
+// #1 Track completed tasks
 function getTodayKey() {
   return new Date().toISOString().split("T")[0];
 }
@@ -3195,7 +3251,14 @@ function trackDailyTask(taskDetails) {
   const dailyTasksKey = `dailyTasks_${todayKey}`;
 
   let todayTasks = JSON.parse(localStorage.getItem(dailyTasksKey)) || [];
-  todayTasks.push(taskDetails);
+
+  // Use centralized category detection
+  const categoryKey = getCategoryKeyFromTitle(taskDetails.title);
+
+  todayTasks.push({
+    ...taskDetails,
+    category: categoryKey,
+  });
 
   localStorage.setItem(dailyTasksKey, JSON.stringify(todayTasks));
 }
@@ -3209,32 +3272,62 @@ function generateDailyWrap() {
   const currentXp = parseInt(localStorage.getItem("currentXp")) || 0;
   const currentLevel = parseInt(localStorage.getItem("currentLevel")) || 1;
 
-  // Calculate stats
   const totalXP = todayTasks.reduce((sum, task) => sum + task.xp, 0);
   const totalTasks = todayTasks.length;
 
-  const priorityBreakdown = {
-    high: todayTasks.filter((t) => t.priority === "high").length,
-    medium: todayTasks.filter((t) => t.priority === "medium").length,
-    low: todayTasks.filter((t) => t.priority === "low").length,
-    normal: todayTasks.filter((t) => t.priority === "normal").length,
-  };
+  // Dynamically build category breakdown from CATEGORY_CONFIG
+  const categoryBreakdown = {};
+  Object.keys(CATEGORY_CONFIG).forEach((key) => {
+    categoryBreakdown[key] = todayTasks.filter(
+      (t) => t.category === key
+    ).length;
+  });
 
-  const topTask = todayTasks.sort((a, b) => b.xp - a.xp)[0];
+  const topTask =
+    todayTasks.length > 0 ? todayTasks.sort((a, b) => b.xp - a.xp)[0] : null;
 
-  // Generate motivational insights
+  // Find most productive hour
+  const hourCounts = {};
+  todayTasks.forEach((task) => {
+    const hour = new Date(task.completedAt).getHours();
+    hourCounts[hour] = (hourCounts[hour] || 0) + 1;
+  });
+  const peakHour =
+    Object.keys(hourCounts).length > 0
+      ? Object.keys(hourCounts).reduce(
+          (a, b) => (hourCounts[a] > hourCounts[b] ? a : b),
+          0
+        )
+      : 12;
+
+  // Dominant category (what you focused on most)
+  const dominantCategory = Object.entries(categoryBreakdown).reduce((a, b) =>
+    a[1] > b[1] ? a : b
+  )[0];
+
+  // Build categoryInfo dynamically from CATEGORY_CONFIG
+  const categoryInfo = {};
+  Object.keys(CATEGORY_CONFIG).forEach((key) => {
+    const config = CATEGORY_CONFIG[key];
+    categoryInfo[key] = {
+      name: config.title,
+      shortName: config.shortName,
+      emoji: config.emoji,
+      description: config.description,
+    };
+  });
+
   let insight = "";
   if (totalTasks === 0) {
-    insight =
-      "Ready to conquer tomorrow? Every journey begins with a single mission.";
+    insight = "Tomorrow is yours to conquer. Ready to make it legendary?";
   } else if (totalTasks < 3) {
-    insight = "Quality over quantity. You're building momentum.";
+    insight = "Quality over quantity. You're building unstoppable momentum.";
   } else if (totalTasks < 7) {
     insight = "Solid productivity. You're in the zone!";
   } else if (totalTasks < 12) {
-    insight = "Exceptional performance. You're operating at peak efficiency.";
+    insight = "Peak performance unlocked. You're operating like a machine.";
   } else {
-    insight = "Legendary status achieved. You're a productivity powerhouse!";
+    insight = "Legendary status achieved. You're rewriting what's possible!";
   }
 
   return {
@@ -3243,8 +3336,11 @@ function generateDailyWrap() {
     currentLevel,
     totalXP,
     totalTasks,
-    priorityBreakdown,
+    categoryBreakdown,
     topTask,
+    peakHour,
+    dominantCategory,
+    categoryInfo,
     insight,
     date: new Date().toLocaleDateString("en-US", {
       weekday: "long",
@@ -3255,179 +3351,301 @@ function generateDailyWrap() {
   };
 }
 
-// #3 Display Daily Wrap Modal with animations
+// #3 WRAPPED SLIDES RENDERER
 function showDailyWrap() {
   const wrapData = generateDailyWrap();
-  const modal = document.getElementById("dailyWrapModal");
-  const innerContent = document.getElementById("dailyWrapInner");
+  let currentSlide = 0;
+  let autoAdvanceTimer = null;
 
-  // Build the wrap display
-  let html = `
-    <div class="wrap-header">
-      <h1 class="wrap-title">Daily Mission Report</h1>
-      <p class="wrap-date">${wrapData.date}</p>
-    </div>
-    
-    <div class="wrap-stats-grid">
-      <div class="wrap-stat-card stat-missions">
-        <div class="stat-number">${wrapData.totalTasks}</div>
-        <div class="stat-label">Missions Completed</div>
+  // Create fullscreen modal
+  const modal = document.createElement("div");
+  modal.id = "wrappedModal";
+  modal.className = "wrapped-fullscreen";
+  document.body.appendChild(modal);
+
+  // Calculate all variables BEFORE slides array
+  const peakHourDisplay =
+    wrapData.peakHour > 12
+      ? wrapData.peakHour - 12 + "PM"
+      : wrapData.peakHour == 0
+      ? "12AM"
+      : wrapData.peakHour + "AM";
+
+  const peakHourCount = wrapData.todayTasks.filter(
+    (task) =>
+      new Date(task.completedAt).getHours() === parseInt(wrapData.peakHour)
+  ).length;
+
+  const dominantCatInfo = wrapData.categoryInfo[wrapData.dominantCategory];
+
+  const slides = [
+    // Slide 0: Opening - Clean Terminal Boot
+    {
+      gradient: "linear-gradient(135deg, #000000 0%, #001529 100%)",
+      content: `
+      <div class="wrapped-slide-content cyber-boot">
+        <div class="scan-grid"></div>
+        <div class="wrapped-emoji">🎯</div>
+        <h1 class="wrapped-title cyber-text">MISSION REPORT</h1>
+        <p class="wrapped-subtitle">${wrapData.date}</p>
+        <div class="cyber-line-horizontal"></div>
       </div>
-      
-      <div class="wrap-stat-card stat-xp">
-        <div class="stat-number">${wrapData.totalXP}</div>
-        <div class="stat-label">XP Earned Today</div>
+    `,
+    },
+    // Slide 1: Total Missions - Ocean Blue
+    {
+      gradient:
+        "linear-gradient(135deg, #000814 0%, #001d3d 50%, #003566 100%)",
+      content: `
+      <div class="wrapped-slide-content">
+        <div class="wrapped-big-number count-up cyber-glow-cyan">${
+          wrapData.totalTasks
+        }</div>
+        <h2 class="wrapped-stat-label">MISSIONS COMPLETED</h2>
+        <p class="wrapped-stat-detail">NEURAL UPTIME: ${Math.round(
+          wrapData.totalTasks * 15
+        )} MINUTES</p>
+        <div class="hud-corner top-left"></div>
+        <div class="hud-corner top-right"></div>
+        <div class="hud-corner bottom-left"></div>
+        <div class="hud-corner bottom-right"></div>
       </div>
-      
-      <div class="wrap-stat-card stat-level">
-        <div class="stat-number">LVL ${wrapData.currentLevel}</div>
-        <div class="stat-label">Current Level</div>
-      </div>
-    </div>
-    
-    ${
-      wrapData.totalTasks > 0
-        ? `
-      <div class="wrap-section">
-        <h3 class="wrap-section-title">Priority Breakdown</h3>
-        <div class="priority-bars">
-          ${
-            wrapData.priorityBreakdown.high > 0
-              ? `
-            <div class="priority-bar">
-              <span class="priority-label prefix-1">HIGH PRIORITY</span>
-              <div class="bar-container">
-                <div class="bar-fill bar-high" style="width: ${
-                  (wrapData.priorityBreakdown.high / wrapData.totalTasks) * 100
-                }%"></div>
-              </div>
-              <span class="priority-count">${
-                wrapData.priorityBreakdown.high
-              }</span>
-            </div>
-          `
-              : ""
-          }
-          ${
-            wrapData.priorityBreakdown.medium > 0
-              ? `
-            <div class="priority-bar">
-              <span class="priority-label prefix-2">MEDIUM</span>
-              <div class="bar-container">
-                <div class="bar-fill bar-medium" style="width: ${
-                  (wrapData.priorityBreakdown.medium / wrapData.totalTasks) *
-                  100
-                }%"></div>
-              </div>
-              <span class="priority-count">${
-                wrapData.priorityBreakdown.medium
-              }</span>
-            </div>
-          `
-              : ""
-          }
-          ${
-            wrapData.priorityBreakdown.low > 0
-              ? `
-            <div class="priority-bar">
-              <span class="priority-label prefix-3">LOW</span>
-              <div class="bar-container">
-                <div class="bar-fill bar-low" style="width: ${
-                  (wrapData.priorityBreakdown.low / wrapData.totalTasks) * 100
-                }%"></div>
-              </div>
-              <span class="priority-count">${
-                wrapData.priorityBreakdown.low
-              }</span>
-            </div>
-          `
-              : ""
-          }
-          ${
-            wrapData.priorityBreakdown.normal > 0
-              ? `
-            <div class="priority-bar">
-              <span class="priority-label">STANDARD</span>
-              <div class="bar-container">
-                <div class="bar-fill bar-normal" style="width: ${
-                  (wrapData.priorityBreakdown.normal / wrapData.totalTasks) *
-                  100
-                }%"></div>
-              </div>
-              <span class="priority-count">${
-                wrapData.priorityBreakdown.normal
-              }</span>
-            </div>
-          `
-              : ""
-          }
+    `,
+    },
+    // Slide 2: XP Earned - Emerald Success
+    {
+      gradient:
+        "linear-gradient(135deg, #001a0d 0%, #003d1f 50%, #00563f 100%)",
+      content: `
+      <div class="wrapped-slide-content">
+        <div class="wrapped-big-number count-up cyber-glow-emerald">${
+          wrapData.totalXP
+        }</div>
+        <h2 class="wrapped-stat-label">XP EARNED</h2>
+        <p class="wrapped-stat-detail">LEVEL ${wrapData.currentLevel} • ${
+        wrapData.currentXp
+      } XP CACHED</p>
+        <div class="progress-bar-wrapper">
+          <div class="progress-bar" style="width: ${
+            wrapData.currentXp % 100
+          }%"></div>
         </div>
       </div>
-      
-      ${
-        wrapData.topTask
-          ? `
-        <div class="wrap-section">
-          <h3 class="wrap-section-title">Top Mission</h3>
-          <div class="top-task">
-            <div class="top-task-title">${wrapData.topTask.title}</div>
-            <div class="top-task-xp">${wrapData.topTask.xp} XP</div>
+    `,
+    },
+    // Slide 3: Peak Performance - Cyan Glow
+    ...(wrapData.totalTasks > 0
+      ? [
+          {
+            gradient:
+              "linear-gradient(135deg, #001219 0%, #005f73 50%, #0a9396 100%)",
+            content: `
+      <div class="wrapped-slide-content">
+        <div class="wrapped-big-number count-up cyber-glow-cyan">${peakHourDisplay}</div>
+        <h2 class="wrapped-stat-label">PEAK NEURAL ACTIVITY</h2>
+        <p class="wrapped-stat-detail">${peakHourCount} MISSIONS EXECUTED IN OPTIMAL WINDOW</p>
+        <div class="neural-pulse-indicator"></div>
+      </div>
+    `,
+          },
+        ]
+      : []),
+    // Slide 4: Dominant Category - Cool Blue Gradient
+    ...(wrapData.totalTasks > 0
+      ? [
+          {
+            gradient:
+              "linear-gradient(135deg, #03045e 0%, #0077b6 50%, #00b4d8 100%)",
+            content: `
+      <div class="wrapped-slide-content">
+        <div class="wrapped-category-icon-large">${dominantCatInfo.emoji}</div>
+        <h2 class="wrapped-stat-label">PRIMARY OBJECTIVE</h2>
+        <div class="count-up wrapped-big-text cyber-glow-white">${
+          dominantCatInfo.name
+        }</div>
+        <p class="wrapped-stat-detail">${
+          wrapData.categoryBreakdown[wrapData.dominantCategory]
+        } MISSIONS • ${dominantCatInfo.description}</p>
+        <div class="objective-scanner"></div>
+      </div>
+    `,
+          },
+        ]
+      : []),
+    // Slide 5: Category Breakdown - Dark with Accents
+    ...(wrapData.totalTasks > 0
+      ? [
+          {
+            gradient:
+              "linear-gradient(135deg, #000000 0%, #001219 50%, #001a1f 100%)",
+            content: `
+      <div class="wrapped-slide-content">
+        <h2 class="wrapped-stat-label">OBJECTIVE DISTRIBUTION</h2>
+        <div class="wrapped-category-grid-cyber">
+          ${Object.keys(CATEGORY_CONFIG)
+            .filter((key) => wrapData.categoryBreakdown[key] > 0)
+            .map((key) => {
+              const config = CATEGORY_CONFIG[key];
+              return `
+                <div class="wrapped-category-item-cyber">
+                  <div class="category-header">
+                    <div class="wrapped-category-emoji">${config.emoji}</div>
+                    <div class="wrapped-category-count cyber-count">${
+                      wrapData.categoryBreakdown[key]
+                    }</div>
+                  </div>
+                  <div class="wrapped-category-name">${config.shortName}</div>
+                  <div class="category-progress">
+                    <div class="category-bar" style="width: ${
+                      (wrapData.categoryBreakdown[key] / wrapData.totalTasks) *
+                      100
+                    }%"></div>
+                  </div>
+                </div>
+              `;
+            })
+            .join("")}
+        </div>
+      </div>
+    `,
+          },
+        ]
+      : []),
+    // Slide 6: Top Mission - Teal Accent
+    ...(wrapData.topTask
+      ? [
+          {
+            gradient:
+              "linear-gradient(135deg, #001219 0%, #004d5a 50%, #007991 100%)",
+            content: `
+      <div class="wrapped-slide-content">
+        <div class="wrapped-emoji">👑</div>
+        <h2 class="wrapped-stat-label">HIGHEST VALUE TARGET</h2>
+        <div class="wrapped-top-task-cyber">
+          <p class="mission-text">${wrapData.topTask.title}</p>
+          <div class="wrapped-xp-badge-cyber">${wrapData.topTask.xp} XP</div>
+        </div>
+        <div class="achievement-glow"></div>
+      </div>
+    `,
+          },
+        ]
+      : []),
+    // Final Slide: Summary - Multi-gradient Spectrum
+    {
+      gradient:
+        "linear-gradient(135deg, #000814 0%, #001d3d 20%, #001a0d 40%, #003d1f 60%, #001219 80%, #005f73 100%)",
+      content: `
+      <div class="wrapped-slide-content wrapped-final">
+        <div class="wrapped-emoji">🚀</div>
+        <h1 class="wrapped-title cyber-text-final">${wrapData.insight}</h1>
+        <div class="wrapped-final-stats-cyber">
+          <div class="wrapped-final-stat">
+            <span class="wrapped-final-number cyber-glow-cyan">${wrapData.totalTasks}</span>
+            <span class="wrapped-final-label">MISSIONS</span>
+          </div>
+          <div class="wrapped-final-stat">
+            <span class="wrapped-final-number cyber-glow-emerald">${wrapData.totalXP}</span>
+            <span class="wrapped-final-label">XP</span>
+          </div>
+          <div class="wrapped-final-stat">
+            <span class="wrapped-final-number cyber-glow-blue">${wrapData.currentLevel}</span>
+            <span class="wrapped-final-label">LEVEL</span>
           </div>
         </div>
-      `
-          : ""
-      }
-    `
-        : ""
+        <div class="wrapped-actions">
+          <button id="wrappedResetBtn" class="wrapped-btn wrapped-btn-primary-cyber">
+            RESET FOR TOMORROW →
+          </button>
+          <button id="wrappedContinueBtn" class="wrapped-btn wrapped-btn-secondary-cyber">
+            CONTINUE MISSION
+          </button>
+        </div>
+        <div class="terminal-footer">NEURAL LINK STABLE • UPLINK MAINTAINED</div>
+      </div>
+    `,
+    },
+  ];
+
+  function renderSlide(index) {
+    const slide = slides[index];
+    modal.style.background = slide.gradient;
+    modal.innerHTML = `
+      <div class="wrapped-slide wrapped-slide-active">
+        ${slide.content}
+        ${
+          index < slides.length - 1
+            ? `
+          <div class="wrapped-progress">
+            <p class="wrapped-progress-text">Auto-advancing in 5s • Tap to continue</p>
+            <div class="wrapped-dots">
+              ${slides
+                .map(
+                  (_, i) => `
+                <div class="wrapped-dot ${i === index ? "active" : ""}"></div>
+              `
+                )
+                .join("")}
+            </div>
+          </div>
+        `
+            : ""
+        }
+      </div>
+    `;
+
+    if (index === slides.length - 1) {
+      document
+        .getElementById("wrappedResetBtn")
+        ?.addEventListener("click", () => {
+          resetDayAndXP();
+          closeWrapped();
+        });
+      document
+        .getElementById("wrappedContinueBtn")
+        ?.addEventListener("click", closeWrapped);
     }
-    
-    <div class="wrap-insight">
-      <p>${wrapData.insight}</p>
-    </div>
-    
-    <div class="wrap-actions">
-      <button id="resetDayButton" class="wrap-btn wrap-btn-primary">
-        Reset for Tomorrow →
-      </button>
-      <button id="closeWrapButton" class="wrap-btn wrap-btn-secondary">
-        Continue Today
-      </button>
-    </div>
-  `;
+  }
 
-  innerContent.innerHTML = html;
-  modal.classList.add("active");
+  function nextSlide() {
+    if (currentSlide < slides.length - 1) {
+      currentSlide++;
+      renderSlide(currentSlide);
+      if (currentSlide < slides.length - 1) {
+        startAutoAdvance();
+      }
+    }
+  }
 
-  // Add staggered animation to stat cards
-  setTimeout(() => {
-    const statCards = document.querySelectorAll(".wrap-stat-card");
-    statCards.forEach((card, index) => {
-      setTimeout(() => {
-        card.classList.add("animate-in");
-      }, index * 150);
-    });
-  }, 100);
+  function startAutoAdvance() {
+    if (autoAdvanceTimer) clearTimeout(autoAdvanceTimer);
+    autoAdvanceTimer = setTimeout(nextSlide, 5000);
+  }
 
-  // Add event listeners for new buttons
-  document
-    .getElementById("resetDayButton")
-    ?.addEventListener("click", resetDayAndXP);
-  document
-    .getElementById("closeWrapButton")
-    ?.addEventListener("click", closeDailyWrap);
+  function closeWrapped() {
+    if (autoAdvanceTimer) clearTimeout(autoAdvanceTimer);
+    modal.classList.add("wrapped-exit");
+    setTimeout(() => modal.remove(), 300);
+  }
 
-  // Play level up sound for the wrap reveal
-  if (levelUpSound) {
+  modal.addEventListener("click", (e) => {
+    if (!e.target.closest(".wrapped-btn")) {
+      if (autoAdvanceTimer) clearTimeout(autoAdvanceTimer);
+      nextSlide();
+    }
+  });
+
+  renderSlide(0);
+  startAutoAdvance();
+
+  if (typeof levelUpSound !== "undefined" && levelUpSound) {
     levelUpSound.currentTime = 0;
-    levelUpSound
-      .play()
-      .catch((err) => console.log("Audio play prevented:", err));
+    levelUpSound.play().catch(() => {});
   }
 }
 
 // #4 Reset Day and XP
 function resetDayAndXP() {
-  // Archive today's tasks with timestamp
   const todayKey = getTodayKey();
   const dailyTasksKey = `dailyTasks_${todayKey}`;
   const archiveKey = `archive_${todayKey}`;
@@ -3437,30 +3655,21 @@ function resetDayAndXP() {
     localStorage.setItem(archiveKey, todayTasks);
   }
 
-  // Clear today's active tasks
   localStorage.removeItem(dailyTasksKey);
-
-  // Reset XP to 0 for new day
   localStorage.setItem("currentXp", 0);
   localStorage.setItem("currentLevel", 1);
 
-  // Update display
   const xpMeterEl = document.getElementById("xp-meter");
   if (xpMeterEl) {
     xpMeterEl.dataset.xp = 0;
     updateXpMeter(0);
   }
 
-  // Show success message
   showResetConfirmation();
-  closeDailyWrap();
 
-  // Play initializing sound
-  if (initializingSound) {
+  if (typeof initializingSound !== "undefined" && initializingSound) {
     initializingSound.currentTime = 0;
-    initializingSound
-      .play()
-      .catch((err) => console.log("Audio play prevented:", err));
+    initializingSound.play().catch(() => {});
   }
 }
 
@@ -3479,43 +3688,43 @@ function showResetConfirmation() {
   `;
 
   document.body.appendChild(messageEl);
-
-  setTimeout(() => {
-    messageEl.classList.add("show");
-  }, 10);
-
+  setTimeout(() => messageEl.classList.add("show"), 10);
   setTimeout(() => {
     messageEl.classList.remove("show");
-    setTimeout(() => {
-      messageEl.remove();
-    }, 300);
+    setTimeout(() => messageEl.remove(), 300);
   }, 3000);
 }
 
-// #6 Close Daily Wrap Modal
-function closeDailyWrap() {
-  const modal = document.getElementById("dailyWrapModal");
-  modal.classList.remove("active");
-}
-
-// #7 Initialize Daily Wrap Button
+// #6 Initialize Daily Wrap Button
+const dailyWrapButton = document.getElementById("dailyWrapButton");
 if (dailyWrapButton) {
   dailyWrapButton.addEventListener("click", showDailyWrap);
 }
 
-// Close modal when clicking the X
-document.addEventListener("click", (e) => {
-  if (e.target.classList.contains("wrap-close")) {
-    closeDailyWrap();
-  }
-});
+// Update the HUD stats in real-time
+function updateWrapButtonHUD() {
+  const todayKey = getTodayKey();
+  const dailyTasksKey = `dailyTasks_${todayKey}`;
+  const todayTasks = JSON.parse(localStorage.getItem(dailyTasksKey)) || [];
 
-// Close modal when clicking outside
-dailyWrapModal?.addEventListener("click", (e) => {
-  if (e.target === dailyWrapModal) {
-    closeDailyWrap();
-  }
-});
+  const totalXP = todayTasks.reduce((sum, task) => sum + task.xp, 0);
+  const totalTasks = todayTasks.length;
+  const currentLevel = parseInt(localStorage.getItem("currentLevel")) || 1;
+
+  // Update HUD values
+  const hudTodayTasks = document.getElementById("hudTodayTasks");
+  const hudTodayXP = document.getElementById("hudTodayXP");
+  const hudCurrentLevel = document.getElementById("hudCurrentLevel");
+
+  if (hudTodayTasks) hudTodayTasks.textContent = totalTasks;
+  if (hudTodayXP) hudTodayXP.textContent = totalXP;
+  if (hudCurrentLevel) hudCurrentLevel.textContent = currentLevel;
+}
+
+// Call this function whenever a mission is completed
+// Add this line to your mission completion handler (createMissionClickHandler function)
+// Right after: trackDailyTask(taskDetails);
+// Add: updateWrapButtonHUD();
 
 // ========================================
 // END OF DAILY WRAP SYSTEM

@@ -102,8 +102,33 @@
 
       <br />
 
-      <div id="center">
-        <button id="dailyWrapButton">Daily Wrap ↗</button>
+      <div class="daily-wrap-button-container">
+        <button id="dailyWrapButton" class="cyber-wrap-button">
+          <div class="button-content">
+            <span class="button-icon"></span>
+            <span class="button-text">Daily Wrapped</span>
+          </div>
+        <div class="button-hud">
+  <div class="hud-scanline"></div> <!-- ADD THIS LINE -->
+  <div class="hud-line hud-line-top"></div>
+  <div class="hud-stats">
+    <div class="hud-stat">
+      <span class="hud-stat-label">TODAY</span>
+      <span class="hud-stat-value" id="hudTodayTasks">0</span>
+    </div>
+    <div class="hud-stat">
+      <span class="hud-stat-label">XP</span>
+      <span class="hud-stat-value" id="hudTodayXP">0</span>
+    </div>
+    <div class="hud-stat">
+      <span class="hud-stat-label">LVL</span>
+      <span class="hud-stat-value" id="hudCurrentLevel">1</span>
+    </div>
+  </div>
+  <div class="hud-line hud-line-bottom"></div>
+</div>
+          </div>
+        </button>
       </div>
       <br />
       <audio id="completionSound" src="Completion.mp3" preload="auto"></audio>
