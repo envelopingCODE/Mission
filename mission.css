@@ -478,19 +478,24 @@ input[type="text"] {
   animation: flare-pulse 3s infinite;
 }
 /* Earliest ready time display styling */
-/* ── Week's Best — expandable HUD ── */
+/* ── Week's Best — expandable HUD (green from original design) ── */
 .earliest-ready-display {
-  background: rgba(0,0,0,0.45);
-  border: 1px solid rgba(134,223,255,0.18);
+  background: rgba(0,0,0,0.4);
+  border: 1px solid rgba(16,221,50,0.3);
   border-radius: 8px;
-  padding: 8px 12px;
+  padding: 8px 15px;
   margin-top: 10px;
   font-family: "Courier New", monospace;
-  color: rgba(134,223,255,0.75);
+  color: rgba(16,221,50,0.9);
   position: relative;
-  transition: border-color 0.2s ease;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+  transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
 }
-.earliest-ready-display:hover { border-color: rgba(134,223,255,0.32); }
+.earliest-ready-display:hover {
+  background: rgba(0,0,0,0.6);
+  border-color: rgba(16,221,50,0.5);
+  box-shadow: 0 0 10px rgba(16,221,50,0.15);
+}
 
 .er-header {
   display: flex;
@@ -501,17 +506,17 @@ input[type="text"] {
 }
 
 .er-header .info { flex: 1; font-size: 0.7rem; letter-spacing: 0.08em; line-height: 1.5; }
-.er-header .time { font-weight: 700; color: #86dfff; text-shadow: 0 0 6px rgba(134,223,255,0.45); }
-.er-header .date { font-size: 0.56rem; color: rgba(134,223,255,0.35); letter-spacing: 0.12em; }
+.er-header .time { font-weight: 700; color: rgba(16,221,50,1); text-shadow: 0 0 5px rgba(16,221,50,0.7); }
+.er-header .date { font-size: 0.56rem; color: rgba(16,221,50,0.5); letter-spacing: 0.12em; }
 
 .er-toggle {
   font-size: 1rem;
-  color: rgba(134,223,255,0.35);
+  color: rgba(16,221,50,0.4);
   transition: transform 0.3s ease, color 0.2s ease;
   line-height: 1;
   flex-shrink: 0;
 }
-.er-expanded .er-toggle { transform: rotate(45deg); color: rgba(134,223,255,0.65); }
+.er-expanded .er-toggle { transform: rotate(45deg); color: rgba(16,221,50,0.7); }
 
 /* Expanding HUD panel */
 .er-hud {
@@ -522,7 +527,7 @@ input[type="text"] {
 .er-expanded .er-hud { max-height: 160px; }
 
 .er-hud-inner {
-  border-top: 1px solid rgba(134,223,255,0.08);
+  border-top: 1px solid rgba(16,221,50,0.15);
   margin-top: 8px;
   padding-top: 8px;
 }
@@ -535,16 +540,12 @@ input[type="text"] {
   margin-bottom: 8px;
 }
 .er-dot { display: flex; flex-direction: column; align-items: center; gap: 3px; }
-.er-dot-pip {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-}
-.er-dot-pip-earned  { background: #0fdfab; box-shadow: 0 0 5px rgba(15,223,171,0.4); }
+.er-dot-pip { width: 7px; height: 7px; border-radius: 50%; }
+.er-dot-pip-earned  { background: rgba(16,221,50,0.85); box-shadow: 0 0 5px rgba(16,221,50,0.4); }
 .er-dot-pip-missed  { background: rgba(255,255,255,0.1); }
 .er-dot-pip-future  { background: rgba(255,255,255,0.04); }
-.er-dot-pip-pending { background: transparent; border: 1.5px solid rgba(134,223,255,0.35); }
-.er-dot-lbl { font-size: 0.46rem; color: rgba(255,255,255,0.2); letter-spacing: 0.04em; }
+.er-dot-pip-pending { background: transparent; border: 1.5px solid rgba(16,221,50,0.35); }
+.er-dot-lbl { font-size: 0.46rem; color: rgba(16,221,50,0.3); letter-spacing: 0.04em; }
 
 /* Stats grid */
 .er-stats {
@@ -557,14 +558,14 @@ input[type="text"] {
   flex-direction: column;
   align-items: center;
   gap: 2px;
-  background: rgba(134,223,255,0.04);
-  border: 1px solid rgba(134,223,255,0.08);
+  background: rgba(16,221,50,0.04);
+  border: 1px solid rgba(16,221,50,0.12);
   border-radius: 4px;
   padding: 5px 3px;
 }
-.er-stat-icon { font-size: 0.65rem; color: rgba(134,223,255,0.45); }
-.er-stat-val  { font-family: "Courier New", monospace; font-size: 0.82rem; font-weight: 700; color: #86dfff; letter-spacing: -0.01em; }
-.er-stat-lbl  { font-family: "Courier New", monospace; font-size: 0.4rem; color: rgba(255,255,255,0.22); letter-spacing: 0.07em; text-transform: uppercase; text-align: center; }
+.er-stat-icon { font-size: 0.65rem; color: rgba(16,221,50,0.5); }
+.er-stat-val  { font-family: "Courier New", monospace; font-size: 0.82rem; font-weight: 700; color: rgba(16,221,50,1); text-shadow: 0 0 4px rgba(16,221,50,0.5); letter-spacing: -0.01em; }
+.er-stat-lbl  { font-family: "Courier New", monospace; font-size: 0.4rem; color: rgba(16,221,50,0.35); letter-spacing: 0.07em; text-transform: uppercase; text-align: center; }
 
 .earliest-ready-display .date {
   font-size: 0.8em;
