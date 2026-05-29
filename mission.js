@@ -837,6 +837,26 @@ function createMissionClickHandler(element) {
     // Track task for daily wrap
     trackDailyTask(taskDetails);
 
+    // Neon skin unlock — rewarded at 10 tasks in a single day
+    if (!localStorage.getItem("timerSkinUnlocked")) {
+      var unlockKey = new Date().toISOString().split("T")[0];
+      var todayCount = (JSON.parse(localStorage.getItem("dailyTasks_" + unlockKey)) || []).length;
+      if (todayCount >= 10) {
+        localStorage.setItem("timerSkinUnlocked", "neon");
+        localStorage.setItem("timerSkinActive", "neon");
+        if (typeof window._onTimerSkinUnlock === "function") window._onTimerSkinUnlock("neon");
+        var nb = document.createElement("div");
+        nb.className = "buddy-suggestion";
+        nb.textContent = "10 objectives cleared. Neon ring protocol unlocked.";
+        document.body.appendChild(nb);
+        requestAnimationFrame(function () { nb.classList.add("buddy-suggestion-visible"); });
+        setTimeout(function () {
+          nb.classList.remove("buddy-suggestion-visible");
+          setTimeout(function () { nb.remove(); }, 300);
+        }, 5000);
+      }
+    }
+
     // Update the button HUD
     updateWrapButtonHUD();
 

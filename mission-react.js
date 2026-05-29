@@ -2471,6 +2471,18 @@ const PomodoroTimer = () => {
   const [sessionCount, setSessionCount] = React.useState(0);
   const [expanded,     setExpanded]     = React.useState(false);
   const [position,     setPosition]     = React.useState(null);
+  const [skin,         setSkin]         = React.useState(
+    () => localStorage.getItem("timerSkinActive") || "eclipse"
+  );
+
+  // Listen for skin unlock notification from mission.js
+  React.useEffect(() => {
+    window._onTimerSkinUnlock = (s) => {
+      localStorage.setItem("timerSkinActive", s);
+      setSkin(s);
+    };
+    return () => { delete window._onTimerSkinUnlock; };
+  }, []);
 
   // Expose toggle to the global keyboard handler in mission.js
   React.useEffect(() => {
@@ -2576,7 +2588,10 @@ const PomodoroTimer = () => {
     document.addEventListener("mouseup",   onUp);
   }, [position]);
 
-  const ringColor = mode === "break" ? "#0fdfab" : "#86dfff";
+  const isNeon    = skin === "neon";
+  const ringColor = isNeon
+    ? (mode === "break" ? "#ff00e5" : "#00d4ff")
+    : (mode === "break" ? "#0fdfab"  : "#86dfff");
 
   // ── Minimized badge ───────────────────────────────────────────────────
   if (!expanded) {
@@ -2640,48 +2655,72 @@ const PomodoroTimer = () => {
           <svg width="196" height="196" viewBox="0 0 196 196"
                style={{ overflow: "visible" }}>
 
-            {/* ── Animated ambient corona (full circles, opacity-only animation) ── */}
+            {isNeon && (
+              <defs>
+                <linearGradient id="pip-neon-grad" x1="98" y1="24" x2="98" y2="172" gradientUnits="userSpaceOnUse">
+                  <stop offset="0%" stopColor="#00d4ff" />
+                  <stop offset="48%" stopColor="#8b00ff" />
+                  <stop offset="100%" stopColor="#ff00e5" />
+                </linearGradient>
+              </defs>
+            )}
+
+            {isNeon && [
+              {cx:22,  cy:18,  r:1,   fill:"#00d4ff", op:0.55},
+              {cx:170, cy:30,  r:1.5, fill:"#ff00e5", op:0.40},
+              {cx:185, cy:95,  r:1,   fill:"#00d4ff", op:0.70},
+              {cx:175, cy:160, r:1.5, fill:"#8b00ff", op:0.45},
+              {cx:110, cy:188, r:1,   fill:"#ff00e5", op:0.60},
+              {cx:42,  cy:182, r:1,   fill:"#00d4ff", op:0.50},
+              {cx:12,  cy:120, r:1.5, fill:"#8b00ff", op:0.40},
+              {cx:30,  cy:65,  r:1,   fill:"#00d4ff", op:0.65},
+            ].map((s, i) => (
+              <circle key={i} cx={s.cx} cy={s.cy} r={s.r} fill={s.fill} opacity={s.op} className="pip-sparkle" />
+            ))}
+
             <g className="pip-corona-outer">
               <circle cx="98" cy="98" r={PIP_R} fill="none"
-                stroke={ringColor} strokeWidth="42" strokeOpacity="0.028" />
+                stroke={isNeon ? "url(#pip-neon-grad)" : ringColor}
+                strokeWidth="42" strokeOpacity={isNeon ? 0.055 : 0.028} />
             </g>
             <g className="pip-corona-mid">
               <circle cx="98" cy="98" r={PIP_R} fill="none"
-                stroke={ringColor} strokeWidth="18" strokeOpacity="0.07" />
+                stroke={isNeon ? "url(#pip-neon-grad)" : ringColor}
+                strokeWidth="18" strokeOpacity={isNeon ? 0.1 : 0.07} />
             </g>
 
-            {/* ── Track ── */}
             <circle cx="98" cy="98" r={PIP_R} fill="none"
-              stroke="rgba(134,223,255,0.06)" strokeWidth="1" />
+              stroke="rgba(134,223,255,0.05)" strokeWidth="1" />
 
-            {/* ── Moon silhouette ── */}
             <circle cx="98" cy="98" r={PIP_R - 2} fill="rgba(0,0,0,0.42)" />
 
-            {/* ── Animated blurred halo arc — follows progress, pulses ── */}
             <g className="pip-arc-halo">
               <circle ref={pipGlowRef} cx="98" cy="98" r={PIP_R} fill="none"
-                stroke={ringColor} strokeWidth="9" strokeOpacity="0.35"
+                stroke={isNeon ? "url(#pip-neon-grad)" : ringColor}
+                strokeWidth={isNeon ? 12 : 9} strokeOpacity={isNeon ? 0.45 : 0.35}
                 strokeDasharray={PIP_C} strokeDashoffset={PIP_C}
                 strokeLinecap="round" transform="rotate(-90 98 98)"
-                style={{ filter: "blur(5px)" }}
+                style={{ filter: isNeon ? "blur(7px)" : "blur(5px)" }}
               />
             </g>
 
-            {/* ── Crisp progress arc — the "ring of fire" ── */}
             <circle ref={pipRingRef} cx="98" cy="98" r={PIP_R} fill="none"
-              stroke={ringColor} strokeWidth="2.5"
+              stroke={isNeon ? "url(#pip-neon-grad)" : ringColor}
+              strokeWidth={isNeon ? 3.5 : 2.5}
               strokeDasharray={PIP_C} strokeDashoffset={PIP_C}
               strokeLinecap="round" transform="rotate(-90 98 98)"
               style={{
-                filter: mode === "break"
-                  ? "drop-shadow(0 0 2px rgba(15,223,171,1)) drop-shadow(0 0 7px rgba(15,223,171,0.85)) drop-shadow(0 0 18px rgba(15,223,171,0.5))"
-                  : "drop-shadow(0 0 2px rgba(134,223,255,1)) drop-shadow(0 0 7px rgba(134,223,255,0.85)) drop-shadow(0 0 18px rgba(134,223,255,0.5))",
+                filter: isNeon
+                  ? "drop-shadow(0 0 3px #00d4ff) drop-shadow(0 0 10px #8b00ff) drop-shadow(0 0 24px #ff00e5)"
+                  : mode === "break"
+                    ? "drop-shadow(0 0 2px rgba(15,223,171,1)) drop-shadow(0 0 7px rgba(15,223,171,0.85)) drop-shadow(0 0 18px rgba(15,223,171,0.5))"
+                    : "drop-shadow(0 0 2px rgba(134,223,255,1)) drop-shadow(0 0 7px rgba(134,223,255,0.85)) drop-shadow(0 0 18px rgba(134,223,255,0.5))",
                 transition: "stroke 0.5s ease, filter 0.5s ease",
               }}
             />
           </svg>
           <div className="pip-time-display">
-            <div ref={pipTimeRef} className="pip-time">
+            <div ref={pipTimeRef} className={"pip-time" + (isNeon ? " pip-time-neon" : "")}>
               {fmt(timeLeftRef.current)}
             </div>
             <div className="pip-label">{mode === "work" ? "WORK" : "BREAK"}</div>

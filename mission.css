@@ -5181,6 +5181,20 @@ svg.minimalist-face {
 .st-row-shortcut { gap: 0.8rem; justify-content: flex-start; }
 .st-key { font-family: "Courier New", monospace; font-size: 0.56rem; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.11); border-radius: 3px; padding: 0.14rem 0.42rem; color: rgba(134,223,255,0.55); min-width: 2rem; text-align: center; flex-shrink: 0; }
 
+/* Neon skin */
+.pip-time-neon {
+  background: linear-gradient(180deg, #00d4ff 0%, #8b00ff 50%, #ff00e5 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.pip-sparkle { animation: sparkleFlicker 3s ease-in-out infinite; }
+@keyframes sparkleFlicker {
+  0%, 100% { opacity: 0.4; }
+  45%       { opacity: 0.95; }
+  70%       { opacity: 0.2; }
+}
+
 /* ==================== STREAK BAR ==================== */
 #streak-bar {
   margin-bottom: 1.2rem;
