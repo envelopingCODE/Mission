@@ -5193,17 +5193,26 @@ svg.minimalist-face {
 .pip-sparkle { animation: sparkleFlicker 3s ease-in-out infinite; }
 
 /* Robot buddy mouth animation while speaking.
-   transform-box:fill-box makes transform-origin:center work on SVG paths.
-   !important overrides the subtlePulse animation in the component's inline <style>. */
+   transform-origin:top center = jaw opens downward (not symmetric squash).
+   Irregular keyframe spacing = varied syllable rhythm, not a metronome.
+   Counter X-scale when Y opens = natural jaw physics.
+   !important overrides the subtlePulse in the component inline <style>. */
 @keyframes mouthTalk {
-  0%, 100% { transform: scaleY(1);   }
-  35%       { transform: scaleY(1.5); }
-  70%       { transform: scaleY(0.7); }
+  0%   { transform: scaleY(1)    scaleX(1);    }
+  7%   { transform: scaleY(1.16) scaleX(0.95); }
+  18%  { transform: scaleY(0.92) scaleX(1.02); }
+  31%  { transform: scaleY(1.2)  scaleX(0.94); }
+  42%  { transform: scaleY(0.96) scaleX(1.01); }
+  55%  { transform: scaleY(1.13) scaleX(0.96); }
+  67%  { transform: scaleY(0.9)  scaleX(1.02); }
+  78%  { transform: scaleY(1.08) scaleX(0.97); }
+  89%  { transform: scaleY(0.97) scaleX(1);    }
+  100% { transform: scaleY(1)    scaleX(1);    }
 }
 .robot-speaking {
-  animation: mouthTalk 0.28s ease-in-out infinite !important;
+  animation: mouthTalk 1.4s cubic-bezier(0.4, 0, 0.2, 1) infinite !important;
   transform-box: fill-box;
-  transform-origin: center;
+  transform-origin: top center;
 }
 @keyframes sparkleFlicker {
   0%, 100% { opacity: 0.4; }
