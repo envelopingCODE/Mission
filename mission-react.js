@@ -154,11 +154,14 @@ const CuteRobotFace = ({
   isTaskCompleted = false,
 }) => {
   //################## SECTION 2: State and Hooks ##################
-  const [isBlinking, setIsBlinking] = React.useState(false);
+  const [isBlinking,    setIsBlinking]    = React.useState(false);
   const [currentEmotion, setCurrentEmotion] = React.useState("curious");
-  const [eyePosition, setEyePosition] = React.useState({ x: 0, y: 0 });
-  const [isTracking, setIsTracking] = React.useState(false);
-  const [pupilSize, setPupilSize] = React.useState(1);
+  const [eyePosition,   setEyePosition]   = React.useState({ x: 0, y: 0 });
+  const [isTracking,    setIsTracking]    = React.useState(false);
+  const [pupilSize,     setPupilSize]     = React.useState(1);
+  const [isSpeaking,    setIsSpeaking]    = React.useState(false);
+  const [isProcessing,  setIsProcessing]  = React.useState(false);
+  const lookAwayTimerRef = React.useRef(null);
   const [particles, setParticles] = React.useState([]);
   const [confettiParticles, setConfettiParticles] = React.useState([]);
   const [previousLevel, setPreviousLevel] = React.useState(1);
@@ -814,6 +817,8 @@ const CuteRobotFace = ({
 
     // Function to trigger random emotion
     const triggerRandomEmotion = () => {
+      // Never interrupt a processing state
+      if (isProcessing) return;
       // Only show random emotions if we're in a base state
       if (
         !isTaskCompleted &&
@@ -1210,6 +1215,29 @@ const CuteRobotFace = ({
     normal: { scaleY: 1 },
     blink: { scaleY: 0.1 },
   };
+
+  // ── Window hooks (must be in CuteRobotFace — states live here) ──────────
+  React.useEffect(() => {
+    window.setRobotSpeaking = (active) => setIsSpeaking(active);
+    window.setRobotProcessing = (active) => {
+      setIsProcessing(active);
+      setCurrentEmotion(active ? "glitched" : "neutral");
+    };
+    window.robotLookAway = () => {
+      if (lookAwayTimerRef.current) clearTimeout(lookAwayTimerRef.current);
+      setEyePosition({ x: -7, y: 1 });
+      lookAwayTimerRef.current = setTimeout(() => {
+        setEyePosition({ x: 0, y: 0 });
+        lookAwayTimerRef.current = null;
+      }, 900);
+    };
+    return () => {
+      delete window.setRobotSpeaking;
+      delete window.setRobotProcessing;
+      delete window.robotLookAway;
+      if (lookAwayTimerRef.current) clearTimeout(lookAwayTimerRef.current);
+    };
+  }, []);
 
   //################## SECTION 6: Render Logic ##################
   // Get current expression based on emotion
@@ -1674,9 +1702,7 @@ const CuteRobotFace = ({
           id="robot-mouth"
           d={currentExpression.mouth}
           fill={currentExpression.color || "#86dfff"}
-          className={`mouth ${
-            currentExpression.isGlitched ? "glitching-element" : ""
-          }`}
+          className={`mouth ${currentExpression.isGlitched ? "glitching-element" : ""} ${isSpeaking ? "robot-speaking" : ""}`}
           animate={motion ? { d: currentExpression.mouth } : undefined}
           transition={
             window.CraftedMotion && window.CraftedMotion.EASING

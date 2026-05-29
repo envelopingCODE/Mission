@@ -334,6 +334,8 @@ const OllamaClient = (function () {
     ms = ms || 5000;
     var c = cfg();
     if (!c.enabled || !_available) return null;
+    // Show processing state on the buddy while Ollama is thinking
+    if (typeof window.setRobotProcessing === "function") window.setRobotProcessing(true);
     var ctrl = new AbortController();
     var t = setTimeout(function () { ctrl.abort(); }, ms);
     try {
@@ -354,7 +356,10 @@ const OllamaClient = (function () {
       var d = await res.json();
       return (d.message && d.message.content && d.message.content.trim()) || null;
     } catch (e) { return null; }
-    finally { clearTimeout(t); }
+    finally {
+      clearTimeout(t);
+      if (typeof window.setRobotProcessing === "function") window.setRobotProcessing(false);
+    }
   }
   async function generateBriefing(tasks, streak) {
     var list = tasks.slice(0, 6).map(function (t) { return t.title || t; }).join(", ") || "none yet";
@@ -695,6 +700,12 @@ function displayRandomMessage(category = "general") {
   messageElement.textContent = message;
   messageElement.classList.add("motivational-message");
   document.body.appendChild(messageElement);
+
+  // Mouth sync — animate while message is visible
+  if (typeof window.setRobotSpeaking === "function") {
+    window.setRobotSpeaking(true);
+    setTimeout(function () { window.setRobotSpeaking(false); }, 3500);
+  }
   setTimeout(() => messageElement.remove(), 3500);
 }
 
@@ -1774,7 +1785,8 @@ function readyButtonClickHandler() {
 
     updateEarliestReadyDisplay(currentTime);
   } else {
-    // Signal sent, record stands
+    // Signal sent, record stands — look away (mild disappointment)
+    if (typeof window.robotLookAway === "function") window.robotLookAway();
     const prevTime = new Date(earliestReadyTimeMs).toLocaleTimeString([], {
       hour: "2-digit", minute: "2-digit", hour12: false,
     });
@@ -1974,6 +1986,8 @@ function checkCategoryNeglect() {
 
   neglected.forEach(({ name, days }, i) => {
     setTimeout(() => {
+      // Look away before delivering bad news
+      if (typeof window.robotLookAway === "function") window.robotLookAway();
       const bubble = document.createElement("div");
       bubble.className = "buddy-suggestion";
       bubble.textContent = `${name} objectives: ${days} days dark.`;

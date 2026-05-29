@@ -5191,6 +5191,17 @@ svg.minimalist-face {
   background-clip: text;
 }
 .pip-sparkle { animation: sparkleFlicker 3s ease-in-out infinite; }
+
+/* Robot buddy mouth animation while speaking */
+@keyframes mouthTalk {
+  0%, 100% { transform: scaleY(1);    }
+  30%       { transform: scaleY(1.28); }
+  65%       { transform: scaleY(0.88); }
+}
+.robot-speaking {
+  animation: mouthTalk 0.27s ease-in-out infinite;
+  transform-origin: center;
+}
 @keyframes sparkleFlicker {
   0%, 100% { opacity: 0.4; }
   45%       { opacity: 0.95; }
