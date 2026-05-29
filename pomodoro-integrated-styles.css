@@ -1,14 +1,48 @@
 /* ==================== POMODORO TIMER - INTEGRATED STYLES ==================== */
 /* Optimized for vertical HUD layout (200px - 600px+ widths) */
 
+/* ── Eclipse corona animations ─────────────────────────────────────────────
+   Three independent timings so the layers never re-sync — the corona
+   looks alive rather than mechanical. Opacity-only: GPU compositor layer,
+   no paint cost. Firefox handles <g> opacity animation natively. */
+
+@keyframes eclipseCoronaOuter {
+  0%,  100% { opacity: 1;    }
+  40%, 60%  { opacity: 0.28; }
+}
+
+@keyframes eclipseCoronaMid {
+  0%,  100% { opacity: 0.55; }
+  25%, 75%  { opacity: 1;    }
+}
+
+@keyframes eclipseArcHalo {
+  0%,  100% { opacity: 0.6; }
+  50%        { opacity: 1;   }
+}
+
+.pip-corona-outer {
+  animation: eclipseCoronaOuter 4s ease-in-out infinite;
+  will-change: opacity;
+}
+
+.pip-corona-mid {
+  animation: eclipseCoronaMid 3.2s ease-in-out infinite;
+  will-change: opacity;
+}
+
+.pip-arc-halo {
+  animation: eclipseArcHalo 2.5s ease-in-out infinite;
+  will-change: opacity;
+}
+
 /* ========== MINIMIZED VIEW (Badge Mode) ========== */
 .pomodoro-minimized {
-  position: absolute;
-  top: -120px;
-  left: 260px;
-  z-index: 10;
+  position: fixed;
+  pointer-events: auto;
+  z-index: 10000;
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: opacity 0.2s ease;
 }
 
 .pomodoro-mini-ring {
@@ -286,14 +320,16 @@
 /* ========== PIP VIEW (Floating) ========== */
 .pomodoro-pip {
   position: fixed;
-  width: 140px;
-  background: rgba(0, 0, 0, 0.85);
-  border: 1px solid rgba(134, 223, 255, 0.4);
-  border-radius: 16px;
+  pointer-events: auto;
+  width: 228px;
+  background: rgba(0, 0, 0, 0.88);
+  border: 1px solid rgba(134, 223, 255, 0.35);
+  border-radius: 18px;
   backdrop-filter: blur(20px);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
   z-index: 9999;
   user-select: none;
+  will-change: transform;
   transition: box-shadow 0.3s ease;
 }
 
@@ -309,15 +345,15 @@
 .pip-header {
   display: flex;
   justify-content: flex-end;
-  padding: 4px 8px;
-  border-bottom: 1px solid rgba(134, 223, 255, 0.2);
+  padding: 6px 10px;
+  border-bottom: 1px solid rgba(134, 223, 255, 0.15);
 }
 
 .pip-close {
   background: transparent;
   border: none;
-  color: rgba(134, 223, 255, 0.6);
-  font-size: 1.5rem;
+  color: rgba(134, 223, 255, 0.5);
+  font-size: 1.4rem;
   line-height: 1;
   cursor: pointer;
   padding: 0;
@@ -330,24 +366,25 @@
 }
 
 .pip-close:hover {
-  color: #ff6b6b;
+  color: rgba(255, 107, 107, 0.9);
 }
 
 .pomodoro-pip-content {
-  padding: 1rem;
+  padding: 1.4rem 1rem 1.6rem;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.75rem;
+  gap: 1.1rem;
 }
 
 .pip-timer-ring {
   position: relative;
-  width: 120px;
-  height: 120px;
+  width: 196px;
+  height: 196px;
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: visible; /* let corona glow bleed past the SVG boundary */
 }
 
 .pip-time-display {
@@ -356,33 +393,36 @@
   left: 50%;
   transform: translate(-50%, -50%);
   text-align: center;
+  pointer-events: none;
 }
 
 .pip-time {
   font-family: "Courier New", monospace;
-  font-size: 1.5rem;
+  font-size: 1.9rem;
   font-weight: 700;
   color: #86dfff;
-  text-shadow: 0 0 10px rgba(134, 223, 255, 0.5);
-  letter-spacing: 0.05em;
+  text-shadow: 0 0 14px rgba(134, 223, 255, 0.35);
+  letter-spacing: 0.04em;
+  line-height: 1;
 }
 
 .pip-label {
   font-family: "Courier New", monospace;
-  font-size: 0.625rem;
-  color: rgba(134, 223, 255, 0.7);
-  letter-spacing: 0.2em;
-  margin-top: 0.25rem;
+  font-size: 0.58rem;
+  color: rgba(134, 223, 255, 0.55);
+  letter-spacing: 0.25em;
+  margin-top: 0.35rem;
 }
 
 .pip-controls {
   display: flex;
-  gap: 0.75rem;
+  gap: 1.1rem;
+  align-items: center;
 }
 
 .pip-btn {
-  width: 40px;
-  height: 40px;
+  width: 42px;
+  height: 42px;
   border: 2px solid rgba(134, 223, 255, 0.4);
   border-radius: 50%;
   background: rgba(0, 0, 0, 0.3);

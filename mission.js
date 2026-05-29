@@ -277,6 +277,8 @@ function getWeekKey() {
 // SESSION PROGRESS (Flow: immediate feedback + clear goals)
 // ========================================
 let sessionCompletedCount = 0;
+let sessionXpEarned = 0;
+let sessionCeremonyShown = false;
 
 function updateSessionProgress() {
   const el = document.getElementById("session-progress");
@@ -285,12 +287,47 @@ function updateSessionProgress() {
   if (remaining === 0 && sessionCompletedCount > 0) {
     el.textContent = "All clear";
     el.className = "session-progress-done";
-  } else if (sessionCompletedCount > 0 || remaining > 0) {
-    el.textContent = `${sessionCompletedCount} done · ${remaining} left`;
-    el.className = "";
+    if (!sessionCeremonyShown) {
+      sessionCeremonyShown = true;
+      showSessionCeremony(sessionCompletedCount, sessionXpEarned);
+    }
   } else {
-    el.textContent = "";
+    if (remaining > 0) sessionCeremonyShown = false; // reset if tasks are added again
+    el.textContent = sessionCompletedCount > 0 || remaining > 0
+      ? `${sessionCompletedCount} done · ${remaining} left`
+      : "";
+    el.className = "";
   }
+}
+
+function showSessionCeremony(taskCount, xpEarned) {
+  const { tier: depthTier, daysActive } = getPartnerDepth();
+  const buddyLine = depthTier >= 2
+    ? "Done. See you tomorrow."
+    : depthTier >= 1
+      ? `Day ${daysActive}. Board cleared.`
+      : "Board cleared. A strong session.";
+
+  const overlay = document.createElement("div");
+  overlay.className = "session-ceremony";
+  overlay.innerHTML = `
+    <div class="ceremony-content">
+      <div class="ceremony-count">${taskCount}</div>
+      <div class="ceremony-count-label">objective${taskCount !== 1 ? "s" : ""} cleared</div>
+      <div class="ceremony-xp">+${xpEarned} XP</div>
+      <div class="ceremony-buddy">${buddyLine}</div>
+      <div class="ceremony-hint">tap to continue</div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  requestAnimationFrame(() => overlay.classList.add("ceremony-visible"));
+
+  function dismiss() {
+    overlay.classList.remove("ceremony-visible");
+    setTimeout(() => overlay.remove(), 500);
+  }
+  overlay.addEventListener("click", dismiss);
+  setTimeout(dismiss, 6000);
 }
 
 // Create a single shared AudioContext for all audio operations
@@ -587,8 +624,17 @@ function showPomodoroCheck(categoryKey, estimate) {
   // Animate in on next frame
   requestAnimationFrame(() => bar.classList.add("pomo-check-visible"));
 
-  // Auto-dismiss after 4 s logging the estimate
-  setTimeout(() => dismiss(estimate), 4000);
+  // Auto-dismiss after 4 s — paused while the cursor is over the bar
+  let autoTimer = setTimeout(() => dismiss(estimate), 4000);
+
+  bar.addEventListener("mouseenter", () => {
+    clearTimeout(autoTimer);
+    autoTimer = null;
+  });
+
+  bar.addEventListener("mouseleave", () => {
+    autoTimer = setTimeout(() => dismiss(estimate), 4000);
+  });
 }
 
 // Global task completion notification function
@@ -719,6 +765,7 @@ function createMissionClickHandler(element) {
 
     // Session progress (Flow: immediate feedback)
     sessionCompletedCount++;
+    sessionXpEarned += xp;
     updateSessionProgress();
 
     // Streak repair progress

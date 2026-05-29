@@ -2266,6 +2266,17 @@ const initializeReactComponents = () => {
     });
   }
 
+  // Mount Pomodoro timer
+  const pomodoroMount = document.getElementById("pomodoro-mount");
+  if (pomodoroMount && !window.pomodoroRoot) {
+    try {
+      window.pomodoroRoot = ReactDOM.createRoot(pomodoroMount);
+      window.pomodoroRoot.render(<PomodoroTimer />);
+    } catch (e) {
+      console.error("Error mounting PomodoroTimer:", e);
+    }
+  }
+
   // Get our container element
   const container = document.getElementById("react-mission-control");
 
@@ -2291,6 +2302,245 @@ const initializeReactComponents = () => {
       }
     }
   }
+};
+
+// ==================== POMODORO TIMER ====================
+// Time lives in a ref — only structural changes trigger React re-renders.
+// Per-second display updates go directly to DOM nodes via useLayoutEffect,
+// which fires synchronously after React commits but before the browser
+// paints, preventing any stale-value flash and eliminating the reflow.
+const PomodoroTimer = () => {
+  const WORK_TIME  = 25 * 60;
+  const BREAK_TIME =  5 * 60;
+  const MINI_R = 26, MINI_C = 2 * Math.PI * 26;
+  const PIP_R  = 74, PIP_C  = 2 * Math.PI * 74;
+
+  // Structural state — triggers re-render on meaningful changes only
+  const [isRunning,    setIsRunning]    = React.useState(false);
+  const [mode,         setMode]         = React.useState("work");
+  const [sessionCount, setSessionCount] = React.useState(0);
+  const [expanded,     setExpanded]     = React.useState(false);
+  const [position,     setPosition]     = React.useState(null);
+
+  // Time as mutable ref — no re-render per tick
+  const timeLeftRef  = React.useRef(WORK_TIME);
+  const totalTimeRef = React.useRef(WORK_TIME);
+
+  // DOM refs for direct per-second writes
+  const pipTimeRef  = React.useRef(null);
+  const pipRingRef  = React.useRef(null);
+  const pipGlowRef  = React.useRef(null); // blurred halo arc — follows same dashoffset
+  const miniTimeRef = React.useRef(null);
+  const miniRingRef = React.useRef(null);
+
+  const fmt = (s) =>
+    String(Math.floor(s / 60)).padStart(2, "0") + ":" + String(s % 60).padStart(2, "0");
+
+  // Direct DOM update — synchronous, no rAF
+  const syncDisplay = React.useCallback(() => {
+    const tl = timeLeftRef.current;
+    const p  = 1 - tl / totalTimeRef.current;
+    const f  = fmt(tl);
+    if (pipTimeRef.current)  pipTimeRef.current.textContent = f;
+    if (miniTimeRef.current) miniTimeRef.current.textContent = f;
+    const pipOffset = String(PIP_C * (1 - p));
+    if (pipRingRef.current)  pipRingRef.current.setAttribute("stroke-dashoffset", pipOffset);
+    if (pipGlowRef.current)  pipGlowRef.current.setAttribute("stroke-dashoffset", pipOffset);
+    if (miniRingRef.current)
+      miniRingRef.current.setAttribute("stroke-dashoffset", String(MINI_C * (1 - p)));
+  }, []);
+
+  // Runs synchronously after every React commit, before browser paint.
+  // Keeps DOM in sync when expand/collapse or mode switch re-mounts nodes.
+  React.useLayoutEffect(() => { syncDisplay(); });
+
+  // Interval — never calls setState per tick
+  React.useEffect(() => {
+    if (!isRunning) return;
+    const id = setInterval(() => {
+      if (timeLeftRef.current > 1) {
+        timeLeftRef.current--;
+        syncDisplay();
+        return;
+      }
+      clearInterval(id);
+      const nextMode = mode === "work" ? "break" : "work";
+      const nextTime = nextMode === "work" ? WORK_TIME : BREAK_TIME;
+      timeLeftRef.current  = nextTime;
+      totalTimeRef.current = nextTime;
+      if (mode === "work") {
+        setSessionCount((c) => c + 1);
+        if (typeof window.notifyTaskCompletion === "function") {
+          window.notifyTaskCompletion({
+            id: "pomodoro-" + Date.now(),
+            title: "Pomodoro complete",
+            priority: "normal",
+            completedAt: new Date().toISOString(),
+          });
+        }
+      }
+      setMode(nextMode);
+      setIsRunning(false);
+    }, 1000);
+    return () => clearInterval(id);
+  }, [isRunning, mode, syncDisplay]);
+
+  const reset = React.useCallback(() => {
+    setIsRunning(false);
+    const t = mode === "work" ? WORK_TIME : BREAK_TIME;
+    timeLeftRef.current  = t;
+    totalTimeRef.current = t;
+    syncDisplay();
+  }, [mode, syncDisplay]);
+
+  const dragRef = React.useRef(null);
+  const onDragStart = React.useCallback((e) => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    const base = position || { x: window.innerWidth - 206, y: window.innerHeight - 320 };
+    dragRef.current = { startX: e.clientX, startY: e.clientY, ...base };
+    const onMove = (mv) => {
+      if (!dragRef.current) return;
+      setPosition({
+        x: Math.max(0, Math.min(window.innerWidth  - 190, dragRef.current.x + mv.clientX - dragRef.current.startX)),
+        y: Math.max(0, Math.min(window.innerHeight - 300, dragRef.current.y + mv.clientY - dragRef.current.startY)),
+      });
+    };
+    const onUp = () => {
+      dragRef.current = null;
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup",   onUp);
+    };
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup",   onUp);
+  }, [position]);
+
+  const ringColor = mode === "break" ? "#0fdfab" : "#86dfff";
+
+  // ── Minimized badge ───────────────────────────────────────────────────
+  if (!expanded) {
+    return (
+      <div
+        className="pomodoro-minimized"
+        style={{ position: "fixed", bottom: "1.5rem", right: "5rem",
+                 top: "auto", left: "auto", cursor: "pointer" }}
+        onClick={() => setExpanded(true)}
+        title="Open timer"
+      >
+        <div className="pomodoro-mini-ring">
+          <svg width="64" height="64" viewBox="0 0 64 64"
+               style={{ position: "absolute", inset: 0, overflow: "visible" }}>
+            {/* Animated ambient mini corona */}
+            <g className="pip-corona-outer">
+              <circle cx="32" cy="32" r={MINI_R} fill="none"
+                stroke={ringColor} strokeWidth="14" strokeOpacity="0.04" />
+            </g>
+            {/* Track */}
+            <circle cx="32" cy="32" r={MINI_R} fill="none"
+              stroke="rgba(134,223,255,0.06)" strokeWidth="1" />
+            {/* Moon silhouette */}
+            <circle cx="32" cy="32" r={MINI_R - 1} fill="rgba(0,0,0,0.45)" />
+            {/* Progress arc with glow */}
+            <circle ref={miniRingRef} cx="32" cy="32" r={MINI_R} fill="none"
+              stroke={ringColor} strokeWidth="1.8"
+              strokeDasharray={MINI_C} strokeDashoffset={MINI_C}
+              strokeLinecap="round" transform="rotate(-90 32 32)"
+              style={{
+                filter: mode === "break"
+                  ? "drop-shadow(0 0 2px rgba(15,223,171,1)) drop-shadow(0 0 5px rgba(15,223,171,0.65))"
+                  : "drop-shadow(0 0 2px rgba(134,223,255,1)) drop-shadow(0 0 5px rgba(134,223,255,0.65))",
+                transition: "stroke 0.5s ease, filter 0.5s ease",
+              }}
+            />
+          </svg>
+          <span ref={miniTimeRef} className="pomodoro-mini-time">
+            {fmt(timeLeftRef.current)}
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  // ── PIP widget ────────────────────────────────────────────────────────
+  const pipStyle = position
+    ? { position: "fixed", left: position.x + "px", top: position.y + "px",
+        right: "auto", bottom: "auto" }
+    : { position: "fixed", right: "1.5rem", bottom: "1.5rem",
+        left: "auto", top: "auto" };
+
+  return (
+    <div className="pomodoro-pip" style={pipStyle}>
+      <div className="pip-header" onMouseDown={onDragStart} style={{ cursor: "grab" }}>
+        <button className="pip-close" onClick={() => setExpanded(false)}
+                title="Minimise" style={{ cursor: "pointer" }}>−</button>
+      </div>
+      <div className="pomodoro-pip-content">
+        <div className="pip-timer-ring">
+          <svg width="196" height="196" viewBox="0 0 196 196"
+               style={{ overflow: "visible" }}>
+
+            {/* ── Animated ambient corona (full circles, opacity-only animation) ── */}
+            <g className="pip-corona-outer">
+              <circle cx="98" cy="98" r={PIP_R} fill="none"
+                stroke={ringColor} strokeWidth="42" strokeOpacity="0.028" />
+            </g>
+            <g className="pip-corona-mid">
+              <circle cx="98" cy="98" r={PIP_R} fill="none"
+                stroke={ringColor} strokeWidth="18" strokeOpacity="0.07" />
+            </g>
+
+            {/* ── Track ── */}
+            <circle cx="98" cy="98" r={PIP_R} fill="none"
+              stroke="rgba(134,223,255,0.06)" strokeWidth="1" />
+
+            {/* ── Moon silhouette ── */}
+            <circle cx="98" cy="98" r={PIP_R - 2} fill="rgba(0,0,0,0.42)" />
+
+            {/* ── Animated blurred halo arc — follows progress, pulses ── */}
+            <g className="pip-arc-halo">
+              <circle ref={pipGlowRef} cx="98" cy="98" r={PIP_R} fill="none"
+                stroke={ringColor} strokeWidth="9" strokeOpacity="0.35"
+                strokeDasharray={PIP_C} strokeDashoffset={PIP_C}
+                strokeLinecap="round" transform="rotate(-90 98 98)"
+                style={{ filter: "blur(5px)" }}
+              />
+            </g>
+
+            {/* ── Crisp progress arc — the "ring of fire" ── */}
+            <circle ref={pipRingRef} cx="98" cy="98" r={PIP_R} fill="none"
+              stroke={ringColor} strokeWidth="2.5"
+              strokeDasharray={PIP_C} strokeDashoffset={PIP_C}
+              strokeLinecap="round" transform="rotate(-90 98 98)"
+              style={{
+                filter: mode === "break"
+                  ? "drop-shadow(0 0 2px rgba(15,223,171,1)) drop-shadow(0 0 7px rgba(15,223,171,0.85)) drop-shadow(0 0 18px rgba(15,223,171,0.5))"
+                  : "drop-shadow(0 0 2px rgba(134,223,255,1)) drop-shadow(0 0 7px rgba(134,223,255,0.85)) drop-shadow(0 0 18px rgba(134,223,255,0.5))",
+                transition: "stroke 0.5s ease, filter 0.5s ease",
+              }}
+            />
+          </svg>
+          <div className="pip-time-display">
+            <div ref={pipTimeRef} className="pip-time">
+              {fmt(timeLeftRef.current)}
+            </div>
+            <div className="pip-label">{mode === "work" ? "WORK" : "BREAK"}</div>
+          </div>
+        </div>
+        <div className="pip-controls">
+          <button className="pip-btn" onClick={reset} title="Reset">↺</button>
+          <button className="pip-btn"
+            style={{ width: 48, height: 48,
+                     border: `2px solid ${mode === "break" ? "rgba(15,223,171,0.6)" : "#86dfff"}` }}
+            onClick={() => setIsRunning((r) => !r)}>
+            {isRunning ? "⏸" : "▶"}
+          </button>
+        </div>
+        <div className="pip-session">
+          {sessionCount} {sessionCount === 1 ? "session" : "sessions"}
+        </div>
+      </div>
+    </div>
+  );
 };
 
 // Ensure the DOM is fully loaded before we initialize
