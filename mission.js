@@ -263,6 +263,125 @@ function renderStreakBar() {
 // END STREAK SYSTEM
 // ========================================
 
+// ========================================
+// APP SETTINGS
+// ========================================
+const AppSettings = (function () {
+  var KEY = "appSettings";
+  var DEFAULTS = {
+    pomodoroVisible:      true,
+    soundEnabled:         true,
+    buddyMessages:        true,
+    neuralCaptureVisible: true,
+    ollamaEnabled:        false,
+    ollamaModel:          "llama3.2:3b",
+    ollamaUrl:            "http://localhost:11434",
+  };
+  function get() {
+    try { return Object.assign({}, DEFAULTS, JSON.parse(localStorage.getItem(KEY) || "{}")); }
+    catch (e) { return Object.assign({}, DEFAULTS); }
+  }
+  function set(key, value) {
+    var s = get(); s[key] = value;
+    localStorage.setItem(KEY, JSON.stringify(s));
+    applyOne(key, value);
+    if (typeof window._onSettingsChange === "function") window._onSettingsChange();
+  }
+  function applyOne(key, value) {
+    if (key === "pomodoroVisible") {
+      var el = document.getElementById("pomodoro-mount");
+      if (el) el.style.visibility = value ? "" : "hidden";
+    }
+    if (key === "neuralCaptureVisible") {
+      var el2 = document.getElementById("distraction-capture-container");
+      if (el2) el2.style.display = value ? "" : "none";
+    }
+    if (key === "soundEnabled") {
+      document.querySelectorAll("audio").forEach(function (a) { a.muted = !value; });
+    }
+  }
+  function applyAll() {
+    var s = get();
+    Object.keys(s).forEach(function (k) { applyOne(k, s[k]); });
+  }
+  return { get: get, set: set, applyAll: applyAll };
+})();
+
+// ========================================
+// OLLAMA CLIENT
+// ========================================
+const OllamaClient = (function () {
+  var _available = null;
+  var SYSTEM = "You are a dry, laconic tactical AI on a personal mission board. Cyberpunk-military voice. Short punchy sentences. No emoji. No markdown. Max 2 sentences. Respond only with the message.";
+  function cfg() {
+    var s = AppSettings.get();
+    return {
+      url:     (s.ollamaUrl  || "http://localhost:11434").replace(/\/$/, ""),
+      model:   s.ollamaModel || "llama3.2:3b",
+      enabled: !!s.ollamaEnabled,
+    };
+  }
+  async function checkAvailable() {
+    var c = cfg();
+    if (!c.enabled) { _available = false; return false; }
+    try {
+      var res = await fetch(c.url + "/api/tags", { signal: AbortSignal.timeout(2000) });
+      _available = res.ok;
+    } catch (e) { _available = false; }
+    return _available;
+  }
+  async function generate(prompt, ms) {
+    ms = ms || 5000;
+    var c = cfg();
+    if (!c.enabled || !_available) return null;
+    var ctrl = new AbortController();
+    var t = setTimeout(function () { ctrl.abort(); }, ms);
+    try {
+      var res = await fetch(c.url + "/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        signal: ctrl.signal,
+        body: JSON.stringify({
+          model: c.model,
+          messages: [
+            { role: "system", content: SYSTEM },
+            { role: "user",   content: prompt },
+          ],
+          stream: false,
+          options: { temperature: 0.72, num_predict: 80 },
+        }),
+      });
+      var d = await res.json();
+      return (d.message && d.message.content && d.message.content.trim()) || null;
+    } catch (e) { return null; }
+    finally { clearTimeout(t); }
+  }
+  async function generateBriefing(tasks, streak) {
+    var list = tasks.slice(0, 6).map(function (t) { return t.title || t; }).join(", ") || "none yet";
+    return generate(
+      "Ready signal at " + new Date().getHours() + ":00. Streak: " + streak + " days. Objectives: " + list + ". One-sentence tactical briefing.",
+      7000
+    );
+  }
+  async function generateCompletion(taskTitle, category, sessionNum, streak) {
+    return generate(
+      "Task completed: \"" + taskTitle + "\" (" + category + "). Session #" + sessionNum + ". Streak: " + streak + " days. One-sentence acknowledgement.",
+      5000
+    );
+  }
+  return {
+    checkAvailable: checkAvailable,
+    generate: generate,
+    generateBriefing: generateBriefing,
+    generateCompletion: generateCompletion,
+    get available() { return _available; },
+  };
+})();
+
+// Expose on window — top-level const is NOT auto-added to window in browser scripts
+window.AppSettings  = AppSettings;
+window.OllamaClient = OllamaClient;
+
 // Returns YYYY-MM-DD of Monday of the current week — weekly record key
 function getWeekKey() {
   const now = new Date();
