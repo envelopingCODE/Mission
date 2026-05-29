@@ -1866,6 +1866,27 @@ if (readyButtonEl) {
   readyButtonEl.addEventListener("click", checkCategoryNeglect);
   readyButtonEl.addEventListener("click", suggestQuickWin);
   readyButtonEl.addEventListener("click", renderStreakBar);
+  readyButtonEl.addEventListener("click", function () {
+    if (!OllamaClient.available || !AppSettings.get().buddyMessages) return;
+    var todayKey = new Date().toISOString().split("T")[0];
+    var todayTasks = JSON.parse(localStorage.getItem("dailyTasks_" + todayKey)) || [];
+    var pending = Array.from(document.querySelectorAll(".mission")).map(function (el) {
+      return { title: el.innerText.split(" — ")[0].trim() };
+    });
+    var { streak } = getStreakData();
+    OllamaClient.generateBriefing(pending.concat(todayTasks), streak).then(function (brief) {
+      if (!brief || !AppSettings.get().buddyMessages) return;
+      var bubble = document.createElement("div");
+      bubble.className = "buddy-suggestion";
+      bubble.textContent = brief;
+      document.body.appendChild(bubble);
+      requestAnimationFrame(function () { bubble.classList.add("buddy-suggestion-visible"); });
+      setTimeout(function () {
+        bubble.classList.remove("buddy-suggestion-visible");
+        setTimeout(function () { bubble.remove(); }, 300);
+      }, 7000);
+    });
+  });
 
   // Check if button should be disabled on page load
   checkReadyButtonStatus();
@@ -4436,6 +4457,11 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "t" || e.key === "T") {
     e.preventDefault();
     if (typeof window.togglePomodoroTimer === "function") window.togglePomodoroTimer();
+  }
+
+  if (e.key === "s" || e.key === "S") {
+    e.preventDefault();
+    if (typeof window.toggleSettingsPanel === "function") window.toggleSettingsPanel();
   }
 
   if (e.key === "Escape") {
