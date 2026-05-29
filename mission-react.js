@@ -1573,8 +1573,10 @@ const CuteRobotFace = ({
             -25 + eyePosition.x + (isGlitching ? glitchOffset.x : 0)
           },
                 ${-10 + eyePosition.y + (isGlitching ? glitchOffset.y : 0)})`}
-          className={`${currentExpression.isGlitched ? "glitching-element" : ""} ${isSpeaking ? "robot-eye-speaking" : ""}`}
+          className={currentExpression.isGlitched ? "glitching-element" : ""}
         >
+          {/* Inner wrapper receives squint — outer <g> keeps SVG transform positioning */}
+          <g className={isSpeaking ? "robot-eye-speaking" : ""}>
           {/* Main eye path */}
           <PathComponent
             d={
@@ -1630,6 +1632,7 @@ const CuteRobotFace = ({
               />
             )}
           </g>
+          </g>{/* end robot-eye-speaking inner wrapper */}
         </g>
 
         {/* Right Eye Group with same enhancements */}
@@ -1639,8 +1642,9 @@ const CuteRobotFace = ({
             25 + eyePosition.x - (isGlitching ? glitchOffset.x : 0)
           },
                 ${-10 + eyePosition.y + (isGlitching ? glitchOffset.y : 0)})`}
-          className={`${currentExpression.isGlitched ? "glitching-element" : ""} ${isSpeaking ? "robot-eye-speaking" : ""}`}
+          className={currentExpression.isGlitched ? "glitching-element" : ""}
         >
+          <g className={isSpeaking ? "robot-eye-speaking" : ""}>
           <PathComponent
             d={
               typeof currentExpression.rightEye === "string"
@@ -1695,6 +1699,7 @@ const CuteRobotFace = ({
               />
             )}
           </g>
+          </g>{/* end robot-eye-speaking inner wrapper */}
         </g>
 
         {/* Enhanced Mouth with smoother transitions */}
