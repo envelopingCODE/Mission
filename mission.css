@@ -5192,14 +5192,17 @@ svg.minimalist-face {
 }
 .pip-sparkle { animation: sparkleFlicker 3s ease-in-out infinite; }
 
-/* Robot buddy mouth animation while speaking */
+/* Robot buddy mouth animation while speaking.
+   transform-box:fill-box makes transform-origin:center work on SVG paths.
+   !important overrides the subtlePulse animation in the component's inline <style>. */
 @keyframes mouthTalk {
-  0%, 100% { transform: scaleY(1);    }
-  30%       { transform: scaleY(1.28); }
-  65%       { transform: scaleY(0.88); }
+  0%, 100% { transform: scaleY(1);   }
+  35%       { transform: scaleY(1.5); }
+  70%       { transform: scaleY(0.7); }
 }
 .robot-speaking {
-  animation: mouthTalk 0.27s ease-in-out infinite;
+  animation: mouthTalk 0.28s ease-in-out infinite !important;
+  transform-box: fill-box;
   transform-origin: center;
 }
 @keyframes sparkleFlicker {
