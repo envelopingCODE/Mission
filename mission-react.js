@@ -2471,6 +2471,7 @@ const PomodoroTimer = () => {
   const [sessionCount, setSessionCount] = React.useState(0);
   const [expanded,     setExpanded]     = React.useState(false);
   const [position,     setPosition]     = React.useState(null);
+  const [pipSize,      setPipSize]      = React.useState({ w: 228, h: null });
   const [skin,         setSkin]         = React.useState(
     () => localStorage.getItem("timerSkinActive") || "eclipse"
   );
@@ -2588,6 +2589,30 @@ const PomodoroTimer = () => {
     document.addEventListener("mouseup",   onUp);
   }, [position]);
 
+  const resizeRef = React.useRef(null);
+  const onResizeStart = React.useCallback((e) => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const pipEl = e.currentTarget.parentElement;
+    const rect  = pipEl ? pipEl.getBoundingClientRect() : { width: pipSize.w, height: pipSize.h || 400 };
+    resizeRef.current = { startX: e.clientX, startY: e.clientY, initW: rect.width, initH: rect.height };
+    const onMove = (mv) => {
+      if (!resizeRef.current) return;
+      setPipSize({
+        w: Math.max(180, Math.min(480, resizeRef.current.initW + mv.clientX - resizeRef.current.startX)),
+        h: Math.max(260, Math.min(640, resizeRef.current.initH + mv.clientY - resizeRef.current.startY)),
+      });
+    };
+    const onUp = () => {
+      resizeRef.current = null;
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup",   onUp);
+    };
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup",   onUp);
+  }, [pipSize]);
+
   const isNeon    = skin === "neon";
   const ringColor = isNeon
     ? (mode === "break" ? "#ff00e5" : "#00d4ff")
@@ -2638,11 +2663,13 @@ const PomodoroTimer = () => {
   }
 
   // ── PIP widget ────────────────────────────────────────────────────────
-  const pipStyle = position
-    ? { position: "fixed", left: position.x + "px", top: position.y + "px",
-        right: "auto", bottom: "auto" }
-    : { position: "fixed", right: "1.5rem", bottom: "1.5rem",
-        left: "auto", top: "auto" };
+  const pipStyle = Object.assign(
+    position
+      ? { position: "fixed", left: position.x + "px", top: position.y + "px", right: "auto", bottom: "auto" }
+      : { position: "fixed", right: "1.5rem", bottom: "1.5rem", left: "auto", top: "auto" },
+    { width: pipSize.w + "px" },
+    pipSize.h ? { height: pipSize.h + "px" } : {}
+  );
 
   return (
     <div className="pomodoro-pip" style={pipStyle}>
@@ -2758,6 +2785,7 @@ const PomodoroTimer = () => {
           </span>
         </div>
       </div>
+      <div className="pip-resize-grip" onMouseDown={onResizeStart} />
     </div>
   );
 };
