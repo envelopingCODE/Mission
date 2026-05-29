@@ -1828,42 +1828,83 @@ function checkReadyButtonStatus() {
   }
 }
 
-// Function to update earliest ready time display with more detailed format
-function updateEarliestReadyDisplay(earliestReadyTime) {
-  const timeString = earliestReadyTime
-    ? new Date(earliestReadyTime).toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: false,
-      })
+// Builds the HUD panel content from live localStorage data
+function buildWeeksBestHUD() {
+  const todayKey = getTodayKey();
+  const todayTasks = JSON.parse(localStorage.getItem("dailyTasks_" + todayKey)) || [];
+  const todayXP = todayTasks.reduce(function(s, t) { return s + (t.xp || 0); }, 0);
+  const readyVal = localStorage.getItem("readyTime_" + todayKey);
+  const deployStr = readyVal
+    ? new Date(parseInt(readyVal)).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false })
     : "—";
 
-  // Get the target container for display
-  const earliestDisplayContainer = document.getElementById("earliest-display");
+  const { weekData, streak } = getStreakData();
+  const dotsHTML = weekData.map(function(d) {
+    return `<div class="er-dot"><div class="er-dot-pip er-dot-pip-${d.state}"></div><span class="er-dot-lbl">${d.label}</span></div>`;
+  }).join("");
 
-  // If container doesn't exist, we can't proceed
-  if (!earliestDisplayContainer) {
-    console.error("Container #earliest-display not found");
-    return;
+  return `
+    <div class="er-hud-inner">
+      <div class="er-week-dots">${dotsHTML}</div>
+      <div class="er-stats">
+        <div class="er-stat">
+          <span class="er-stat-icon">◉</span>
+          <span class="er-stat-val">${streak}</span>
+          <span class="er-stat-lbl">streak</span>
+        </div>
+        <div class="er-stat">
+          <span class="er-stat-icon">▣</span>
+          <span class="er-stat-val">${todayTasks.length}</span>
+          <span class="er-stat-lbl">ops today</span>
+        </div>
+        <div class="er-stat">
+          <span class="er-stat-icon">⚡</span>
+          <span class="er-stat-val">${todayXP}</span>
+          <span class="er-stat-lbl">xp today</span>
+        </div>
+        <div class="er-stat">
+          <span class="er-stat-icon">◈</span>
+          <span class="er-stat-val">${deployStr}</span>
+          <span class="er-stat-lbl">deployed</span>
+        </div>
+      </div>
+    </div>`;
+}
+
+// Function to update earliest ready time display
+function updateEarliestReadyDisplay(earliestReadyTime) {
+  const timeString = earliestReadyTime
+    ? new Date(earliestReadyTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false })
+    : "—";
+
+  const container = document.getElementById("earliest-display");
+  if (!container) return;
+
+  let el = document.querySelector(".earliest-ready-display");
+  if (!el) {
+    el = document.createElement("div");
+    el.className = "earliest-ready-display";
+    container.appendChild(el);
   }
 
-  // Create or update the earliest ready display
-  let earliestReadyEl = document.querySelector(".earliest-ready-display");
-
-  if (!earliestReadyEl) {
-    earliestReadyEl = document.createElement("div");
-    earliestReadyEl.className = "earliest-ready-display";
-    earliestDisplayContainer.appendChild(earliestReadyEl);
-  }
-
-  // Set the content — weekly framing, resets automatically each Monday
-  earliestReadyEl.innerHTML = `
-    <div class="icon"></div>
-    <div class="info">
-      <div>WEEK'S BEST: <span class="time">${timeString}</span></div>
-      <div class="date">RESETS MONDAY</div>
+  el.innerHTML = `
+    <div class="er-header">
+      <div class="info">
+        <div>WEEK'S BEST: <span class="time">${timeString}</span></div>
+        <div class="date">RESETS MONDAY</div>
+      </div>
+      <span class="er-toggle">+</span>
     </div>
+    <div class="er-hud"></div>
   `;
+
+  // Toggle expand — rebuilds HUD content on each open so stats are fresh
+  var header = el.querySelector(".er-header");
+  var hud = el.querySelector(".er-hud");
+  header.addEventListener("click", function() {
+    var expanding = el.classList.toggle("er-expanded");
+    if (expanding) hud.innerHTML = buildWeeksBestHUD();
+  });
 }
 
 // One-time migration: move the old all-time key into the current week's key

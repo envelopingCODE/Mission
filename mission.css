@@ -478,92 +478,93 @@ input[type="text"] {
   animation: flare-pulse 3s infinite;
 }
 /* Earliest ready time display styling */
+/* ── Week's Best — expandable HUD ── */
 .earliest-ready-display {
-  background-color: rgba(0, 0, 0, 0.4);
-  border: 1px solid rgba(16, 221, 50, 0.3);
+  background: rgba(0,0,0,0.45);
+  border: 1px solid rgba(134,223,255,0.18);
   border-radius: 8px;
-  padding: 8px 15px;
-  color: rgba(16, 221, 50, 0.9);
+  padding: 8px 12px;
   margin-top: 10px;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 10px;
-  position: relative;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-/* Custom tooltip */
-.earliest-ready-display::after {
-  content: "CLICK TO RESET RECORD";
-  position: absolute;
-  bottom: 100%;
-  left: 50%;
-  transform: translateX(-50%);
-  margin-bottom: 10px;
-  padding: 6px 10px;
-  background-color: rgba(0, 0, 0, 0.85);
-  color: rgba(16, 221, 50, 0.95);
-  border: 1px solid rgba(16, 221, 50, 0.4);
-  border-radius: 4px;
-  font-size: 12px;
-  white-space: nowrap;
-  opacity: 0;
-  visibility: hidden;
-  transition: opacity 0.3s ease, visibility 0.3s ease;
-  pointer-events: none;
-  z-index: 10;
   font-family: "Courier New", monospace;
-  letter-spacing: 1px;
-  box-shadow: 0 0 10px rgba(16, 221, 50, 0.3);
+  color: rgba(134,223,255,0.75);
+  position: relative;
+  transition: border-color 0.2s ease;
+}
+.earliest-ready-display:hover { border-color: rgba(134,223,255,0.32); }
+
+.er-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
 }
 
-/* Show the tooltip on hover */
-.earliest-ready-display:hover::after {
-  opacity: 1;
-  visibility: visible;
+.er-header .info { flex: 1; font-size: 0.7rem; letter-spacing: 0.08em; line-height: 1.5; }
+.er-header .time { font-weight: 700; color: #86dfff; text-shadow: 0 0 6px rgba(134,223,255,0.45); }
+.er-header .date { font-size: 0.56rem; color: rgba(134,223,255,0.35); letter-spacing: 0.12em; }
+
+.er-toggle {
+  font-size: 1rem;
+  color: rgba(134,223,255,0.35);
+  transition: transform 0.3s ease, color 0.2s ease;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.er-expanded .er-toggle { transform: rotate(45deg); color: rgba(134,223,255,0.65); }
+
+/* Expanding HUD panel */
+.er-hud {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.36s cubic-bezier(0.4,0,0.2,1);
+}
+.er-expanded .er-hud { max-height: 160px; }
+
+.er-hud-inner {
+  border-top: 1px solid rgba(134,223,255,0.08);
+  margin-top: 8px;
+  padding-top: 8px;
 }
 
-/* Optional: Add an arrow to the tooltip */
-.earliest-ready-display::before {
-  content: "";
-  position: absolute;
-  bottom: 100%;
-  left: 50%;
-  transform: translateX(-50%);
-  margin-bottom: 5px;
-  border-width: 5px;
-  border-style: solid;
-  border-color: transparent transparent rgba(16, 221, 50, 0.4) transparent;
-  opacity: 0;
-  visibility: hidden;
-  transition: opacity 0.3s ease, visibility 0.3s ease;
-  pointer-events: none;
-  z-index: 10;
+/* Week dots row */
+.er-week-dots {
+  display: flex;
+  gap: 6px;
+  align-items: flex-end;
+  margin-bottom: 8px;
 }
+.er-dot { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.er-dot-pip {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+.er-dot-pip-earned  { background: #0fdfab; box-shadow: 0 0 5px rgba(15,223,171,0.4); }
+.er-dot-pip-missed  { background: rgba(255,255,255,0.1); }
+.er-dot-pip-future  { background: rgba(255,255,255,0.04); }
+.er-dot-pip-pending { background: transparent; border: 1.5px solid rgba(134,223,255,0.35); }
+.er-dot-lbl { font-size: 0.46rem; color: rgba(255,255,255,0.2); letter-spacing: 0.04em; }
 
-.earliest-ready-display:hover::before {
-  opacity: 1;
-  visibility: visible;
+/* Stats grid */
+.er-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
 }
-
-.earliest-ready-display:hover {
-  background-color: rgba(0, 0, 0, 0.6);
-  border-color: rgba(16, 221, 50, 0.5);
-  box-shadow: 0 0 10px rgba(16, 221, 50, 0.2);
+.er-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  background: rgba(134,223,255,0.04);
+  border: 1px solid rgba(134,223,255,0.08);
+  border-radius: 4px;
+  padding: 5px 3px;
 }
-
-.earliest-ready-display .icon {
-  font-size: 1.2em;
-}
-
-.earliest-ready-display .time {
-  font-weight: bold;
-  color: rgba(16, 221, 50, 1);
-  text-shadow: 0 0 5px rgba(16, 221, 50, 0.7);
-}
+.er-stat-icon { font-size: 0.65rem; color: rgba(134,223,255,0.45); }
+.er-stat-val  { font-family: "Courier New", monospace; font-size: 0.82rem; font-weight: 700; color: #86dfff; letter-spacing: -0.01em; }
+.er-stat-lbl  { font-family: "Courier New", monospace; font-size: 0.4rem; color: rgba(255,255,255,0.22); letter-spacing: 0.07em; text-transform: uppercase; text-align: center; }
 
 .earliest-ready-display .date {
   font-size: 0.8em;
