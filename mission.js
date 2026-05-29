@@ -90,9 +90,208 @@ function getCategoryKeyFromTitle(title) {
   return "general";
 }
 
+// Derives category key from a CSS class like "prefix-1" → "1"
+function getCategoryKeyFromPrefixClass(prefixClass) {
+  const match = (prefixClass || "").match(/prefix-(\d)/);
+  return match ? match[1] : "general";
+}
+
 // ========================================
 // END OF CATEGORY SYSTEM
 // ========================================
+
+// ========================================
+// POMODORO ESTIMATOR — per-category time learning
+// ========================================
+const PomodoroEstimator = {
+  STORAGE_KEY: "pomodoroHistory",
+  WINDOW_SIZE: 5,
+  MIN_SAMPLES: 3,
+
+  _load() {
+    try { return JSON.parse(localStorage.getItem(this.STORAGE_KEY)) || {}; }
+    catch (e) { return {}; }
+  },
+
+  _save(data) {
+    localStorage.setItem(this.STORAGE_KEY, JSON.stringify(data));
+  },
+
+  // Returns estimated Pomodoros for a category (default 1 until MIN_SAMPLES reached)
+  getEstimate(category) {
+    const samples = (this._load()[category]) || [];
+    if (samples.length < this.MIN_SAMPLES) return 1;
+    const avg = samples.reduce((a, b) => a + b, 0) / samples.length;
+    return Math.round(avg * 2) / 2; // round to nearest ½
+  },
+
+  recordActual(category, actual) {
+    const history = this._load();
+    if (!history[category]) history[category] = [];
+    history[category].push(actual);
+    if (history[category].length > this.WINDOW_SIZE) {
+      history[category] = history[category].slice(-this.WINDOW_SIZE);
+    }
+    this._save(history);
+  },
+};
+
+// ========================================
+// STREAK SYSTEM
+// ========================================
+
+// Parse date string at noon UTC — stable day-of-week regardless of timezone
+function _streakDow(dateStr) {
+  return new Date(dateStr + "T12:00:00Z").getUTCDay(); // 0=Sun, 6=Sat
+}
+
+// Module-level so repair mechanic and streak can share the same logic
+function isDayEarned(dateStr) {
+  // A repaired day counts as earned
+  if (localStorage.getItem("streakRepairComplete_" + dateStr)) return true;
+  const val = localStorage.getItem("readyTime_" + dateStr);
+  if (!val) return false;
+  const dow = _streakDow(dateStr);
+  if (dow === 0 || dow === 6) return true; // weekends: any time
+  return new Date(parseInt(val)).getHours() < 10; // weekdays: before 10
+}
+
+function getStreakData() {
+  const now = new Date();
+  const todayStr = now.toISOString().split("T")[0];
+  const currentHour = now.getHours();
+
+  function getDayState(dateStr) {
+    if (dateStr > todayStr) return "future";
+    if (isDayEarned(dateStr)) return "earned";
+    if (dateStr < todayStr) {
+      // Show repaired dot differently from a plain miss
+      return localStorage.getItem("streakRepairComplete_" + dateStr)
+        ? "earned"
+        : "missed";
+    }
+    // Today not yet earned
+    const dow = _streakDow(dateStr);
+    const isWeekend = dow === 0 || dow === 6;
+    return isWeekend || currentHour < 10 ? "pending" : "missed";
+  }
+
+  // Streak: consecutive earned days backwards from today (or yesterday)
+  let streak = 0;
+  const startOffset = isDayEarned(todayStr) ? 0 : 1;
+  for (let i = startOffset; i < 366; i++) {
+    const d = new Date(now);
+    d.setDate(d.getDate() - i);
+    const dateStr = d.toISOString().split("T")[0];
+    if (isDayEarned(dateStr)) { streak++; }
+    else break;
+  }
+
+  // Current week Mon → Sun
+  const dowToday = now.getUTCDay();
+  const daysToMonday = dowToday === 0 ? 6 : dowToday - 1;
+  const weekData = ["M", "T", "W", "T", "F", "S", "S"].map((label, i) => {
+    const d = new Date(now);
+    d.setDate(d.getDate() - daysToMonday + i);
+    const dateStr = d.toISOString().split("T")[0];
+    return { label, state: getDayState(dateStr) };
+  });
+
+  return { weekData, streak };
+}
+
+// Repair is available when exactly yesterday was missed but the day before was earned
+function getRepairState() {
+  const now = new Date();
+  const todayStr = now.toISOString().split("T")[0];
+
+  const yest = new Date(now); yest.setDate(now.getDate() - 1);
+  const yesterdayStr = yest.toISOString().split("T")[0];
+
+  const prev = new Date(now); prev.setDate(now.getDate() - 2);
+  const prevStr = prev.toISOString().split("T")[0];
+
+  const alreadyRepaired = !!localStorage.getItem("streakRepairComplete_" + yesterdayStr);
+  if (alreadyRepaired) return { available: false };
+
+  const yesterdayMissed = !isDayEarned(yesterdayStr);
+  const prevEarned = isDayEarned(prevStr);
+
+  if (!yesterdayMissed || !prevEarned) return { available: false };
+
+  const progress = parseInt(localStorage.getItem("streakRepairProgress_" + todayStr) || "0");
+  return { available: true, progress, missedDate: yesterdayStr };
+}
+
+function renderStreakBar() {
+  const container = document.getElementById("streak-bar");
+  if (!container) return;
+
+  const { weekData, streak } = getStreakData();
+  const repair = getRepairState();
+
+  const dotsHTML = weekData.map(({ label, state }) =>
+    `<div class="streak-day">
+      <div class="streak-dot streak-dot-${state}"></div>
+      <span class="streak-label">${label}</span>
+    </div>`
+  ).join("");
+
+  const repairHTML = repair.available
+    ? `<div class="streak-repair">
+        <span class="repair-label">Repair available</span>
+        <span class="repair-pip ${repair.progress >= 1 ? "repair-pip-done" : ""}"></span>
+        <span class="repair-pip ${repair.progress >= 2 ? "repair-pip-done" : ""}"></span>
+      </div>`
+    : "";
+
+  const streakNumClass = streak === 0 ? "streak-num streak-zero" : "streak-num";
+
+  container.innerHTML =
+    `<div class="streak-wrap">
+      <div class="streak-dots">${dotsHTML}</div>
+      <div class="streak-divider"></div>
+      <div class="streak-count">
+        <span class="${streakNumClass}">${streak}</span>
+        <span class="streak-unit">day${streak !== 1 ? "s" : ""}</span>
+      </div>
+    </div>
+    ${repairHTML}`;
+}
+
+// ========================================
+// END STREAK SYSTEM
+// ========================================
+
+// Returns YYYY-MM-DD of Monday of the current week — weekly record key
+function getWeekKey() {
+  const now = new Date();
+  const dow = now.getDay();
+  const daysToMonday = dow === 0 ? 6 : dow - 1;
+  const monday = new Date(now);
+  monday.setDate(now.getDate() - daysToMonday);
+  return monday.toISOString().split("T")[0];
+}
+
+// ========================================
+// SESSION PROGRESS (Flow: immediate feedback + clear goals)
+// ========================================
+let sessionCompletedCount = 0;
+
+function updateSessionProgress() {
+  const el = document.getElementById("session-progress");
+  if (!el) return;
+  const remaining = document.querySelectorAll(".mission").length;
+  if (remaining === 0 && sessionCompletedCount > 0) {
+    el.textContent = "All clear";
+    el.className = "session-progress-done";
+  } else if (sessionCompletedCount > 0 || remaining > 0) {
+    el.textContent = `${sessionCompletedCount} done · ${remaining} left`;
+    el.className = "";
+  } else {
+    el.textContent = "";
+  }
+}
 
 // Create a single shared AudioContext for all audio operations
 const audioContext = new (window.AudioContext || window.webkitAudioContext)();
@@ -170,7 +369,7 @@ function sanitizeInput(input) {
   return input.trim().replace(/<[^>]*>?/gm, ""); // Trim and sanitize input
 }
 
-// Motivational messages array
+// Motivational messages array (kept for backwards compatibility)
 window.motivationalMessages = [
   "Great Job! 🎉",
   "Way to go! 👍",
@@ -195,35 +394,201 @@ window.motivationalMessages = [
   "You got this! ✊",
 ];
 
+// Tracks completions since page load — tiers message intensity as the session progresses
+let sessionTaskCount = 0;
+
+// Category-aware, session-tiered messages in the app's cyber/military voice
+const NARRATIVE_MESSAGES = {
+  financial: [
+    [
+      "Asset acquisition confirmed. Operation underway.",
+      "Revenue protocol initiated. Momentum building.",
+      "Financial objective logged. Forward.",
+    ],
+    [
+      "Funding stream secured. Asset base growing.",
+      "Capital operation executed. Keep advancing.",
+      "Economic protocol on track.",
+    ],
+    [
+      "Financial protocols running hot.",
+      "Revenue engine fully engaged.",
+      "Asset acquisition at peak throughput.",
+    ],
+    [
+      "Maximum asset acquisition. Unstoppable.",
+      "Economic dominance protocol: ACTIVE.",
+      "Funding empire expanding. Outstanding.",
+    ],
+  ],
+  academic: [
+    [
+      "Knowledge unit acquired. Neural uplink active.",
+      "Data block uploaded. Learning sequence initiated.",
+      "Academic objective logged. Progress confirmed.",
+    ],
+    [
+      "Neural pathways reinforced. Keep uploading.",
+      "Knowledge matrix expanding.",
+      "Academic protocol advancing. On track.",
+    ],
+    [
+      "Cognitive engine running at capacity.",
+      "Scholar mode: ENGAGED. Accelerating.",
+      "Knowledge architecture solidifying.",
+    ],
+    [
+      "Maximum neural output. Graduation approaching.",
+      "Academic machine: PEAK PERFORMANCE.",
+      "Knowledge singularity imminent.",
+    ],
+  ],
+  life: [
+    [
+      "Optimization sequence logged. Vitals improving.",
+      "System health protocol executed.",
+      "Biological objective cleared.",
+    ],
+    [
+      "Optimal state protocol progressing.",
+      "Performance metrics rising. Keep going.",
+      "Body systems performing within parameters.",
+    ],
+    [
+      "Peak performance state achieved.",
+      "Body-mind alignment confirmed.",
+      "All biological systems optimal.",
+    ],
+    [
+      "Superhuman protocol active.",
+      "Optimal state: MAXIMUM OUTPUT.",
+      "Biological optimization maxed. Running hot.",
+    ],
+  ],
+  general: [
+    [
+      "Op complete. Momentum sequence initiated.",
+      "Objective cleared. Forward.",
+      "Mission logged. Good start.",
+    ],
+    [
+      "Mission executed. Trajectory: positive.",
+      "Op complete. Neural uptime confirmed.",
+      "Strike sequence continuing.",
+    ],
+    [
+      "You're operating at peak parameters.",
+      "Efficiency increasing. Command is impressed.",
+      "Deep in the zone.",
+    ],
+    [
+      "Legendary operational status. Outstanding.",
+      "Maximum productivity confirmed.",
+      "You're rewriting what's possible today.",
+    ],
+  ],
+};
+
+function getMessageTier(count) {
+  if (count <= 1) return 0;
+  if (count <= 4) return 1;
+  if (count <= 8) return 2;
+  return 3;
+}
+
+// Reads total lifetime completions to determine how "deep" the buddy relationship is
+function getPartnerDepth() {
+  const keys = Object.keys(localStorage).filter((k) => k.startsWith("dailyTasks_"));
+  const daysActive = keys.length;
+  const totalCompletions = keys.reduce((sum, key) => {
+    try {
+      const tasks = JSON.parse(localStorage.getItem(key)) || [];
+      return sum + tasks.length;
+    } catch (e) {
+      return sum;
+    }
+  }, 0);
+  const tier = totalCompletions < 10 ? 0 : totalCompletions < 50 ? 1 : 2;
+  return { tier, daysActive, totalCompletions };
+}
+
 // Task Completion Display Function
-function displayRandomMessage() {
-  const randomMessage =
-    window.motivationalMessages[
-      Math.floor(Math.random() * window.motivationalMessages.length)
-    ];
+// Uses DOM bubble directly — avoids double-wrapping through the React notification templates
+function displayRandomMessage(category = "general") {
+  sessionTaskCount++;
+  const sessionTier = getMessageTier(sessionTaskCount);
+  const { tier: depthTier, daysActive } = getPartnerDepth();
 
-  // If we have the React notification system available, use it
-  if (typeof window.notifyTaskCompletion === "function") {
-    // Create a task-like object for the motivational message
-    const motivationalTask = {
-      id: "motivational-" + Date.now(),
-      title: randomMessage,
-      priority: "normal",
-      completedAt: new Date().toISOString(),
-    };
+  const cat = NARRATIVE_MESSAGES[category] ? category : "general";
+  const tierMessages = NARRATIVE_MESSAGES[cat][sessionTier];
+  let message = tierMessages[Math.floor(Math.random() * tierMessages.length)];
 
-    // Send to React component
-    window.notifyTaskCompletion(motivationalTask);
-  } else {
-    // Fallback to the original DOM-based display method
-    const messageElement = document.createElement("div");
-    messageElement.textContent = randomMessage;
-    messageElement.classList.add("motivational-message");
-    document.body.appendChild(messageElement);
-    setTimeout(() => {
-      messageElement.remove();
-    }, 3000);
+  // Depth tier 1: occasional day-count context (35% chance)
+  if (depthTier >= 1 && daysActive > 5 && Math.random() < 0.35) {
+    message = `Day ${daysActive}. ` + message;
   }
+
+  // Depth tier 2: veteran acknowledgment — laconic prefix (30% chance)
+  if (depthTier >= 2 && Math.random() < 0.3) {
+    const veteranCues = ["Standard.", "As expected.", "Pattern confirmed.", "Routine."];
+    message = veteranCues[Math.floor(Math.random() * veteranCues.length)] + " " + message;
+  }
+
+  const messageElement = document.createElement("div");
+  messageElement.textContent = message;
+  messageElement.classList.add("motivational-message");
+  document.body.appendChild(messageElement);
+  setTimeout(() => messageElement.remove(), 3500);
+}
+
+// Converts Pomodoro units to a clean minute display (1 pomo = 25 min)
+function pomoToMinutes(estimate) {
+  const mins = Math.round(estimate * 25);
+  return `~${mins}m`;
+}
+
+// Post-completion Pomodoro check — low-friction chip strip
+// Auto-dismisses after 4 s, logging the estimate as actual if the user ignores it
+function showPomodoroCheck(categoryKey, estimate) {
+  const existing = document.getElementById("pomo-check-bar");
+  if (existing) existing.remove();
+
+  const chips = [
+    { value: 0.5, label: "12m" },
+    { value: 1,   label: "25m" },
+    { value: 2,   label: "50m" },
+    { value: 3,   label: "75m+" },
+  ];
+
+  const bar = document.createElement("div");
+  bar.id = "pomo-check-bar";
+  bar.innerHTML =
+    `<span class="pomo-check-label">How long?</span>` +
+    chips.map((c) =>
+      `<button class="pomo-chip${c.value === estimate ? " pomo-chip-est" : ""}" data-value="${c.value}">${c.label}</button>`
+    ).join("") +
+    `<button class="pomo-chip pomo-chip-skip" data-value="${estimate}">–</button>`;
+
+  document.body.appendChild(bar);
+
+  let dismissed = false;
+  function dismiss(actual) {
+    if (dismissed) return;
+    dismissed = true;
+    PomodoroEstimator.recordActual(categoryKey, actual);
+    bar.classList.add("pomo-check-exit");
+    setTimeout(() => bar.remove(), 280);
+  }
+
+  bar.querySelectorAll(".pomo-chip").forEach((chip) => {
+    chip.addEventListener("click", () => dismiss(parseFloat(chip.dataset.value)));
+  });
+
+  // Animate in on next frame
+  requestAnimationFrame(() => bar.classList.add("pomo-check-visible"));
+
+  // Auto-dismiss after 4 s logging the estimate
+  setTimeout(() => dismiss(estimate), 4000);
 }
 
 // Global task completion notification function
@@ -348,9 +713,39 @@ function createMissionClickHandler(element) {
     addXp(xp);
     e.target.remove();
     saveMissions();
-    displayRandomMessage();
+    displayRandomMessage(category);
     playCompletionSound();
     scrollToXPMeter();
+
+    // Session progress (Flow: immediate feedback)
+    sessionCompletedCount++;
+    updateSessionProgress();
+
+    // Streak repair progress
+    const repair = getRepairState();
+    if (repair.available) {
+      const todayStr = new Date().toISOString().split("T")[0];
+      const newProgress = repair.progress + 1;
+      localStorage.setItem("streakRepairProgress_" + todayStr, String(newProgress));
+      if (newProgress >= 2) {
+        // Repair complete — mark the missed day as earned
+        localStorage.setItem("streakRepairComplete_" + repair.missedDate, "1");
+        const bubble = document.createElement("div");
+        bubble.className = "buddy-suggestion";
+        bubble.textContent = "Streak restored.";
+        document.body.appendChild(bubble);
+        requestAnimationFrame(() => bubble.classList.add("buddy-suggestion-visible"));
+        setTimeout(() => {
+          bubble.classList.remove("buddy-suggestion-visible");
+          setTimeout(() => bubble.remove(), 300);
+        }, 3500);
+      }
+      renderStreakBar();
+    }
+
+    // Pomodoro calibration chip strip
+    const pomoCategory = getCategoryKeyFromTitle(taskDetails.title);
+    showPomodoroCheck(pomoCategory, PomodoroEstimator.getEstimate(pomoCategory));
   });
 }
 
@@ -368,10 +763,14 @@ function addMission(sanitizedInput) {
   // Create a callback function to handle XP selection
 
   xpSelectorCallback = (xpValue) => {
+    const pomoCategory = getCategoryKeyFromTitle(modifiedMission);
+    const pomoEstimate = PomodoroEstimator.getEstimate(pomoCategory);
+    const pomoDisplay = pomoToMinutes(pomoEstimate);
+
     const newEl = document.createElement("li");
     newEl.innerHTML = `<span class="${prefixClass}">${
       modifiedMission.split(":")[0]
-    }:</span> ${modifiedMission.split(":")[1]} — ${xpValue} XP`;
+    }:</span> ${modifiedMission.split(":")[1]} — ${xpValue} XP<span class="pomo-estimate" title="Estimated duration">${pomoDisplay}</span>`;
     newEl.className = "mission";
     newEl.dataset.xp = xpValue;
 
@@ -685,6 +1084,8 @@ const TaskSystem = {
 document.addEventListener("DOMContentLoaded", () => {
   TaskSystem.init();
   loadMissions();
+  renderStreakBar();
+  updateSessionProgress();
   const initialSuggestions = TaskSystem.getMostFrequentTasks();
   if (initialSuggestions.length) {
     inputEl.placeholder = initialSuggestions[0];
@@ -911,9 +1312,18 @@ function loadMissions() {
         " " + mission.text.split(":")[1] + " — " + mission.xp + " XP"
       );
 
-      // Append the prefix and mission text
+      // Pomodoro estimate badge
+      const loadPomoCategory = getCategoryKeyFromPrefixClass(mission.prefixClass);
+      const loadPomoEstimate = PomodoroEstimator.getEstimate(loadPomoCategory);
+      const pomoSpan = document.createElement("span");
+      pomoSpan.className = "pomo-estimate";
+      pomoSpan.title = "Estimated duration";
+      pomoSpan.textContent = pomoToMinutes(loadPomoEstimate);
+
+      // Append the prefix, mission text, and estimate badge
       newEl.appendChild(prefixSpan);
       newEl.appendChild(missionText);
+      newEl.appendChild(pomoSpan);
       newEl.className = "mission";
       newEl.dataset.xp = mission.xp;
 
@@ -1129,13 +1539,17 @@ function readyButtonClickHandler() {
   todayTimeOnly.setFullYear(2000, 0, 1); // Set to Jan 1, 2000 to compare times only
   const todayTimeOnlyMs = todayTimeOnly.getTime();
 
-  // Get the current earliest ready time or set to end of day if not set
-  const storedEarliestReady = localStorage.getItem("earliestReadyTime");
+  // Weekly key — resets every Monday
+  const weekKey = getWeekKey();
+  const weeklyRecordKey = `earliestReadyTime_${weekKey}`;
+
+  // Get this week's record, defaulting to end-of-day sentinel
+  const storedEarliestReady = localStorage.getItem(weeklyRecordKey);
   let earliestReadyTimeMs = storedEarliestReady
     ? parseInt(storedEarliestReady)
     : new Date(2000, 0, 1, 23, 59, 59).getTime();
 
-  // Convert earliest ready to same reference date
+  // Normalise both times to the same reference date (time-of-day comparison only)
   const earliestTimeOnly = new Date(earliestReadyTimeMs);
   earliestTimeOnly.setFullYear(2000, 0, 1);
   const earliestTimeOnlyMs = earliestTimeOnly.getTime();
@@ -1149,41 +1563,40 @@ function readyButtonClickHandler() {
   // Play sound effects
   playReadySignalSound();
 
-  // Check if current time is earlier than stored earliest time
   if (todayTimeOnlyMs < earliestTimeOnlyMs) {
-    // Update storage if it's a new record
-    localStorage.setItem("earliestReadyTime", currentTime.toString());
+    // New weekly record
+    localStorage.setItem(weeklyRecordKey, currentTime.toString());
 
-    // Display militaristic congratulatory message
+    // Calculate improvement delta (minutes earlier than previous best)
+    const deltaMs = earliestTimeOnlyMs - todayTimeOnlyMs;
+    const deltaMins = Math.round(deltaMs / 60000);
+    const deltaText = storedEarliestReady
+      ? `${deltaMins} min earlier than your previous best`
+      : "First signal of the week";
+
     const messageElement = document.createElement("div");
     messageElement.className = "signal-sent-message";
     messageElement.innerHTML = `
-      <div style="font-size: 1.2em; margin-bottom: 8px;">🔥 NEW RECORD ESTABLISHED 🔥</div>
-      <div>EARLIEST DEPLOYMENT CONFIRMED</div>
-      <div style="margin-top: 8px; font-size: 0.9em;">COMMENDATION RECORDED</div>
+      <div style="font-size: 1.1em; margin-bottom: 6px; letter-spacing: 0.1em;">WEEK'S BEST</div>
+      <div>${deltaText.toUpperCase()}</div>
     `;
     document.body.appendChild(messageElement);
+    setTimeout(() => messageElement.remove(), 3500);
 
-    setTimeout(() => {
-      messageElement.remove();
-    }, 3500);
-
-    // Update the display
     updateEarliestReadyDisplay(currentTime);
   } else {
-    // Show message that signal was transmitted
+    // Signal sent, record stands
+    const prevTime = new Date(earliestReadyTimeMs).toLocaleTimeString([], {
+      hour: "2-digit", minute: "2-digit", hour12: false,
+    });
     const messageElement = document.createElement("div");
     messageElement.className = "signal-sent-message";
     messageElement.innerHTML = `
-      <div style="font-size: 1.2em; margin-bottom: 8px;">SIGNAL FLARE DEPLOYED</div>
-      <div>READY STATUS CONFIRMED</div>
-      <div style="margin-top: 8px; font-size: 0.9em;">RECORD STANDS AT EARLIER TIME</div>
+      <div style="font-size: 1.1em; margin-bottom: 6px; letter-spacing: 0.1em;">SIGNAL DEPLOYED</div>
+      <div>WEEK'S BEST STANDS AT ${prevTime}</div>
     `;
     document.body.appendChild(messageElement);
-
-    setTimeout(() => {
-      messageElement.remove();
-    }, 3000);
+    setTimeout(() => messageElement.remove(), 3000);
   }
 
   // Disable the button after use
@@ -1228,22 +1641,13 @@ function checkReadyButtonStatus() {
 
 // Function to update earliest ready time display with more detailed format
 function updateEarliestReadyDisplay(earliestReadyTime) {
-  // Get reference date if storing in localStorage or create new element
-  const earliestReadyDate = new Date(earliestReadyTime);
-
-  // Format the time in military style (24hr format)
-  const timeString = earliestReadyDate.toLocaleTimeString([], {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  });
-
-  // Format the date
-  const dateString = earliestReadyDate.toLocaleDateString([], {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
+  const timeString = earliestReadyTime
+    ? new Date(earliestReadyTime).toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false,
+      })
+    : "—";
 
   // Get the target container for display
   const earliestDisplayContainer = document.getElementById("earliest-display");
@@ -1260,66 +1664,99 @@ function updateEarliestReadyDisplay(earliestReadyTime) {
   if (!earliestReadyEl) {
     earliestReadyEl = document.createElement("div");
     earliestReadyEl.className = "earliest-ready-display";
-    earliestReadyEl.title = "Click to reset"; // Add title attribute for the tooltip
-
-    // Add to the earliest-display container
     earliestDisplayContainer.appendChild(earliestReadyEl);
-  } else {
-    earliestReadyEl.title = "Click to reset"; // Ensure title is set if element already exists
   }
 
-  // Set the content with militaristic styling
+  // Set the content — weekly framing, resets automatically each Monday
   earliestReadyEl.innerHTML = `
-        <div class="icon"></div>
-        <div class="info">
-            <div>EARLIEST DEPLOYMENT: <span class="time">${timeString}</span> HRS</div>
-            <div class="date">${dateString} | RECORD STANDING</div>
-        </div>
-    `;
-
-  // Add click handler for the entire element
-  earliestReadyEl.addEventListener("click", function () {
-    // Simple confirmation
-    if (confirm("Reset your earliest deployment record?")) {
-      // Remove the record from localStorage
-      localStorage.removeItem("earliestReadyTime");
-
-      // Remove the display element
-      earliestReadyEl.remove();
-
-      // Play reset sound if available
-      if (typeof playResetDataSound === "function") {
-        playResetDataSound();
-      }
-
-      // Show a small notification that record was reset
-      const messageElement = document.createElement("div");
-      messageElement.className = "signal-sent-message";
-      messageElement.innerHTML = `
-        <div style="font-size: 1.2em; margin-bottom: 8px;">RECORD RESET</div>
-        <div>EARLIEST DEPLOYMENT CLEARED</div>
-      `;
-      document.body.appendChild(messageElement);
-
-      setTimeout(() => {
-        messageElement.remove();
-      }, 3000);
-    }
-  });
+    <div class="icon"></div>
+    <div class="info">
+      <div>WEEK'S BEST: <span class="time">${timeString}</span></div>
+      <div class="date">RESETS MONDAY</div>
+    </div>
+  `;
 }
 
-// Initialize earliest ready time from localStorage
-const storedEarliestReady = localStorage.getItem("earliestReadyTime");
-if (storedEarliestReady) {
-  updateEarliestReadyDisplay(parseInt(storedEarliestReady));
-}
+// One-time migration: move the old all-time key into the current week's key
+(function migrateEarliestReadyRecord() {
+  const weeklyKey = `earliestReadyTime_${getWeekKey()}`;
+  const legacy = localStorage.getItem("earliestReadyTime");
+  if (legacy && !localStorage.getItem(weeklyKey)) {
+    localStorage.setItem(weeklyKey, legacy);
+    localStorage.removeItem("earliestReadyTime");
+  }
+})();
+
+// Always render the display — shows "—" if no signal sent yet this week
+const storedEarliestReady = localStorage.getItem(`earliestReadyTime_${getWeekKey()}`);
+updateEarliestReadyDisplay(storedEarliestReady ? parseInt(storedEarliestReady) : null);
 
 // Attach the handler to the button and check initial state
 if (readyButtonEl) {
   readyButtonEl.addEventListener("click", readyButtonClickHandler);
+  readyButtonEl.addEventListener("click", checkCategoryNeglect);
+  readyButtonEl.addEventListener("click", suggestQuickWin);
+  readyButtonEl.addEventListener("click", renderStreakBar);
 
   // Check if button should be disabled on page load
   checkReadyButtonStatus();
+}
+
+// Category neglect alert — flags any named category with 0 completions in 3+ days
+function checkCategoryNeglect() {
+  const now = new Date();
+  const neglected = [];
+
+  ["1", "2", "3"].forEach((catKey) => {
+    let daysDark = 0;
+    for (let i = 1; i <= 3; i++) {
+      const d = new Date(now);
+      d.setDate(d.getDate() - i);
+      const dateStr = d.toISOString().split("T")[0];
+      const tasks = JSON.parse(localStorage.getItem("dailyTasks_" + dateStr)) || [];
+      if (!tasks.some((t) => t.category === catKey)) daysDark++;
+    }
+    if (daysDark >= 3) {
+      neglected.push({ name: CATEGORY_CONFIG[catKey].shortName, days: daysDark });
+    }
+  });
+
+  neglected.forEach(({ name, days }, i) => {
+    setTimeout(() => {
+      const bubble = document.createElement("div");
+      bubble.className = "buddy-suggestion";
+      bubble.textContent = `${name} objectives: ${days} days dark.`;
+      document.body.appendChild(bubble);
+      requestAnimationFrame(() => bubble.classList.add("buddy-suggestion-visible"));
+      setTimeout(() => {
+        bubble.classList.remove("buddy-suggestion-visible");
+        setTimeout(() => bubble.remove(), 300);
+      }, 5000);
+    }, i * 1800);
+  });
+}
+
+// Quick Win suggestion — buddy surfaces the easiest pending task at session start
+function suggestQuickWin() {
+  const missions = Array.from(document.querySelectorAll(".mission"));
+  if (missions.length === 0) return;
+
+  const easiest = missions.reduce((min, el) => {
+    return parseInt(el.dataset.xp || 999) < parseInt(min.dataset.xp || 999) ? el : min;
+  });
+
+  const taskText = easiest.textContent.split("—")[0].trim();
+  const xp = easiest.dataset.xp;
+
+  const bubble = document.createElement("div");
+  bubble.className = "buddy-suggestion";
+  bubble.textContent = `Quick win: "${taskText}" — ${xp} XP. Knock it out first?`;
+  document.body.appendChild(bubble);
+  requestAnimationFrame(() => bubble.classList.add("buddy-suggestion-visible"));
+  setTimeout(() => {
+    bubble.classList.remove("buddy-suggestion-visible");
+    setTimeout(() => bubble.remove(), 300);
+  }, 4500);
 }
 
 // Run the check again when DOM is fully loaded (in case readyButtonEl wasn't available earlier)
@@ -3263,6 +3700,30 @@ function trackDailyTask(taskDetails) {
   localStorage.setItem(dailyTasksKey, JSON.stringify(todayTasks));
 }
 
+// Finds the most-repeated non-trivial word across a set of capture texts
+function analyzeCaptures(captures) {
+  if (!captures || captures.length === 0) return null;
+  const stopWords = new Set([
+    'the','a','an','i','to','for','of','and','or','is','it','in','on','at',
+    'my','me','we','be','do','this','that','with','just','but','not','so',
+    'up','as','by','if','no','go','get','out','how','about','need','want',
+    'check','look','fix','think','make','use','was','have','had','are','were','its','will',
+  ]);
+  const wordCounts = {};
+  captures.forEach((c) => {
+    (c.text || '').toLowerCase().split(/\s+/).forEach((w) => {
+      const clean = w.replace(/[^a-z]/g, '');
+      if (clean.length > 2 && !stopWords.has(clean)) {
+        wordCounts[clean] = (wordCounts[clean] || 0) + 1;
+      }
+    });
+  });
+  const top = Object.entries(wordCounts)
+    .filter(([, n]) => n >= 2)
+    .sort((a, b) => b[1] - a[1])[0];
+  return top ? top[0] : null;
+}
+
 // #2 Generate Daily Wrap Summary
 function generateDailyWrap() {
   const todayKey = getTodayKey();
@@ -3330,6 +3791,14 @@ function generateDailyWrap() {
     insight = "Legendary status achieved. You're rewriting what's possible!";
   }
 
+  // Neural capture analysis: filter distractions saved today
+  const allDistractions = JSON.parse(localStorage.getItem("distractions")) || [];
+  const todayCaptures = allDistractions.filter(
+    (d) => d.timestamp && d.timestamp.startsWith(todayKey)
+  );
+  const captureCount = todayCaptures.length;
+  const captureTheme = analyzeCaptures(todayCaptures);
+
   return {
     todayTasks,
     currentXp,
@@ -3342,6 +3811,8 @@ function generateDailyWrap() {
     dominantCategory,
     categoryInfo,
     insight,
+    captureCount,
+    captureTheme,
     date: new Date().toLocaleDateString("en-US", {
       weekday: "long",
       year: "numeric",
@@ -3526,6 +3997,31 @@ function showDailyWrap() {
           <div class="wrapped-xp-badge-cyber">${wrapData.topTask.xp} XP</div>
         </div>
         <div class="achievement-glow"></div>
+      </div>
+    `,
+          },
+        ]
+      : []),
+    // Neural Capture Slide (only shown when the user buffered distractions today)
+    ...(wrapData.captureCount > 0
+      ? [
+          {
+            gradient:
+              "linear-gradient(135deg, #0d0d0d 0%, #1a0d2e 50%, #2d1654 100%)",
+            content: `
+      <div class="wrapped-slide-content">
+        <div class="wrapped-emoji">🧠</div>
+        <div class="wrapped-big-number count-up cyber-glow-cyan">${wrapData.captureCount}</div>
+        <h2 class="wrapped-stat-label">NEURAL CAPTURES BUFFERED</h2>
+        <p class="wrapped-stat-detail">${
+          wrapData.captureTheme
+            ? `RECURRING SIGNAL DETECTED: "${wrapData.captureTheme.toUpperCase()}" — consider converting to a mission`
+            : "Your capture buffer kept you focused. Any worth converting to a mission?"
+        }</p>
+        <div class="hud-corner top-left"></div>
+        <div class="hud-corner top-right"></div>
+        <div class="hud-corner bottom-left"></div>
+        <div class="hud-corner bottom-right"></div>
       </div>
     `,
           },
@@ -3741,3 +4237,48 @@ window.DistractionSystem = {
     refreshUI();
   },
 };
+
+// ========================================
+// KEYBOARD SHORTCUTS
+// Single-key shortcuts active only when no input/textarea has focus.
+// c → focus neural capture input
+// r → fire ready signal (if available)
+// Esc → dismiss any open overlay
+// ========================================
+document.addEventListener("keydown", (e) => {
+  // Never intercept when the user is typing
+  const tag = document.activeElement && document.activeElement.tagName;
+  if (tag === "INPUT" || tag === "TEXTAREA") return;
+  // Don't intercept modified keys (Ctrl/Meta/Alt combos) to avoid browser conflicts
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+  if (e.key === "c" || e.key === "C") {
+    e.preventDefault();
+    const captureInput = document.getElementById("distractionInput");
+    if (captureInput) captureInput.focus();
+  }
+
+  if (e.key === "r" || e.key === "R") {
+    e.preventDefault();
+    const btn = document.getElementById("readyButton");
+    if (btn && !btn.disabled) btn.click();
+  }
+
+  if (e.key === "Escape") {
+    // Dismiss chip strip
+    const bar = document.getElementById("pomo-check-bar");
+    if (bar) {
+      bar.classList.add("pomo-check-exit");
+      setTimeout(() => bar.remove(), 280);
+    }
+    // Dismiss XP selector
+    const backdrop = document.getElementById("xp-selector-backdrop");
+    if (backdrop) {
+      if (typeof closeXPSelector === "function") closeXPSelector();
+    }
+    // Dismiss any buddy suggestion / motivational message
+    document.querySelectorAll(".buddy-suggestion, .motivational-message").forEach((el) => {
+      el.remove();
+    });
+  }
+});

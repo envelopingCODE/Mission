@@ -10,6 +10,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="stylesheet" type="text/css" href="mission.css" />
+    <link rel="stylesheet" type="text/css" href="pomodoro-integrated-styles.css" />
 
     <title>Mission — Gamify your tasks</title>
   </head>
@@ -20,6 +21,7 @@
     <!-- Wrap all content in a main caaaontent container -->
     <div class="content container">
       <div class="container2">
+        <div id="streak-bar"></div>
         <div id="earliest-display"></div>
 
         <h1 class="widescreen">Objectives for today:</h1>
@@ -160,7 +162,7 @@
 
       <div class="missions-grid">
         <div class="grid-item-1">
-          <h2>Stored missions</h2>
+          <h2>Stored missions<span id="session-progress"></span></h2>
         </div>
         <div class="grid-item-2">
           <ul id="missionList"></ul>
