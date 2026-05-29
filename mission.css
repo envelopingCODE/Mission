@@ -5193,21 +5193,9 @@ svg.minimalist-face {
 .pip-sparkle { animation: sparkleFlicker 3s ease-in-out infinite; }
 
 /* ── Robot buddy speaking animations ──────────────────────────────────────
-   Glow peaks aligned to same keyframes where scaleY is highest — light feels
-   physically caused by mouth opening. Eye squint fires at the two largest
-   mouth openings (33% and 58%). transform-box:fill-box required for SVG. */
-@keyframes mouthTalk {
-  0%   { transform: scaleY(1)    scaleX(1);    }
-  7%   { transform: scaleY(1.16) scaleX(0.95); }
-  18%  { transform: scaleY(0.92) scaleX(1.02); }
-  31%  { transform: scaleY(1.2)  scaleX(0.94); }
-  42%  { transform: scaleY(0.96) scaleX(1.01); }
-  55%  { transform: scaleY(1.13) scaleX(0.96); }
-  67%  { transform: scaleY(0.9)  scaleX(1.02); }
-  78%  { transform: scaleY(1.08) scaleX(0.97); }
-  89%  { transform: scaleY(0.97) scaleX(1);    }
-  100% { transform: scaleY(1)    scaleX(1);    }
-}
+   mouthTalk removed — shape+timing driven by JS RAF multi-sine loop.
+   mouthGlow stays CSS (filter won't conflict with JS transform writes).
+   Eye squint fires at 33% and 58% of the 1.4s cycle. */
 @keyframes mouthGlow {
   0%   { filter: drop-shadow(0 0 2px rgba(134,223,255,0.45)); }
   7%   { filter: drop-shadow(0 0 7px rgba(134,223,255,0.88)); }
@@ -5221,11 +5209,8 @@ svg.minimalist-face {
   100% { filter: drop-shadow(0 0 2px rgba(134,223,255,0.45)); }
 }
 .robot-speaking {
-  animation:
-    mouthTalk 1.4s cubic-bezier(0.4, 0, 0.2, 1) infinite !important,
-    mouthGlow 1.4s cubic-bezier(0.4, 0, 0.2, 1) infinite !important;
-  transform-box: fill-box;
-  transform-origin: top center;
+  /* transform driven by JS RAF — only filter animation stays here */
+  animation: mouthGlow 1.4s cubic-bezier(0.4, 0, 0.2, 1) infinite !important;
 }
 @keyframes eyeSquint {
   0%,  28% { transform: scaleY(1);    }

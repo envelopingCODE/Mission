@@ -162,6 +162,7 @@ const CuteRobotFace = ({
   const [isSpeaking,    setIsSpeaking]    = React.useState(false);
   const [isProcessing,  setIsProcessing]  = React.useState(false);
   const lookAwayTimerRef = React.useRef(null);
+  const mouthRafRef      = React.useRef(null);
   const [particles, setParticles] = React.useState([]);
   const [confettiParticles, setConfettiParticles] = React.useState([]);
   const [previousLevel, setPreviousLevel] = React.useState(1);
@@ -1216,6 +1217,62 @@ const CuteRobotFace = ({
     blink: { scaleY: 0.1 },
   };
 
+  // ── Multi-sine mouth RAF loop ─────────────────────────────────────────────
+  // Three sine waves at irrational ratios → never repeats in any perceivable
+  // window. CSS mouthTalk keyframe is removed; this drives the transform directly.
+  // React's style prop yields control (undefined) while isSpeaking is true.
+  React.useEffect(() => {
+    const mouthEl = document.getElementById("robot-mouth");
+    if (!mouthEl) return;
+
+    if (!isSpeaking) {
+      if (mouthRafRef.current) {
+        cancelAnimationFrame(mouthRafRef.current);
+        mouthRafRef.current = null;
+      }
+      mouthEl.style.transform = "";
+      mouthEl.style.transformBox = "";
+      mouthEl.style.transformOrigin = "";
+      return;
+    }
+
+    mouthEl.style.transformBox = "fill-box";
+    mouthEl.style.transformOrigin = "top center";
+
+    var startTime = null;
+    var tick = function (ts) {
+      if (!startTime) startTime = ts;
+      var t = (ts - startTime) / 1000;
+
+      // Sum of three incommensurable frequencies — pattern period > 200 s
+      var raw = 0.5 * Math.sin(t * 8)
+              + 0.3 * Math.sin(t * 13.7)
+              + 0.2 * Math.sin(t * 21);
+
+      // raw ∈ [~-1, ~1] → openness ∈ [0, 1]
+      var openness = (raw + 1) / 2;
+
+      // Jaw opens downward; slight counter-scale on X for natural feel
+      var sY = (1 + openness * 0.28).toFixed(3);
+      var sX = (1 - openness * 0.07).toFixed(3);
+      mouthEl.style.transform = "scaleY(" + sY + ") scaleX(" + sX + ")";
+
+      mouthRafRef.current = requestAnimationFrame(tick);
+    };
+
+    mouthRafRef.current = requestAnimationFrame(tick);
+
+    return function () {
+      if (mouthRafRef.current) {
+        cancelAnimationFrame(mouthRafRef.current);
+        mouthRafRef.current = null;
+      }
+      mouthEl.style.transform = "";
+      mouthEl.style.transformBox = "";
+      mouthEl.style.transformOrigin = "";
+    };
+  }, [isSpeaking]);
+
   // ── Window hooks (must be in CuteRobotFace — states live here) ──────────
   React.useEffect(() => {
     window.setRobotSpeaking = (active) => setIsSpeaking(active);
@@ -1721,7 +1778,7 @@ const CuteRobotFace = ({
               ? `translateX(${glitchOffset.x * 0.7}px) translateY(${
                   glitchOffset.y * 0.5
                 }px)`
-              : "",
+              : isSpeaking ? undefined : "",
           }}
         />
       </g>
