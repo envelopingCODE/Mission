@@ -2598,7 +2598,7 @@ const PomodoroTimer = () => {
     return (
       <div
         className="pomodoro-minimized"
-        style={{ position: "fixed", bottom: "1.5rem", right: "5rem",
+        style={{ position: "fixed", bottom: "1.5rem", right: "1.5rem",
                  top: "auto", left: "auto", cursor: "pointer" }}
         onClick={() => setExpanded(true)}
         title="Open timer"
