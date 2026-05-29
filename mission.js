@@ -671,6 +671,7 @@ function getPartnerDepth() {
 // Task Completion Display Function
 // Uses DOM bubble directly — avoids double-wrapping through the React notification templates
 function displayRandomMessage(category = "general") {
+  if (!AppSettings.get().buddyMessages) return;
   sessionTaskCount++;
   const sessionTier = getMessageTier(sessionTaskCount);
   const { tier: depthTier, daysActive } = getPartnerDepth();
@@ -1248,6 +1249,8 @@ const TaskSystem = {
 };
 
 document.addEventListener("DOMContentLoaded", () => {
+  AppSettings.applyAll();
+  OllamaClient.checkAvailable();
   TaskSystem.init();
   loadMissions();
   renderStreakBar();
