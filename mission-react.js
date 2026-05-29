@@ -1571,9 +1571,9 @@ const CuteRobotFace = ({
           id="left-eye"
           transform={`translate(${
             -25 + eyePosition.x + (isGlitching ? glitchOffset.x : 0)
-          }, 
+          },
                 ${-10 + eyePosition.y + (isGlitching ? glitchOffset.y : 0)})`}
-          className={currentExpression.isGlitched ? "glitching-element" : ""}
+          className={`${currentExpression.isGlitched ? "glitching-element" : ""} ${isSpeaking ? "robot-eye-speaking" : ""}`}
         >
           {/* Main eye path */}
           <PathComponent
@@ -1637,9 +1637,9 @@ const CuteRobotFace = ({
           id="right-eye"
           transform={`translate(${
             25 + eyePosition.x - (isGlitching ? glitchOffset.x : 0)
-          }, 
+          },
                 ${-10 + eyePosition.y + (isGlitching ? glitchOffset.y : 0)})`}
-          className={currentExpression.isGlitched ? "glitching-element" : ""}
+          className={`${currentExpression.isGlitched ? "glitching-element" : ""} ${isSpeaking ? "robot-eye-speaking" : ""}`}
         >
           <PathComponent
             d={
@@ -1711,7 +1711,7 @@ const CuteRobotFace = ({
           }
           style={{
             transition: "d 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)",
-            filter: "drop-shadow(0 0 2px rgba(134, 223, 255, 0.5))",
+            filter: isSpeaking ? undefined : "drop-shadow(0 0 2px rgba(134, 223, 255, 0.5))",
             transform: isGlitching
               ? `translateX(${glitchOffset.x * 0.7}px) translateY(${
                   glitchOffset.y * 0.5

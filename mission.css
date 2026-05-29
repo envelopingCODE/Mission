@@ -5192,11 +5192,10 @@ svg.minimalist-face {
 }
 .pip-sparkle { animation: sparkleFlicker 3s ease-in-out infinite; }
 
-/* Robot buddy mouth animation while speaking.
-   transform-origin:top center = jaw opens downward (not symmetric squash).
-   Irregular keyframe spacing = varied syllable rhythm, not a metronome.
-   Counter X-scale when Y opens = natural jaw physics.
-   !important overrides the subtlePulse in the component inline <style>. */
+/* ── Robot buddy speaking animations ──────────────────────────────────────
+   Glow peaks aligned to same keyframes where scaleY is highest — light feels
+   physically caused by mouth opening. Eye squint fires at the two largest
+   mouth openings (33% and 58%). transform-box:fill-box required for SVG. */
 @keyframes mouthTalk {
   0%   { transform: scaleY(1)    scaleX(1);    }
   7%   { transform: scaleY(1.16) scaleX(0.95); }
@@ -5209,10 +5208,38 @@ svg.minimalist-face {
   89%  { transform: scaleY(0.97) scaleX(1);    }
   100% { transform: scaleY(1)    scaleX(1);    }
 }
+@keyframes mouthGlow {
+  0%   { filter: drop-shadow(0 0 2px rgba(134,223,255,0.45)); }
+  7%   { filter: drop-shadow(0 0 7px rgba(134,223,255,0.88)); }
+  18%  { filter: drop-shadow(0 0 2px rgba(134,223,255,0.40)); }
+  31%  { filter: drop-shadow(0 0 11px rgba(134,223,255,1.0)); }
+  42%  { filter: drop-shadow(0 0 3px rgba(134,223,255,0.45)); }
+  55%  { filter: drop-shadow(0 0 8px rgba(134,223,255,0.85)); }
+  67%  { filter: drop-shadow(0 0 2px rgba(134,223,255,0.40)); }
+  78%  { filter: drop-shadow(0 0 5px rgba(134,223,255,0.68)); }
+  89%  { filter: drop-shadow(0 0 2px rgba(134,223,255,0.40)); }
+  100% { filter: drop-shadow(0 0 2px rgba(134,223,255,0.45)); }
+}
 .robot-speaking {
-  animation: mouthTalk 1.4s cubic-bezier(0.4, 0, 0.2, 1) infinite !important;
+  animation:
+    mouthTalk 1.4s cubic-bezier(0.4, 0, 0.2, 1) infinite !important,
+    mouthGlow 1.4s cubic-bezier(0.4, 0, 0.2, 1) infinite !important;
   transform-box: fill-box;
   transform-origin: top center;
+}
+@keyframes eyeSquint {
+  0%,  28% { transform: scaleY(1);    }
+  33%       { transform: scaleY(0.78); }
+  40%       { transform: scaleY(1);    }
+  52%, 54%  { transform: scaleY(1);    }
+  58%       { transform: scaleY(0.84); }
+  65%       { transform: scaleY(1);    }
+  100%      { transform: scaleY(1);    }
+}
+.robot-eye-speaking {
+  animation: eyeSquint 1.4s cubic-bezier(0.4, 0, 0.2, 1) infinite !important;
+  transform-box: fill-box;
+  transform-origin: center;
 }
 @keyframes sparkleFlicker {
   0%, 100% { opacity: 0.4; }
