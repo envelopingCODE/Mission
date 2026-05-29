@@ -4311,6 +4311,11 @@ document.addEventListener("keydown", (e) => {
     if (btn && !btn.disabled) btn.click();
   }
 
+  if (e.key === "t" || e.key === "T") {
+    e.preventDefault();
+    if (typeof window.togglePomodoroTimer === "function") window.togglePomodoroTimer();
+  }
+
   if (e.key === "Escape") {
     // Dismiss chip strip
     const bar = document.getElementById("pomo-check-bar");

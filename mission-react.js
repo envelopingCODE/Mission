@@ -2310,8 +2310,10 @@ const initializeReactComponents = () => {
 // which fires synchronously after React commits but before the browser
 // paints, preventing any stale-value flash and eliminating the reflow.
 const PomodoroTimer = () => {
-  const WORK_TIME  = 25 * 60;
-  const BREAK_TIME =  5 * 60;
+  const WORK_TIME        = 25 * 60;
+  const SHORT_BREAK      =  5 * 60;
+  const LONG_BREAK       = 15 * 60;
+  const CYCLE_LENGTH     = 4;           // Pomodoros before a long break
   const MINI_R = 26, MINI_C = 2 * Math.PI * 26;
   const PIP_R  = 74, PIP_C  = 2 * Math.PI * 74;
 
@@ -2321,6 +2323,12 @@ const PomodoroTimer = () => {
   const [sessionCount, setSessionCount] = React.useState(0);
   const [expanded,     setExpanded]     = React.useState(false);
   const [position,     setPosition]     = React.useState(null);
+
+  // Expose toggle to the global keyboard handler in mission.js
+  React.useEffect(() => {
+    window.togglePomodoroTimer = () => setExpanded((e) => !e);
+    return () => { delete window.togglePomodoroTimer; };
+  }, []);
 
   // Time as mutable ref — no re-render per tick
   const timeLeftRef  = React.useRef(WORK_TIME);
@@ -2364,22 +2372,27 @@ const PomodoroTimer = () => {
         return;
       }
       clearInterval(id);
-      const nextMode = mode === "work" ? "break" : "work";
-      const nextTime = nextMode === "work" ? WORK_TIME : BREAK_TIME;
-      timeLeftRef.current  = nextTime;
-      totalTimeRef.current = nextTime;
       if (mode === "work") {
-        setSessionCount((c) => c + 1);
+        const newCount    = sessionCount + 1;
+        const isLongBreak = newCount % CYCLE_LENGTH === 0;
+        const breakTime   = isLongBreak ? LONG_BREAK : SHORT_BREAK;
+        timeLeftRef.current  = breakTime;
+        totalTimeRef.current = breakTime;
+        setSessionCount(newCount);
         if (typeof window.notifyTaskCompletion === "function") {
           window.notifyTaskCompletion({
             id: "pomodoro-" + Date.now(),
-            title: "Pomodoro complete",
+            title: isLongBreak ? "Cycle complete — long break" : "Pomodoro complete",
             priority: "normal",
             completedAt: new Date().toISOString(),
           });
         }
+        setMode("break");
+      } else {
+        timeLeftRef.current  = WORK_TIME;
+        totalTimeRef.current = WORK_TIME;
+        setMode("work");
       }
-      setMode(nextMode);
       setIsRunning(false);
     }, 1000);
     return () => clearInterval(id);
@@ -2387,7 +2400,7 @@ const PomodoroTimer = () => {
 
   const reset = React.useCallback(() => {
     setIsRunning(false);
-    const t = mode === "work" ? WORK_TIME : BREAK_TIME;
+    const t = mode === "work" ? WORK_TIME : SHORT_BREAK;
     timeLeftRef.current  = t;
     totalTimeRef.current = t;
     syncDisplay();
@@ -2535,8 +2548,27 @@ const PomodoroTimer = () => {
             {isRunning ? "⏸" : "▶"}
           </button>
         </div>
-        <div className="pip-session">
-          {sessionCount} {sessionCount === 1 ? "session" : "sessions"}
+        <div className="pip-cycle-row">
+          <div className="pip-cycle-dots">
+            {Array.from({ length: CYCLE_LENGTH }).map((_, i) => {
+              const posInCycle = sessionCount % CYCLE_LENGTH;
+              // All 4 lit when we're exactly at a cycle boundary (just finished 4th)
+              const atBoundary = sessionCount > 0 && posInCycle === 0;
+              const lit = atBoundary || i < posInCycle;
+              const isLong = atBoundary && i === CYCLE_LENGTH - 1;
+              return (
+                <span
+                  key={i}
+                  className={"pip-cycle-pip" + (lit ? " pip-cycle-pip-lit" : "") + (isLong ? " pip-cycle-pip-long" : "")}
+                />
+              );
+            })}
+          </div>
+          <span className="pip-session-label">
+            {sessionCount > 0
+              ? `${Math.floor(sessionCount / CYCLE_LENGTH)}×  ${sessionCount % CYCLE_LENGTH === 0 ? "long break" : `${sessionCount % CYCLE_LENGTH}/${CYCLE_LENGTH}`}`
+              : "focus"}
+          </span>
         </div>
       </div>
     </div>
