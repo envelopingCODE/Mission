@@ -2266,6 +2266,17 @@ const initializeReactComponents = () => {
     });
   }
 
+  // Mount Settings panel (independent root — crash here won't affect other mounts)
+  const settingsMount = document.getElementById("settings-mount");
+  if (settingsMount && !window.settingsRoot) {
+    try {
+      window.settingsRoot = ReactDOM.createRoot(settingsMount);
+      window.settingsRoot.render(<SettingsPanel />);
+    } catch (e) {
+      console.error("SettingsPanel mount error:", e);
+    }
+  }
+
   // Mount Pomodoro timer
   const pomodoroMount = document.getElementById("pomodoro-mount");
   if (pomodoroMount && !window.pomodoroRoot) {
@@ -2302,6 +2313,143 @@ const initializeReactComponents = () => {
       }
     }
   }
+};
+
+// ==================== SETTINGS PANEL ====================
+// GEAR_PATH on one line — Babel 6 rejects multi-line JSX string attributes
+const GEAR_PATH = "M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z";
+
+const StToggle = ({ label, desc, checked, onChange }) => (
+  <div className="st-row">
+    <div className="st-info">
+      <span className="st-label">{label}</span>
+      {desc && <span className="st-desc">{desc}</span>}
+    </div>
+    <button className={"st-switch" + (checked ? " st-switch-on" : "")}
+      onClick={onChange} role="switch" aria-checked={checked}>
+      <span className="st-thumb" />
+    </button>
+  </div>
+);
+
+const SettingsPanel = () => {
+  const [open,         setOpen]         = React.useState(false);
+  const [cfg,          setCfg]          = React.useState(() => window.AppSettings.get());
+  const [ollamaStatus, setOllamaStatus] = React.useState("idle");
+
+  React.useEffect(() => {
+    window.toggleSettingsPanel = () => setOpen((o) => !o);
+    window._onSettingsChange   = () => setCfg(window.AppSettings.get());
+    return () => { delete window.toggleSettingsPanel; delete window._onSettingsChange; };
+  }, []);
+
+  React.useEffect(() => {
+    if (!open) return;
+    const onKey = (e) => { if (e.key === "Escape") setOpen(false); };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open]);
+
+  const toggle = (key) => {
+    const next = !cfg[key];
+    window.AppSettings.set(key, next);
+    setCfg((c) => Object.assign({}, c, { [key]: next }));
+  };
+
+  const setText = (key, val) => {
+    window.AppSettings.set(key, val);
+    setCfg((c) => Object.assign({}, c, { [key]: val }));
+  };
+
+  const testOllama = async () => {
+    setOllamaStatus("checking");
+    const ok = await window.OllamaClient.checkAvailable();
+    setOllamaStatus(ok ? "ok" : "fail");
+  };
+
+  const DOT   = { idle: "rgba(134,223,255,0.2)", checking: "rgba(244,197,66,0.8)", ok: "#0fdfab", fail: "#ff6b6b" };
+  const DLBL  = { idle: "Not tested", checking: "Checking…", ok: "Connected", fail: "Unreachable" };
+  const SHORTCUTS = [["c","Capture"],["r","Ready signal"],["t","Timer"],["s","Settings"],["Esc","Dismiss"]];
+
+  return (
+    <div>
+      <button
+        className={"settings-gear" + (open ? " settings-gear-active" : "")}
+        onClick={() => setOpen((o) => !o)}
+        title="Settings (s)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="3" />
+          <path d={GEAR_PATH} />
+        </svg>
+      </button>
+
+      {open && <div className="settings-backdrop" onClick={() => setOpen(false)} />}
+
+      <div className={"settings-panel" + (open ? " settings-panel-open" : "")}>
+        <div className="settings-hdr">
+          <span>Settings</span>
+          <button className="settings-x" onClick={() => setOpen(false)}>×</button>
+        </div>
+        <div className="settings-body">
+
+          <div className="st-section">
+            <div className="st-section-title">General</div>
+            <StToggle label="Sound"          checked={cfg.soundEnabled}         onChange={() => toggle("soundEnabled")} />
+            <StToggle label="Buddy messages" checked={cfg.buddyMessages}        onChange={() => toggle("buddyMessages")} desc="Post-completion responses" />
+            <StToggle label="Capture panel"  checked={cfg.neuralCaptureVisible} onChange={() => toggle("neuralCaptureVisible")} desc="Neural feed sidebar" />
+          </div>
+
+          <div className="st-section">
+            <div className="st-section-title">Pomodoro</div>
+            <StToggle label="Show timer" checked={cfg.pomodoroVisible} onChange={() => toggle("pomodoroVisible")} />
+          </div>
+
+          <div className="st-section">
+            <div className="st-section-title">
+              <span>Buddy AI</span>
+              <span className="st-badge">Ollama</span>
+            </div>
+            <StToggle label="Enable" checked={cfg.ollamaEnabled} onChange={() => toggle("ollamaEnabled")} desc="Local LLM — stays on your machine" />
+            {cfg.ollamaEnabled && (
+              <div>
+                <div className="st-row st-row-input">
+                  <span className="st-label">Model</span>
+                  <input className="st-input" value={cfg.ollamaModel}
+                    onChange={(e) => setText("ollamaModel", e.target.value)}
+                    placeholder="llama3.2:3b" spellCheck={false} />
+                </div>
+                <div className="st-row st-row-input">
+                  <span className="st-label">URL</span>
+                  <input className="st-input" value={cfg.ollamaUrl}
+                    onChange={(e) => setText("ollamaUrl", e.target.value)}
+                    placeholder="http://localhost:11434" spellCheck={false} />
+                </div>
+                <div className="st-row st-row-action">
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.45rem" }}>
+                    <span className="ollama-dot" style={{ background: DOT[ollamaStatus] }} />
+                    <span className="st-desc">{DLBL[ollamaStatus]}</span>
+                  </div>
+                  <button className="st-btn" onClick={testOllama}>Test</button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="st-section">
+            <div className="st-section-title">Shortcuts</div>
+            {SHORTCUTS.map(([k, l]) => (
+              <div key={k} className="st-row st-row-shortcut">
+                <kbd className="st-key">{k}</kbd>
+                <span className="st-desc">{l}</span>
+              </div>
+            ))}
+          </div>
+
+        </div>
+      </div>
+    </div>
+  );
 };
 
 // ==================== POMODORO TIMER ====================
