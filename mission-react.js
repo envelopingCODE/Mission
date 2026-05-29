@@ -146,6 +146,43 @@ const MotivationalOverlay = React.memo(({ message, isVisible }) => {
   );
 });
 
+// ── Mouth path morphing tables ────────────────────────────────────────────
+// All standard expressions use M-W,Y Q0,D W,Y — only W and D vary.
+// CLOSED = existing expression paths. OPEN = target when mouth is fully open.
+// perplexed and playful use different SVG command sets; they get scaleY fallback.
+const MOUTH_CLOSED = {
+  neutral:       "M-25,20 Q0,25 25,20",
+  happy:         "M-33,20 Q0,42 33,20",
+  excited:       "M-40,20 Q0,55 40,20",
+  glitched:      "M-25,20 Q0,35 25,20",
+  curious:       "M-30,20 Q0,25 30,20",
+  sleepy:        "M-30,20 Q0,25 30,20",
+  "heart-eyes":  "M-30,20 Q0,45 30,20",
+};
+const MOUTH_OPEN = {
+  neutral:       "M-30,20 Q0,52 30,20",
+  happy:         "M-38,20 Q0,70 38,20",
+  excited:       "M-44,20 Q0,82 44,20",
+  glitched:      "M-30,20 Q0,58 30,20",
+  curious:       "M-35,20 Q0,54 35,20",
+  sleepy:        "M-34,20 Q0,50 34,20",
+  "heart-eyes":  "M-36,20 Q0,72 36,20",
+};
+
+function parseMouthWD(d) {
+  var m = d.match(/M-([\d.]+),([\d.]+)\s+Q0,([\d.]+)/);
+  return m ? { w: +m[1], y: +m[2], dep: +m[3] } : null;
+}
+function buildMouthD(w, y, dep) {
+  return "M-" + w.toFixed(2) + "," + y.toFixed(1) + " Q0," + dep.toFixed(2) + " " + w.toFixed(2) + "," + y.toFixed(1);
+}
+function lerpMouth(emotion, t) {
+  var c = parseMouthWD(MOUTH_CLOSED[emotion] || "");
+  var o = parseMouthWD(MOUTH_OPEN[emotion]  || "");
+  if (!c || !o) return null;
+  return buildMouthD(c.w + (o.w - c.w) * t, c.y, c.dep + (o.dep - c.dep) * t);
+}
+
 //################## SECTION 1: CuteRobotFace Component Start ##################
 // Update the CuteRobotFace component
 const CuteRobotFace = ({
@@ -161,8 +198,9 @@ const CuteRobotFace = ({
   const [pupilSize,     setPupilSize]     = React.useState(1);
   const [isSpeaking,    setIsSpeaking]    = React.useState(false);
   const [isProcessing,  setIsProcessing]  = React.useState(false);
-  const lookAwayTimerRef = React.useRef(null);
-  const mouthRafRef      = React.useRef(null);
+  const lookAwayTimerRef   = React.useRef(null);
+  const mouthRafRef        = React.useRef(null);
+  const currentEmotionRef  = React.useRef("curious");
   const [particles, setParticles] = React.useState([]);
   const [confettiParticles, setConfettiParticles] = React.useState([]);
   const [previousLevel, setPreviousLevel] = React.useState(1);
@@ -1217,6 +1255,9 @@ const CuteRobotFace = ({
     blink: { scaleY: 0.1 },
   };
 
+  // Keep currentEmotionRef in sync so the RAF loop always reads the live emotion
+  React.useEffect(function () { currentEmotionRef.current = currentEmotion; });
+
   // ── Multi-sine mouth RAF loop ─────────────────────────────────────────────
   // Three sine waves at irrational ratios → never repeats in any perceivable
   // window. CSS mouthTalk keyframe is removed; this drives the transform directly.
@@ -1236,26 +1277,31 @@ const CuteRobotFace = ({
       return;
     }
 
-    mouthEl.style.transformBox = "fill-box";
-    mouthEl.style.transformOrigin = "top center";
-
     var startTime = null;
     var tick = function (ts) {
       if (!startTime) startTime = ts;
       var t = (ts - startTime) / 1000;
 
-      // Sum of three incommensurable frequencies — pattern period > 200 s
+      // Three incommensurable sine waves — pattern period > 200 s
       var raw = 0.5 * Math.sin(t * 8)
               + 0.3 * Math.sin(t * 13.7)
               + 0.2 * Math.sin(t * 21);
 
-      // raw ∈ [~-1, ~1] → openness ∈ [0, 1]
-      var openness = (raw + 1) / 2;
+      var openness = (raw + 1) / 2; // [0, 1]
 
-      // Jaw opens downward; slight counter-scale on X for natural feel
-      var sY = (1 + openness * 0.28).toFixed(3);
-      var sX = (1 - openness * 0.07).toFixed(3);
-      mouthEl.style.transform = "scaleY(" + sY + ") scaleX(" + sX + ")";
+      var emotion  = currentEmotionRef.current;
+      var morphed  = lerpMouth(emotion, openness);
+
+      if (morphed) {
+        // Path morphing: W and D lerp between closed and open states
+        mouthEl.setAttribute("d", morphed);
+        mouthEl.style.transform = "";
+      } else {
+        // Fallback for non-standard paths (perplexed, playful)
+        mouthEl.style.transformBox    = "fill-box";
+        mouthEl.style.transformOrigin = "top center";
+        mouthEl.style.transform = "scaleY(" + (1 + openness * 0.28).toFixed(3) + ") scaleX(" + (1 - openness * 0.07).toFixed(3) + ")";
+      }
 
       mouthRafRef.current = requestAnimationFrame(tick);
     };
@@ -1267,8 +1313,11 @@ const CuteRobotFace = ({
         cancelAnimationFrame(mouthRafRef.current);
         mouthRafRef.current = null;
       }
-      mouthEl.style.transform = "";
-      mouthEl.style.transformBox = "";
+      // Restore the closed-mouth path for the current expression
+      var closedD = MOUTH_CLOSED[currentEmotionRef.current];
+      if (closedD) mouthEl.setAttribute("d", closedD);
+      mouthEl.style.transform      = "";
+      mouthEl.style.transformBox   = "";
       mouthEl.style.transformOrigin = "";
     };
   }, [isSpeaking]);
