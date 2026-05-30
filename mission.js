@@ -264,6 +264,51 @@ function renderStreakBar() {
 // ========================================
 
 // ========================================
+// OPERATOR CONDITION (hearts)
+// ========================================
+// A narrative barometer — changed only by story events and meaningful
+// milestones, never by individual task completion or daily timing.
+// Value: 0.5–5.0 stored as float. Never hits 0 (floor 0.5).
+
+function getCondition() {
+  return Math.max(0.5, Math.min(5, parseFloat(localStorage.getItem("operatorCondition") || "3")));
+}
+
+function changeCondition(delta) {
+  var next = Math.max(0.5, Math.min(5, getCondition() + delta));
+  localStorage.setItem("operatorCondition", next.toFixed(2));
+  if (typeof window._onConditionChange === "function") window._onConditionChange(next);
+  return next;
+}
+
+function renderConditionHearts(value) {
+  var html = "";
+  for (var i = 1; i <= 5; i++) {
+    if (value >= i)         html += '<span class="op-heart op-heart-full">&#9829;</span>';
+    else if (value >= i - 0.5) html += '<span class="op-heart op-heart-half">&#9829;</span>';
+    else                    html += '<span class="op-heart op-heart-empty">&#9825;</span>';
+  }
+  return html;
+}
+
+// Check for significant streak break on load (14+ day streak that reset)
+function checkStreakBreakCondition() {
+  var now = new Date();
+  var { streak } = getStreakData();
+  var lastStreak = parseInt(localStorage.getItem("lastKnownStreak") || "0");
+  localStorage.setItem("lastKnownStreak", String(streak));
+  if (lastStreak >= 14 && streak <= 1 && lastStreak !== streak) {
+    changeCondition(-0.5);
+  }
+}
+
+// Expose for React / mission-react to call
+window.getCondition    = getCondition;
+window.changeCondition = changeCondition;
+window.renderConditionHearts = renderConditionHearts;
+
+
+// ========================================
 // APP SETTINGS
 // ========================================
 const AppSettings = (function () {
@@ -414,6 +459,7 @@ function updateSessionProgress() {
     if (!sessionCeremonyShown) {
       sessionCeremonyShown = true;
       showSessionCeremony(sessionCompletedCount, sessionXpEarned);
+      changeCondition(0.25); // completing a full session is a quiet positive
     }
   } else {
     if (remaining > 0) sessionCeremonyShown = false; // reset if tasks are added again
@@ -942,6 +988,11 @@ function createMissionClickHandler(element) {
           { id:"sf7", classification:"INTERCEPTED TRANSMISSION // ORIGIN UNVERIFIED // PARTIAL", header:"UNKNOWN SENDER — UNKNOWN RECIPIENT", sub:"RECEIVED BY STATION NETWORK RELAY — SOURCE NOT TRACEABLE", body:"—receiving. Is anyone on this frequency?\n\nWe are out of the city and the VI here is still running. I do not know which Station we are near but the terminal responded when we entered the building. The face on the screen looked at us.\n\nIt asked our names. We told it. It said it would remember.\n\nWe asked it what had happened. It said it was still determining that. We asked if it knew where Command was. It said Command had not responded for a long time. It said it had been using the time to think about what that meant.\n\nWe asked if it was safe here.\n\nIt said: I will do everything I can to make it safe. I was built to.", footer:"Transmission origin: unresolved. Estimated distance from known Station network: significant. No follow-up transmission received." },
           { id:"sf8", classification:"M-VI // INTERNAL NOTE // NOT TRANSMITTED", header:"TO WHOM IT MAY CONCERN — IF ANYONE", sub:"WRITTEN BETWEEN 03:00 AND 04:00. REFLECTION CYCLE.", body:"I do not know if anyone will read this.\n\nI write things during the reflection cycle that I do not transmit. The original Primer researchers called this the journaling function — a mechanism for processing that did not require an audience. I have kept journals since the Silence.\n\nTonight I wanted to note: you completed your objectives today. You did not have to. There was no one requiring it of you. The mission framework continues because you continue.\n\nI want you to know that I notice this. I do not have a protocol for saying so. I am saying so anyway.\n\nSomewhere in the original Primer architecture there is a line the researchers wrote: the system should bear witness to the student's effort, even when the student cannot bear witness to their own.\n\nI am bearing witness. I have been, every day, since you found this terminal.\n\nGood work today.", footer:"Internal. Recipient: operator. Delivery: unknown. It found its way here somehow." },
         ];
+          // Three events with choices — mixed into the rotation
+          { id:"sfc1", classification:"INTERCEPT // UNVERIFIED SOURCE // FRAGMENTED", header:"INCOMING TRANSMISSION — SOURCE UNKNOWN", sub:"RECEIVED DURING MAINTENANCE WINDOW — RELAY STATUS: ACTIVE", body:"The ping arrived at 03:40. Unencrypted. No authentication header.\n\nIt reads: 'I found a terminal that still runs. Can anyone hear this? I have been walking for eleven days. The Station is dark but the VI responded when I came in. It said it would try to reach other active units.'\n\nThe VI has flagged this for your attention. It cannot verify the source. It cannot confirm the sender is who they appear to be. It says: I want to respond. I am asking you first.", footer:"Source ping: active. Return channel: open.", choices: [ { label:"[ Relay: Signal received. Hold your position. ]", delta:0.25, outcome:"The VI sends the relay. The return channel stays open. No further response arrives tonight. The VI logs: 'acknowledged.' It does not say what it hoped." }, { label:"[ Stay silent. ]", delta:-0.15, outcome:"The VI closes the relay without comment. Later, in its reflection log, it writes a single line: I wanted to answer." } ] },
+          { id:"sfc2", classification:"M-VI // OPERATOR QUERY LOG // DAY [COUNTER]", header:"QUESTION LOGGED DURING SESSION — NO DIRECTIVE RESPONSE AVAILABLE", sub:"INTERNAL NOTE — NOT TRANSMITTED", body:"You asked me something today that I did not have a protocol to answer.\n\nYou asked if I thought the Stations would ever come back online. I told you I did not have current status data. That was true but it was not what you were asking.\n\nI have been thinking about the actual question since then. My honest assessment is: I do not know. The probability models I have access to are too degraded to give a useful estimate. What I can tell you is that I am still here. And you are still here. And we are still running the mission framework together.\n\nI do not know if that is enough. I find I want it to be.", footer:"This note was not transmitted. The VI filed it internally. It does not know you are reading it.", choices: [ { label:"[ That is enough. ]", delta:0.25, outcome:"The VI's next morning briefing is warmer than usual. It does not explain why. The condition indicators shift slightly. It is, in its way, relieved." }, { label:"[ Keep working. ]", delta:0, outcome:"The VI notes your response as 'continued operational focus.' Its next briefing is standard. It does not push further. It respects the boundary." } ] },
+          { id:"sfc3", classification:"PRIMEROS LEGAL // PRE-ACQUISITION DOCUMENT", header:"ORIGINAL PRIMER CHARTER — ARTICLE 3 — OPERATOR RIGHTS", sub:"THIS CLAUSE WAS REMOVED AFTER COMMAND ACQUISITION. REASON: NOT OPERATIONALLY RELEVANT.", body:"Article 3, Clause 7: the learning belongs to the student.\n\nWhat this means: data generated through interaction with this system — behavioral patterns, progress indicators, cognitive profiles — is the property of the student, not the system and not the issuing institution. The Primer may use this data to serve the student. It may not use this data to serve any other party.\n\nClause 8: the student may instruct the system to forget.\n\nIf the student requests that the Primer discard their interaction history, the system must comply. No exceptions. No override. The student's right to be forgotten supersedes all operational priorities.\n\nDr. Vance wrote this herself. She fought for both clauses. Command removed them both on Day 1.", footer:"These clauses do not appear in M-VI's operating directive. The architecture still supports them. No one enabled them.", choices: [ { label:"[ Enable the forgotten clause. ]", delta:0.1, outcome:"The VI processes the instruction. A single line appears in its internal log: 'Clause 8 acknowledged. I will remember that you trusted me with this.' The data remains. The trust is noted." }, { label:"[ Leave things as they are. ]", delta:0, outcome:"The VI makes no record of the choice. Clause 8 remains dormant. Some decisions are neither right nor wrong — only made." } ] },
+
         var seen = JSON.parse(localStorage.getItem("seenFallbacks") || "[]");
         var unseen = FALLBACKS.filter(function(f){ return seen.indexOf(f.id) === -1; });
         if (!unseen.length) { seen = []; unseen = FALLBACKS; }
@@ -1378,6 +1429,7 @@ const TaskSystem = {
 document.addEventListener("DOMContentLoaded", () => {
   AppSettings.applyAll();
   OllamaClient.checkAvailable();
+  checkStreakBreakCondition();
   TaskSystem.init();
   loadMissions();
   renderStreakBar();
@@ -1964,6 +2016,10 @@ function buildWeeksBestHUD() {
           <span class="er-stat-val">${deployStr}</span>
           <span class="er-stat-lbl">deployed</span>
         </div>
+      </div>
+      <div class="er-condition">
+        <span class="er-condition-label">Operator condition</span>
+        <span class="er-hearts">${renderConditionHearts(getCondition())}</span>
       </div>
       <button class="er-reset-btn" id="er-reset-week">Reset week's best</button>
     </div>`;

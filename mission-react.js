@@ -2769,6 +2769,16 @@ var DISPATCHES = {
   },
 };
 
+// Render 5 hearts from a float condition value (0.5–5.0)
+function renderHearts(value) {
+  return Array.from({ length: 5 }, function(_, i) {
+    var full = value >= (i + 1);
+    var half = !full && value >= (i + 0.5);
+    var cls  = "op-heart " + (full ? "op-heart-full" : half ? "op-heart-half" : "op-heart-empty");
+    return React.createElement("span", { key: i, className: cls }, full || half ? "♥" : "♡");
+  });
+}
+
 // ── Dispatch modal component ──────────────────────────────────────────────
 // Renders [REDACTED] as visual black bars; other [BRACKETS] in amber.
 function renderDispatchBody(text) {
@@ -2791,11 +2801,16 @@ const DispatchModal = ({ payload, onClose }) => {
   var id = (typeof payload === "string") ? payload : (payload && payload.id ? payload.id : null);
   if (!d) return null;
 
-  var fullText = d.body;
-  // phase: "init" | "failed" | "typing" | "done"
-  var [phase, setPhase]       = React.useState("init");
-  var [dots, setDots]         = React.useState(1);
-  var [displayed, setDisplayed] = React.useState("");
+  var fullText   = d.body;
+  var hasChoices = !!(d.choices && d.choices.length >= 2);
+  // phase: "init" | "failed" | "typing" | "done" | "chosen"
+  var [phase, setPhase]             = React.useState("init");
+  var [dots, setDots]               = React.useState(1);
+  var [displayed, setDisplayed]     = React.useState("");
+  var [condVal, setCondVal]         = React.useState(
+    typeof window.getCondition === "function" ? window.getCondition() : 3
+  );
+  var [choiceOutcome, setChoiceOutcome] = React.useState(null);
   var timerRef  = React.useRef(null);
   var indexRef  = React.useRef(0);
 
@@ -2903,12 +2918,51 @@ const DispatchModal = ({ payload, onClose }) => {
         </div>
 
         <div className="dispatch-rule" />
-        {(phase === "done") && d.footer && (
+        {(phase === "done" || phase === "chosen") && d.footer && (
           <div className="dispatch-footer">{d.footer}</div>
         )}
+
+        {/* Condition display — only when story event has choices or outcome */}
+        {(phase === "done" || phase === "chosen") && hasChoices && (
+          <div className="dispatch-condition-row">
+            <span className="dispatch-condition-label">Operator condition</span>
+            <span className="dispatch-hearts">{renderHearts(condVal)}</span>
+          </div>
+        )}
+
+        {/* Choice buttons appear when typing is done and choices exist */}
+        {phase === "done" && hasChoices && (
+          <div className="dispatch-choices">
+            {d.choices.map(function(choice, i) {
+              return (
+                <button key={i} className="dispatch-choice-btn" onClick={function() {
+                  var next = typeof window.changeCondition === "function"
+                    ? window.changeCondition(choice.delta)
+                    : condVal + choice.delta;
+                  setCondVal(Math.max(0.5, Math.min(5, next)));
+                  setChoiceOutcome({ text: choice.outcome, delta: choice.delta });
+                  setPhase("chosen");
+                }}>
+                  {choice.label}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Outcome feedback after choice */}
+        {phase === "chosen" && choiceOutcome && (
+          <div className="dispatch-outcome">
+            <div className="dispatch-outcome-text">{choiceOutcome.text}</div>
+            <div className={"dispatch-condition-delta" + (choiceOutcome.delta >= 0 ? " delta-pos" : " delta-neg")}>
+              {choiceOutcome.delta >= 0 ? "+" : ""}{(choiceOutcome.delta * 100).toFixed(0)}% CONDITION {choiceOutcome.delta >= 0 ? "STABLE" : "DEGRADED"}
+            </div>
+          </div>
+        )}
+
         <button className="dispatch-close" onClick={onClose}
-          style={{ opacity: phase === "done" ? 1 : 0.35 }}>
-          {phase === "done" ? "▸ Close Transmission" : "▸ Receiving" + dotStr}
+          style={{ opacity: (phase === "done" || phase === "chosen") ? 1 : 0.35 }}>
+          {(phase === "done" || phase === "chosen") ? "▸ Close Transmission" : "▸ Receiving" + dotStr}
         </button>
       </div>
     </div>
@@ -2952,6 +3006,7 @@ const SettingsPanel = () => {
     window.toggleSettingsPanel = () => setOpen((o) => { if (o) setView("main"); return !o; });
     window._onSettingsChange   = () => setCfg(window.AppSettings.get());
     window.openSettingsView    = (v) => { setOpen(true); setView(v); };
+    window._onConditionChange  = () => setCfg(window.AppSettings.get()); // triggers re-render
     window.toggleSettingsView  = (v) => {
       setOpen((o) => {
         if (!o) { setView(v); viewRef.current = v; return true; }
@@ -3180,6 +3235,17 @@ const SettingsPanel = () => {
                 <span className="st-desc">{l}</span>
               </div>
             ))}
+          </div>
+
+          {/* Operator Condition */}
+          <div className="st-section">
+            <div className="st-section-title">Operator Status</div>
+            <div className="st-condition-row">
+              <span className="st-desc">Condition — updated by story events</span>
+              <span className="st-hearts">{renderHearts(
+                typeof window.getCondition === "function" ? window.getCondition() : 3
+              )}</span>
+            </div>
           </div>
 
           {/* Navigation to sub-screens */}

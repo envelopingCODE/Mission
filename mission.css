@@ -5546,6 +5546,57 @@ svg.minimalist-face {
   color:rgba(134,223,255,0.2); letter-spacing:0.08em; text-transform:uppercase; margin-top:2px;
 }
 
+/* ── Operator Condition hearts ──────────────────────────────────────────── */
+.op-heart { font-size:0.75rem; margin:0 1px; transition:color 0.3s, text-shadow 0.3s; }
+.op-heart-full  { color:rgba(15,210,75,0.9);  text-shadow:0 0 6px rgba(15,210,75,0.5); }
+.op-heart-half  { color:rgba(15,210,75,0.45); }
+.op-heart-empty { color:rgba(15,210,75,0.12); }
+
+/* In Week's Best HUD */
+.er-condition {
+  display:flex; align-items:center; justify-content:space-between;
+  margin-top:0.6rem; padding-top:0.5rem; border-top:1px solid rgba(15,210,75,0.1);
+}
+.er-condition-label {
+  font-family:"Courier New",monospace; font-size:0.46rem;
+  color:rgba(15,210,75,0.35); letter-spacing:0.1em; text-transform:uppercase;
+}
+
+/* In Settings panel */
+.st-condition-row { display:flex; align-items:center; justify-content:space-between; padding:0.35rem 0; }
+.st-hearts { display:flex; gap:2px; }
+.st-hearts .op-heart { font-size:0.82rem; }
+
+/* In dispatch modal */
+.dispatch-condition-row {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:0.5rem 1.3rem 0.2rem; flex-shrink:0;
+}
+.dispatch-condition-label {
+  font-family:"Courier New",monospace; font-size:0.48rem;
+  color:rgba(15,200,75,0.35); letter-spacing:0.12em; text-transform:uppercase;
+}
+.dispatch-hearts { display:flex; gap:2px; }
+.dispatch-hearts .op-heart { font-size:0.8rem; }
+
+/* Choice buttons */
+.dispatch-choices { display:flex; flex-direction:column; gap:4px; padding:0.5rem 1rem 0.2rem; flex-shrink:0; }
+.dispatch-choice-btn {
+  background:rgba(15,210,75,0.06); border:1px solid rgba(15,210,75,0.22);
+  color:rgba(15,210,75,0.75); font-family:"Courier New",monospace;
+  font-size:0.6rem; letter-spacing:0.1em; padding:0.55rem 0.8rem;
+  cursor:pointer; text-align:left; border-radius:2px;
+  transition:background 0.2s, color 0.2s, border-color 0.2s;
+}
+.dispatch-choice-btn:hover { background:rgba(15,210,75,0.12); color:rgba(15,210,75,0.95); border-color:rgba(15,210,75,0.4); }
+
+/* Outcome feedback */
+.dispatch-outcome { padding:0.6rem 1.3rem; flex-shrink:0; }
+.dispatch-outcome-text { font-family:"Courier New",monospace; font-size:0.62rem; color:rgba(15,210,75,0.65); line-height:1.7; margin-bottom:0.35rem; }
+.dispatch-condition-delta { font-family:"Courier New",monospace; font-size:0.5rem; letter-spacing:0.15em; text-transform:uppercase; }
+.delta-pos { color:rgba(15,210,75,0.7); }
+.delta-neg { color:rgba(255,100,80,0.7); }
+
 /* ==================== SESSION CEREMONY ==================== */
 .session-ceremony {
   position: fixed;
