@@ -2015,25 +2015,51 @@ function buildWeeksBestHUD() {
     ? new Date(parseInt(readyVal)).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false })
     : "—";
 
+  // Delta — compare today's deploy time against this week's best
+  var weekBestRaw = localStorage.getItem("earliestReadyTime_" + getWeekKey());
+  var weekBestMs  = weekBestRaw ? parseInt(weekBestRaw) : null;
+  var deltaStr    = "—";
+  var deltaType   = "none"; // "early" | "late" | "best" | "none"
+  if (readyVal) {
+    var dDep  = new Date(parseInt(readyVal));
+    var depM  = dDep.getHours() * 60 + dDep.getMinutes();
+    if (weekBestMs) {
+      var dBest = new Date(weekBestMs);
+      var bestM = dBest.getHours() * 60 + dBest.getMinutes();
+      var diff  = depM - bestM;
+      if (diff === 0)      { deltaStr = "BEST";          deltaType = "best"; }
+      else if (diff < 0)   { deltaStr = Math.abs(diff) + "m early"; deltaType = "early"; }
+      else                 { deltaStr = "+" + diff + "m";            deltaType = "late";  }
+    } else {
+      deltaStr = "BEST"; deltaType = "best";
+    }
+  }
+
+  // Lucide-style inline SVGs — no library needed
+  var icoCheck = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+  var icoZap   = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>';
+  var icoClock = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>';
+
   var condStr = renderConditionHearts(getCondition());
 
   return `
     <div class="er-hud-inner">
       <div class="er-divider"></div>
-      <div class="er-stats">
-        <div class="er-stat">
-          <span class="er-stat-lbl">OPS TODAY</span>
-          <span class="er-stat-val">${todayTasks.length}</span>
+      <div class="er-stats-grid">
+        <div class="er-stat-cell">
+          <span class="er-stat-ico">${icoCheck}</span>
+          <span class="er-stat-num">${todayTasks.length}</span>
+          <span class="er-stat-tag">OPS TODAY</span>
         </div>
-        <div class="er-stat-sep"></div>
-        <div class="er-stat">
-          <span class="er-stat-lbl">XP EARNED</span>
-          <span class="er-stat-val">${todayXP}</span>
+        <div class="er-stat-cell">
+          <span class="er-stat-ico">${icoZap}</span>
+          <span class="er-stat-num">${todayXP}</span>
+          <span class="er-stat-tag">XP EARNED</span>
         </div>
-        <div class="er-stat-sep"></div>
-        <div class="er-stat">
-          <span class="er-stat-lbl">DEPLOYED</span>
-          <span class="er-stat-val er-stat-val-sm">${deployStr}</span>
+        <div class="er-stat-cell">
+          <span class="er-stat-ico">${icoClock}</span>
+          <span class="er-stat-num er-delta-${deltaType}">${deltaStr}</span>
+          <span class="er-stat-tag">VS BEST</span>
         </div>
       </div>
       <div class="er-divider"></div>
@@ -2041,7 +2067,7 @@ function buildWeeksBestHUD() {
         <span class="er-condition-label">CONDITION</span>
         <span class="er-hearts">${condStr}</span>
       </div>
-      <button class="er-reset-btn" id="er-reset-week">↺ Reset week's record</button>
+      <button class="er-reset-btn" id="er-reset-week">↺  Reset week's record</button>
     </div>`;
 }
 
@@ -2061,19 +2087,16 @@ function updateEarliestReadyDisplay(earliestReadyTime) {
     container.appendChild(el);
   }
 
-  // SVG chevron — rotates 180° when expanded via CSS
-  var chevronSVG = '<svg class="er-chevron-svg" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,5 7,9 12,5"/></svg>';
+  var chevronSVG = '<svg class="er-chevron-svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>';
 
   el.innerHTML = `
     <div class="er-header">
       <div class="er-header-left">
         <span class="er-label">WEEK'S BEST</span>
+        <span class="er-time-display">${timeString}</span>
         <span class="er-sublabel">RESETS MONDAY</span>
       </div>
-      <div class="er-header-right">
-        <span class="er-time-display">${timeString}</span>
-        <span class="er-chevron">${chevronSVG}</span>
-      </div>
+      <span class="er-chevron">${chevronSVG}</span>
     </div>
     <div class="er-hud"></div>
   `;
