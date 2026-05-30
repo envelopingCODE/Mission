@@ -5615,6 +5615,134 @@ svg.minimalist-face {
 .delta-pos { color:rgba(15,210,75,0.7); }
 .delta-neg { color:rgba(255,100,80,0.7); }
 
+/* ==================== ACHIEVEMENT TOAST ==================== */
+@keyframes achSlideUp {
+  0%   { transform: translateX(-50%) translateY(120%); opacity: 0; }
+  100% { transform: translateX(-50%) translateY(0);    opacity: 1; }
+}
+@keyframes achSlideDown {
+  0%   { transform: translateX(-50%) translateY(0);    opacity: 1; }
+  100% { transform: translateX(-50%) translateY(120%); opacity: 0; }
+}
+@keyframes achIconPop {
+  0%   { transform: scale(0.2) rotate(-12deg); opacity: 0; }
+  65%  { transform: scale(1.22) rotate(3deg);  opacity: 1; }
+  100% { transform: scale(1)    rotate(0deg);  opacity: 1; }
+}
+@keyframes achFill {
+  from { width: 0%; }
+  to   { width: 100%; }
+}
+@keyframes achEdgePulse {
+  0%   { opacity: 0; }
+  18%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+@keyframes achNameBlink {
+  0%,100% { opacity: 1; }
+  50%      { opacity: 0; }
+}
+
+/* Screen edge flash */
+.ach-edge-pulse {
+  position: fixed; inset: 0; z-index: 88887; pointer-events: none;
+  box-shadow: inset 0 0 0 3px rgba(15,210,75,0.7), inset 0 0 0 6px rgba(15,210,75,0.18);
+  animation: achEdgePulse 0.85s cubic-bezier(0.4,0,0.2,1) forwards;
+}
+
+/* Toast panel */
+.ach-toast {
+  position: fixed;
+  bottom: 5.5rem;
+  left: 50%;
+  transform: translateX(-50%) translateY(120%);
+  width: 460px;
+  max-width: calc(100vw - 2rem);
+  background: rgba(0, 7, 3, 0.98);
+  border: 1px solid rgba(15,210,75,0.42);
+  border-top: 2px solid rgba(15,210,75,0.75);
+  border-radius: 3px;
+  z-index: 88888;
+  pointer-events: none;
+  overflow: hidden;
+  box-shadow:
+    0 -4px 24px rgba(15,210,75,0.25),
+    0 16px 48px rgba(0,0,0,0.85),
+    inset 0 0 80px rgba(0,0,0,0.4);
+}
+.ach-toast-enter { animation: achSlideUp 0.52s cubic-bezier(0.22,1,0.36,1) forwards; }
+.ach-toast-exit  { animation: achSlideDown 0.55s cubic-bezier(0.4,0,1,1) forwards; }
+
+/* CRT scanlines on toast */
+.ach-toast-scanlines {
+  position: absolute; inset: 0; pointer-events: none; z-index: 1;
+  background: repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,0.1) 3px,rgba(0,0,0,0.1) 4px);
+}
+
+/* Header strip */
+.ach-toast-top {
+  display: flex; align-items: center; justify-content: center;
+  padding: 0.4rem 1.2rem 0.3rem;
+  border-bottom: 1px solid rgba(15,210,75,0.1);
+  background: rgba(15,210,75,0.04);
+}
+.ach-toast-label {
+  font-family: "Courier New", monospace;
+  font-size: 0.48rem; letter-spacing: 0.28em;
+  color: rgba(255,195,55,0.72); text-transform: uppercase;
+}
+
+/* Body: icon + text */
+.ach-toast-body {
+  display: flex; align-items: center; gap: 1rem;
+  padding: 0.85rem 1.2rem 0.6rem;
+}
+.ach-toast-icon {
+  font-size: 2.2rem;
+  color: rgba(15,220,80,0.92);
+  text-shadow: 0 0 18px rgba(15,220,80,0.55);
+  flex-shrink: 0; width: 2.6rem; text-align: center;
+  animation: achIconPop 0.45s cubic-bezier(0.34,1.56,0.64,1) 0.18s both;
+  display: block;
+}
+.ach-toast-info { flex: 1; min-width: 0; }
+.ach-toast-name {
+  font-family: "Courier New", monospace;
+  font-size: 1.05rem; font-weight: 700; letter-spacing: 0.06em;
+  color: rgba(15,225,82,0.96);
+  text-shadow: 0 0 14px rgba(15,225,82,0.38);
+  line-height: 1.2; white-space: nowrap; overflow: hidden;
+}
+.ach-toast-cur {
+  display: inline-block; width: 9px; height: 0.9em;
+  background: rgba(15,225,82,0.85); margin-left: 3px;
+  vertical-align: middle;
+  animation: achNameBlink 0.5s step-end infinite;
+}
+.ach-toast-desc {
+  font-family: "Courier New", monospace;
+  font-size: 0.58rem; color: rgba(15,210,75,0.42);
+  letter-spacing: 0.04em; margin-top: 0.2rem;
+}
+.ach-toast-bar {
+  height: 2px; background: rgba(15,210,75,0.1);
+  border-radius: 1px; margin-top: 0.5rem; overflow: hidden;
+}
+.ach-toast-fill {
+  height: 100%;
+  background: linear-gradient(90deg, rgba(15,210,75,0.4), rgba(15,225,82,0.95));
+  border-radius: 1px;
+  animation: achFill 1.3s cubic-bezier(0.4,0,0.2,1) forwards;
+}
+
+/* Category footer */
+.ach-toast-cat {
+  font-family: "Courier New", monospace;
+  font-size: 0.42rem; letter-spacing: 0.22em;
+  color: rgba(15,210,75,0.22); text-transform: uppercase;
+  text-align: right; padding: 0 1.2rem 0.4rem;
+}
+
 /* ==================== SESSION CEREMONY ==================== */
 .session-ceremony {
   position: fixed;

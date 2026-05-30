@@ -2507,6 +2507,17 @@ const initializeReactComponents = () => {
     });
   }
 
+  // Mount Achievement toast system (independent root)
+  const achMount = document.getElementById("achievement-mount");
+  if (achMount && !window.achRoot) {
+    try {
+      window.achRoot = ReactDOM.createRoot(achMount);
+      window.achRoot.render(<AchievementToastSystem />);
+    } catch (e) {
+      console.error("AchievementToastSystem mount error:", e);
+    }
+  }
+
   // Mount Dispatch modal portal (independent root — renders on top of everything)
   const dispatchMount = document.getElementById("dispatch-mount");
   if (dispatchMount && !window.dispatchRoot) {
@@ -3059,6 +3070,112 @@ const PurgeConfirmModal = ({ onClose }) => {
           </div>
         )}
       </div>
+    </div>
+  );
+};
+
+// ── Achievement toast system ──────────────────────────────────────────────
+const AchievementToastSystem = () => {
+  var [queue,     setQueue]     = React.useState([]);
+  var [current,   setCurrent]   = React.useState(null);
+  var [phase,     setPhase]     = React.useState("idle"); // entering|showing|exiting
+  var [nameChars, setNameChars] = React.useState("");
+  var [showEdge,  setShowEdge]  = React.useState(false);
+  var nameTimerRef = React.useRef(null);
+
+  // Expose hooks
+  React.useEffect(() => {
+    window.showAchievementUnlock = function(ach) {
+      setQueue(function(q) { return q.concat([ach]); });
+    };
+    window.checkAchievements = function() {
+      var raw = localStorage.getItem("shownAchievements");
+      if (!raw) {
+        // First run: silently mark all currently-unlocked so we don't spam
+        var already = ACHIEVEMENTS_DEF.filter(function(a){ return a.check(); }).map(function(a){ return a.id; });
+        localStorage.setItem("shownAchievements", JSON.stringify(already));
+        return;
+      }
+      var shown = JSON.parse(raw);
+      var fresh = ACHIEVEMENTS_DEF.filter(function(a){ return a.check() && shown.indexOf(a.id) === -1; });
+      if (!fresh.length) return;
+      localStorage.setItem("shownAchievements", JSON.stringify(shown.concat(fresh.map(function(a){ return a.id; }))));
+      fresh.forEach(function(a){ setQueue(function(q){ return q.concat([a]); }); });
+    };
+    return () => { delete window.showAchievementUnlock; delete window.checkAchievements; };
+  }, []);
+
+  // Dequeue
+  React.useEffect(() => {
+    if (queue.length > 0 && !current) {
+      setCurrent(queue[0]);
+      setQueue(function(q){ return q.slice(1); });
+      setPhase("entering");
+    }
+  }, [queue, current]);
+
+  // Animation phases
+  React.useEffect(() => {
+    if (!current) return;
+    if (phase === "entering") {
+      setShowEdge(true);
+      setTimeout(function(){ setShowEdge(false); }, 900);
+      setNameChars("");
+      var label = (current.name === "???" || !current.name) ? "CLASSIFIED" : current.name.toUpperCase();
+      var i = 0;
+      nameTimerRef.current = setInterval(function() {
+        i++;
+        setNameChars(label.substring(0, i));
+        if (i >= label.length) {
+          clearInterval(nameTimerRef.current);
+          setPhase("showing");
+        }
+      }, 42);
+      return function() { if (nameTimerRef.current) clearInterval(nameTimerRef.current); };
+    }
+    if (phase === "showing") {
+      var t = setTimeout(function(){ setPhase("exiting"); }, 4200);
+      return function() { clearTimeout(t); };
+    }
+    if (phase === "exiting") {
+      var t = setTimeout(function(){ setCurrent(null); setPhase("idle"); setNameChars(""); }, 600);
+      return function() { clearTimeout(t); };
+    }
+  }, [current, phase]);
+
+  var isHidden = current && (current.name === "???" || !current.name);
+
+  return (
+    <div>
+      {showEdge && <div className="ach-edge-pulse" />}
+      {current && (
+        <div className={"ach-toast" + (phase === "exiting" ? " ach-toast-exit" : " ach-toast-enter")}>
+          <div className="ach-toast-scanlines" />
+          <div className="ach-toast-top">
+            <span className="ach-toast-label">CLASSIFIED RECORD UNLOCKED</span>
+          </div>
+          <div className="ach-toast-body">
+            <div className="ach-toast-icon">{isHidden ? "?" : (current.icon || "◉")}</div>
+            <div className="ach-toast-info">
+              <div className="ach-toast-name">
+                {nameChars}
+                {phase !== "showing" && <span className="ach-toast-cur" />}
+              </div>
+              {phase === "showing" && !isHidden && current.desc && (
+                <div className="ach-toast-desc">{current.desc}</div>
+              )}
+              {phase === "showing" && (
+                <div className="ach-toast-bar">
+                  <div className="ach-toast-fill" />
+                </div>
+              )}
+            </div>
+          </div>
+          {current.cat && (
+            <div className="ach-toast-cat">{current.cat.toUpperCase()}</div>
+          )}
+        </div>
+      )}
     </div>
   );
 };

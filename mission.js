@@ -1073,6 +1073,10 @@ function createMissionClickHandler(element) {
     displayRandomMessage(category);
     playCompletionSound();
     scrollToXPMeter();
+    // Check for newly unlocked achievements after each task
+    setTimeout(function() {
+      if (typeof window.checkAchievements === "function") window.checkAchievements();
+    }, 800);
 
     // Session progress (Flow: immediate feedback)
     sessionCompletedCount++;
