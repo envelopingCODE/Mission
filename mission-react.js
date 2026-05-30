@@ -2855,6 +2855,7 @@ const DispatchModal = ({ payload, onClose }) => {
   // phase: "init" | "failed" | "typing" | "done" | "chosen"
   var [phase, setPhase]             = React.useState("init");
   var [dots, setDots]               = React.useState(1);
+  var [uplinkPct, setUplinkPct]     = React.useState(0);
   var [displayed, setDisplayed]     = React.useState("");
   var [condVal, setCondVal]         = React.useState(
     typeof window.getCondition === "function" ? window.getCondition() : 3
@@ -2874,19 +2875,29 @@ const DispatchModal = ({ payload, onClose }) => {
     };
   }, [id]);
 
-  // Init phase — pulse dots, then transition to failed
+  // Init phase — pulse dots + fill progress bar to ~68-74%, then fail
   React.useEffect(() => {
     if (phase !== "init") return;
     var iv = setInterval(() => setDots((d) => (d % 3) + 1), 380);
-    var t  = setTimeout(() => { clearInterval(iv); setPhase("failed"); }, 1350);
-    return () => { clearInterval(iv); clearTimeout(t); };
+    // Progress bar: ramp up to a random stall point between 65-74%
+    var target = 65 + Math.floor(Math.random() * 10);
+    var pct = 0;
+    var piv = setInterval(function() {
+      pct = Math.min(target, pct + 1.4);
+      setUplinkPct(Math.floor(pct));
+      if (pct >= target) clearInterval(piv);
+    }, 28); // ~2s to reach target
+    var t = setTimeout(() => { clearInterval(iv); clearInterval(piv); setPhase("failed"); }, 2100);
+    return () => { clearInterval(iv); clearInterval(piv); clearTimeout(t); };
   }, [phase]);
 
-  // Failed phase — brief pause, then start typing
+  // Failed phase — hold 4s so user reads the drama, then start typing
   React.useEffect(() => {
     if (phase !== "failed") return;
-    var t = setTimeout(() => setPhase("typing"), 650);
-    return () => clearTimeout(t);
+    // dots keep cycling during "READING FROM LOCAL CACHE..."
+    var iv = setInterval(() => setDots((d) => (d % 3) + 1), 420);
+    var t = setTimeout(() => { clearInterval(iv); setPhase("typing"); }, 4000);
+    return () => { clearInterval(iv); clearTimeout(t); };
   }, [phase]);
 
   // Typing phase — character-by-character with variable speed
@@ -2943,13 +2954,23 @@ const DispatchModal = ({ payload, onClose }) => {
               <span className="dispatch-uplink-line">
                 {"ATTEMPTING TO INITIALIZE UPLINK" + dotStr}
               </span>
+              <div className={"dispatch-uplink-bar-wrap" + (phase === "failed" ? " uplink-bar-fail" : "")}>
+                <div className="dispatch-uplink-bar-track">
+                  <div className="dispatch-uplink-bar-fill" style={{ width: uplinkPct + "%" }} />
+                </div>
+                <span className="dispatch-uplink-pct">{uplinkPct}%</span>
+              </div>
               {phase === "failed" && (
                 <span>
-                  {"\n\n"}
+                  {"\n"}
                   <span className="dispatch-uplink-fail">UPLINK FAILED</span>
                   {"\n"}
+                  <span className="dispatch-uplink-node">NODE: PRIMEROS CENTRAL // STATUS: OFFLINE</span>
+                  {"\n"}
+                  <span className="dispatch-uplink-node">LAST CONFIRMED PING: [TIMESTAMP CORRUPTED]</span>
+                  {"\n\n"}
                   <span className="dispatch-uplink-cache">
-                    READING FROM LOCAL CACHE{dotStr}
+                    {"READING FROM LOCAL CACHE" + dotStr}
                   </span>
                 </span>
               )}

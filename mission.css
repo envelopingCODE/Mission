@@ -5491,6 +5491,33 @@ svg.minimalist-face {
   font-family:"Courier New",monospace; font-size:0.62rem;
   color:rgba(15,210,75,0.55); letter-spacing:0.08em;
 }
+.dispatch-uplink-node {
+  display:block; font-family:"Courier New",monospace; font-size:0.56rem;
+  color:rgba(255,80,60,0.5); letter-spacing:0.1em; margin-top:0.1rem;
+}
+
+/* Uplink progress bar */
+.dispatch-uplink-bar-wrap {
+  display:flex; align-items:center; gap:0.6rem; margin:0.5rem 0 0.4rem;
+}
+.dispatch-uplink-bar-track {
+  flex:1; height:3px; background:rgba(15,210,75,0.1); border-radius:1px; overflow:hidden;
+}
+.dispatch-uplink-bar-fill {
+  height:100%; background:rgba(15,210,75,0.7); border-radius:1px;
+  transition:width 0.05s linear;
+}
+.dispatch-uplink-pct {
+  font-family:"Courier New",monospace; font-size:0.44rem;
+  color:rgba(15,210,75,0.38); letter-spacing:0.06em; flex-shrink:0; width:2.2rem;
+}
+/* Failed state — bar turns red and flickers */
+@keyframes failBarFlicker { from{opacity:1} to{opacity:0.35} }
+.uplink-bar-fail .dispatch-uplink-bar-fill {
+  background:rgba(255,80,60,0.65);
+  animation:failBarFlicker 0.28s ease-in-out infinite alternate;
+}
+.uplink-bar-fail .dispatch-uplink-pct { color:rgba(255,80,60,0.45); }
 
 /* Typing cursor — appears at current stream position */
 .dispatch-type-cur {
