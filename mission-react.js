@@ -2505,6 +2505,17 @@ const initializeReactComponents = () => {
     });
   }
 
+  // Mount Dispatch modal portal (independent root — renders on top of everything)
+  const dispatchMount = document.getElementById("dispatch-mount");
+  if (dispatchMount && !window.dispatchRoot) {
+    try {
+      window.dispatchRoot = ReactDOM.createRoot(dispatchMount);
+      window.dispatchRoot.render(<DispatchPortal />);
+    } catch (e) {
+      console.error("DispatchPortal mount error:", e);
+    }
+  }
+
   // Mount Settings panel (independent root — crash here won't affect other mounts)
   const settingsMount = document.getElementById("settings-mount");
   if (settingsMount && !window.settingsRoot) {
@@ -2696,6 +2707,18 @@ const DispatchModal = ({ id, onClose }) => {
   );
 };
 
+// Standalone portal — completely outside SettingsPanel, own React root.
+// window.showDispatch(id) renders the modal; onClose hides it.
+const DispatchPortal = () => {
+  const [id, setId] = React.useState(null);
+  React.useEffect(() => {
+    window.showDispatch = (did) => setId(did);
+    return () => { delete window.showDispatch; };
+  }, []);
+  if (!id) return null;
+  return <DispatchModal id={id} onClose={() => setId(null)} />;
+};
+
 const StToggle = ({ label, desc, checked, onChange }) => (
   <div className="st-row">
     <div className="st-info">
@@ -2719,7 +2742,20 @@ const SettingsPanel = () => {
   React.useEffect(() => {
     window.toggleSettingsPanel = () => setOpen((o) => !o);
     window._onSettingsChange   = () => setCfg(window.AppSettings.get());
-    return () => { delete window.toggleSettingsPanel; delete window._onSettingsChange; };
+    window.openSettingsView    = (v) => { setOpen(true); setView(v); };
+    window.toggleSettingsView  = (v) => {
+      setOpen((o) => {
+        if (!o) { setView(v); return true; }
+        if (view === v) return false; // already on this view — close
+        setView(v); return true;      // switch view, stay open
+      });
+    };
+    return () => {
+      delete window.toggleSettingsPanel;
+      delete window._onSettingsChange;
+      delete window.openSettingsView;
+      delete window.toggleSettingsView;
+    };
   }, []);
 
   React.useEffect(() => {
@@ -2826,9 +2862,17 @@ const SettingsPanel = () => {
                   <div className="ach-grid">
                     {inCat.map(function(a) {
                       var unlocked = a.check();
+                      var hasLore  = !!DISPATCHES[a.id];
+                      var isRead   = !!localStorage.getItem("dispatch_read_" + a.id);
                       var prog = a.prog ? a.prog() : null;
+                      var tileClass = "ach-tile" + (unlocked ? " ach-unlocked" : "") + (unlocked && hasLore ? " ach-clickable" : "");
                       return (
-                        <div key={a.id} className={"ach-tile" + (unlocked ? " ach-unlocked" : "")}>
+                        <div key={a.id} className={tileClass}
+                          onClick={function() {
+                            if (unlocked && hasLore && typeof window.showDispatch === "function") {
+                              window.showDispatch(a.id);
+                            }
+                          }}>
                           <span className="ach-icon">{a.icon}</span>
                           <span className="ach-name">{a.name}</span>
                           <span className="ach-desc">{a.desc}</span>
@@ -2839,6 +2883,8 @@ const SettingsPanel = () => {
                             </div>
                           )}
                           {unlocked && <span className="ach-check">✓</span>}
+                          {unlocked && hasLore && !isRead && <span className="ach-unread" />}
+                          {unlocked && hasLore && <span className="ach-lore-hint">transmission</span>}
                         </div>
                       );
                     })}

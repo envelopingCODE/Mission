@@ -4556,7 +4556,7 @@ document.addEventListener("keydown", (e) => {
 
   if (e.key === "a" || e.key === "A") {
     e.preventDefault();
-    if (typeof window.openSettingsView === "function") window.openSettingsView("achievements");
+    if (typeof window.toggleSettingsView === "function") window.toggleSettingsView("achievements");
   }
 
   if (e.key === "s" || e.key === "S") {

@@ -5378,6 +5378,45 @@ svg.minimalist-face {
   box-shadow: 0 0 5px rgba(255, 180, 50, 0.3);
 }
 
+/* ==================== DISPATCH MODAL — Recovered Terminal Document ==================== */
+.dispatch-overlay {
+  position:fixed; inset:0; z-index:99999;
+  background:rgba(0,4,2,0.96);
+  display:flex; align-items:center; justify-content:center;
+  padding:1.5rem; cursor:pointer;
+}
+.dispatch-doc {
+  position:relative; max-width:500px; width:100%; max-height:85vh;
+  background:rgba(0,7,3,0.99);
+  border:1px solid rgba(15,200,80,0.28); border-radius:3px;
+  display:flex; flex-direction:column; overflow:hidden; cursor:default;
+  box-shadow:0 0 40px rgba(15,200,80,0.07), inset 0 0 60px rgba(0,0,0,0.5);
+}
+.dispatch-scanlines {
+  position:absolute; inset:0; pointer-events:none; z-index:1;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.18) 2px,rgba(0,0,0,0.18) 4px);
+}
+.dispatch-hdr  { padding:1rem 1.2rem 0.7rem; border-bottom:1px solid rgba(15,200,80,0.18); flex-shrink:0; }
+.dispatch-class  { font-family:"Courier New",monospace; font-size:0.5rem; color:rgba(15,200,80,0.38); letter-spacing:0.18em; text-transform:uppercase; margin-bottom:0.35rem; }
+.dispatch-origin { font-family:"Courier New",monospace; font-size:0.62rem; color:rgba(15,200,80,0.65); letter-spacing:0.1em; line-height:1.4; }
+.dispatch-sub    { font-family:"Courier New",monospace; font-size:0.52rem; color:rgba(15,200,80,0.38); letter-spacing:0.1em; margin-top:0.2rem; }
+.dispatch-rule   { height:1px; background:rgba(15,200,80,0.12); flex-shrink:0; }
+.dispatch-body {
+  flex:1; overflow-y:auto; padding:1.2rem 1.4rem;
+  font-family:"Courier New",monospace; font-size:0.68rem;
+  color:rgba(15,200,80,0.82); line-height:1.9; white-space:pre-line;
+}
+.dispatch-body::-webkit-scrollbar { width:3px; }
+.dispatch-body::-webkit-scrollbar-thumb { background:rgba(15,200,80,0.2); }
+.dispatch-footer { flex-shrink:0; padding:0.6rem 1.2rem; border-top:1px solid rgba(15,200,80,0.1); font-family:"Courier New",monospace; font-size:0.48rem; color:rgba(15,200,80,0.32); letter-spacing:0.1em; line-height:1.5; }
+.dispatch-close  { flex-shrink:0; width:100%; background:transparent; border:none; border-top:1px solid rgba(15,200,80,0.15); color:rgba(15,200,80,0.4); font-family:"Courier New",monospace; font-size:0.58rem; letter-spacing:0.22em; padding:0.75rem; cursor:pointer; text-transform:uppercase; transition:color 0.2s,background 0.2s; }
+.dispatch-close:hover { background:rgba(15,200,80,0.04); color:rgba(15,200,80,0.7); }
+
+.ach-clickable { cursor:pointer; }
+.ach-clickable:hover { border-color:rgba(134,223,255,0.3); }
+.ach-unread { position:absolute; top:4px; left:5px; width:5px; height:5px; border-radius:50%; background:rgba(15,200,80,0.8); box-shadow:0 0 4px rgba(15,200,80,0.5); }
+.ach-lore-hint { font-family:"Courier New",monospace; font-size:0.4rem; color:rgba(134,223,255,0.22); letter-spacing:0.08em; text-transform:uppercase; margin-top:2px; }
+
 /* ==================== SESSION CEREMONY ==================== */
 .session-ceremony {
   position: fixed;
