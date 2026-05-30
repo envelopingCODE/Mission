@@ -317,6 +317,7 @@ const AppSettings = (function () {
     pomodoroVisible:      true,
     soundEnabled:         true,
     buddyMessages:        true,
+    narrativeStyle:       true,  // true = M-VI tactical voice, false = general motivational
     neuralCaptureVisible: true,
     ollamaEnabled:        false,
     ollamaModel:          "llama3.2:3b",
@@ -722,7 +723,9 @@ function getPartnerDepth() {
 // Task Completion Display Function
 // Uses DOM bubble directly — avoids double-wrapping through the React notification templates
 function displayRandomMessage(category = "general") {
-  if (!AppSettings.get().buddyMessages) return;
+  var s = AppSettings.get();
+  if (!s.buddyMessages) return;
+  if (!s.narrativeStyle) return; // motivational style handled by React overlay
   sessionTaskCount++;
   const sessionTier = getMessageTier(sessionTaskCount);
   const { tier: depthTier, daysActive } = getPartnerDepth();

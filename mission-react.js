@@ -2198,10 +2198,14 @@ const CyberpunkInterface = () => {
             return;
           }
 
-          // Emoji notifications archived — narrative messages from
-          // displayRandomMessage() in mission.js are the active voice now.
-          // The event listener stays so the robot face animation still fires.
           processedTaskIdsRef.current.add(task.id);
+
+          // Only show motivational overlay when user has switched away from narrative style
+          var cfg = window.AppSettings ? window.AppSettings.get() : {};
+          if (!cfg.buddyMessages || cfg.narrativeStyle !== false) return;
+
+          const message = generateMessage(task);
+          setQueue((prev) => [...prev, { message, id: task.id }]);
         };
 
         // Add the event listener
@@ -3186,6 +3190,7 @@ const SettingsPanel = () => {
             <div className="st-section-title">General</div>
             <StToggle label="Sound"          checked={cfg.soundEnabled}         onChange={() => toggle("soundEnabled")} />
             <StToggle label="Buddy messages" checked={cfg.buddyMessages}        onChange={() => toggle("buddyMessages")} desc="Post-completion responses" />
+            <StToggle label="Narrative style" checked={cfg.narrativeStyle !== false} onChange={() => toggle("narrativeStyle")} desc={cfg.narrativeStyle !== false ? "M-VI tactical voice" : "General motivational"} />
             <StToggle label="Capture panel"  checked={cfg.neuralCaptureVisible} onChange={() => toggle("neuralCaptureVisible")} desc="Neural feed sidebar" />
           </div>
 
