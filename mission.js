@@ -897,6 +897,16 @@ function createMissionClickHandler(element) {
     // Track task for daily wrap
     trackDailyTask(taskDetails);
 
+    // Post-purge survivor — fires 8s into first task of the new run
+    (function () {
+      if (localStorage.getItem("purgeRunUnlockPending") === "true") {
+        localStorage.removeItem("purgeRunUnlockPending");
+        setTimeout(function () {
+          if (typeof window.showDispatch === "function") window.showDispatch("survivor");
+        }, 8000);
+      }
+    })();
+
     // First Op dispatch — fires on the very first task ever completed
     (function () {
       var allKeys = Object.keys(localStorage).filter(function (k) { return k.startsWith("dailyTasks_"); });

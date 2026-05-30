@@ -3003,6 +3003,7 @@ const SettingsPanel = () => {
   const [cfg,          setCfg]          = React.useState(() => window.AppSettings.get());
   const [ollamaStatus, setOllamaStatus] = React.useState("idle");
   const [activeSkin,   setActiveSkin]   = React.useState(() => localStorage.getItem("timerSkinActive") || "eclipse");
+  const [showPurge,    setShowPurge]    = React.useState(false);
 
   React.useEffect(() => {
     window.toggleSettingsPanel = () => setOpen((o) => { if (o) setView("main"); return !o; });
