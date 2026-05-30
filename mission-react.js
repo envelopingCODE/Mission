@@ -2665,6 +2665,37 @@ var DISPATCHES = {
   },
 };
 
+// ── Dispatch modal component ──────────────────────────────────────────────
+const DispatchModal = ({ id, onClose }) => {
+  var d = DISPATCHES[id];
+  if (!d) return null;
+  React.useEffect(() => {
+    localStorage.setItem("dispatch_read_" + id, "1");
+    var fn = (e) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", fn);
+    return () => document.removeEventListener("keydown", fn);
+  }, [id]);
+  return (
+    <div className="dispatch-overlay" onClick={onClose}>
+      <div className="dispatch-doc" onClick={(e) => e.stopPropagation()}>
+        <div className="dispatch-scanlines" />
+        <div className="dispatch-hdr">
+          <div className="dispatch-class">{d.classification}</div>
+          <div className="dispatch-origin">{d.header}</div>
+          {d.sub && <div className="dispatch-sub">{d.sub}</div>}
+        </div>
+        <div className="dispatch-rule" />
+        <div className="dispatch-body">{d.body}</div>
+        <div className="dispatch-rule" />
+        {d.footer && <div className="dispatch-footer">{d.footer}</div>}
+        <button className="dispatch-close" onClick={onClose}>
+          [ Close Transmission ]
+        </button>
+      </div>
+    </div>
+  );
+};
+
 const StToggle = ({ label, desc, checked, onChange }) => (
   <div className="st-row">
     <div className="st-info">

@@ -4554,6 +4554,11 @@ document.addEventListener("keydown", (e) => {
     if (typeof window.togglePomodoroTimer === "function") window.togglePomodoroTimer();
   }
 
+  if (e.key === "a" || e.key === "A") {
+    e.preventDefault();
+    if (typeof window.openSettingsView === "function") window.openSettingsView("achievements");
+  }
+
   if (e.key === "s" || e.key === "S") {
     e.preventDefault();
     if (typeof window.toggleSettingsPanel === "function") window.toggleSettingsPanel();
