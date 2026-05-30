@@ -2958,8 +2958,8 @@ const DispatchModal = ({ entry, onClose }) => {
             <span className="dispatch-class">{d.classification}</span>
             <span className="dispatch-docid">{dispatchDocId(id)}</span>
           </div>
-          <div className="dispatch-origin">{d.header}<span className="dispatch-cursor" /></div>
-          {d.sub && <div className="dispatch-sub">{d.sub}</div>}
+          <div className="dispatch-origin">{renderDispatchBody(d.header)}<span className="dispatch-cursor" /></div>
+          {d.sub && <div className="dispatch-sub">{renderDispatchBody(d.sub)}</div>}
         </div>
 
         <div className="dispatch-rule" />
@@ -3013,7 +3013,7 @@ const DispatchModal = ({ entry, onClose }) => {
 
         <div className="dispatch-rule" />
         {(phase === "done" || phase === "chosen") && d.footer && (
-          <div className="dispatch-footer">{d.footer}</div>
+          <div className="dispatch-footer">{renderDispatchBody(d.footer)}</div>
         )}
 
         {/* Condition display — only when story event has choices or outcome */}
