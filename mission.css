@@ -5149,6 +5149,19 @@ svg.minimalist-face {
 }
 .settings-panel-open { transform: translateX(0); }
 
+/* Settings view transition — slides content directionally like iOS navigation */
+@keyframes settingsViewForward {
+  from { opacity:0; transform:translateX(22px); }
+  to   { opacity:1; transform:translateX(0);    }
+}
+@keyframes settingsViewBack {
+  from { opacity:0; transform:translateX(-22px); }
+  to   { opacity:1; transform:translateX(0);     }
+}
+.settings-view-anim { animation-duration:0.24s; animation-timing-function:cubic-bezier(0.22,1,0.36,1); animation-fill-mode:both; }
+.settings-view-forward { animation-name:settingsViewForward; }
+.settings-view-back    { animation-name:settingsViewBack;    }
+
 /* Achievements sub-screen fills full screen on mobile; main settings stays narrow */
 @media (max-width: 600px) {
   .settings-panel.settings-view-achievements {

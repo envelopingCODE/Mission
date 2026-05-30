@@ -2662,10 +2662,10 @@ const ACHIEVEMENTS_DEF = [
   { id:"thousand",    cat:"Operator",     icon:"✦",  name:"Thousand Operations", desc:"1000 total objectives cleared",               check:function(){ return _totalTasks()>=1000; },            prog:function(){ return [Math.min(_totalTasks(),1000),1000]; } },
 
   // ── Hidden — conditions intentionally obscure ────────────────────────────
-  { id:"survivor",   cat:"Classified", icon:"◉", name:"???", desc:"???", check:function(){ return !!_ls("purgedOnce"); },                                                                                                                        prog:null },
-  { id:"nightwatch", cat:"Classified", icon:"◑", name:"???", desc:"???", check:function(){ return Object.keys(localStorage).filter(function(k){ return k.startsWith("readyTime_"); }).some(function(k){ var h=new Date(parseInt(_ls(k))).getHours(); return h>=0&&h<4; }); }, prog:null },
-  { id:"patience",   cat:"Classified", icon:"◌", name:"???", desc:"???", check:function(){ return Object.keys(localStorage).filter(function(k){ return k.startsWith("dailyTasks_"); }).length>=60; },                                          prog:null },
-  { id:"silence",    cat:"Classified", icon:"▪", name:"???", desc:"???", check:function(){ return parseInt(_ls("lastKnownStreak")||"0")>=30&&_currentStreak()===0; },                                                                           prog:null },
+  { id:"survivor",   cat:"Classified", icon:"◉", name:"???", desc:"???", unlockedName:"The Return",     unlockedDesc:"You came back.",                              check:function(){ return !!_ls("purgedOnce"); },                                                                                                                        prog:null },
+  { id:"nightwatch", cat:"Classified", icon:"◑", name:"???", desc:"???", unlockedName:"Night Watch",     unlockedDesc:"Signal deployed between midnight and 04:00.", check:function(){ return Object.keys(localStorage).filter(function(k){ return k.startsWith("readyTime_"); }).some(function(k){ var h=new Date(parseInt(_ls(k))).getHours(); return h>=0&&h<4; }); }, prog:null },
+  { id:"patience",   cat:"Classified", icon:"◌", name:"???", desc:"???", unlockedName:"Sixty Days",      unlockedDesc:"60 days of operation logged.",                 check:function(){ return Object.keys(localStorage).filter(function(k){ return k.startsWith("dailyTasks_"); }).length>=60; },                                          prog:null },
+  { id:"silence",    cat:"Classified", icon:"▪", name:"???", desc:"???", unlockedName:"The Long Patrol — Ended", unlockedDesc:"A 30-day streak was broken.",         check:function(){ return parseInt(_ls("lastKnownStreak")||"0")>=30&&_currentStreak()===0; },                                                                           prog:null },
 ];
 
 // ── Dispatch lore data — pure JS, no JSX ──────────────────────────────────
@@ -3088,7 +3088,7 @@ const PurgeConfirmModal = ({ onClose }) => {
     if (stage !== "executing") return;
     var pct = 0;
     var piv = setInterval(function() {
-      pct += 2;
+      pct += 1;
       var floored = Math.min(100, Math.floor(pct));
       setPurgePct(floored);
       if (pct >= 100) {
@@ -3115,7 +3115,7 @@ const PurgeConfirmModal = ({ onClose }) => {
         setGlitch(true);
         setTimeout(function() { setGlitch(false); }, 60 + Math.random() * 100);
       }
-    }, 180);
+    }, 150);
     return function() { clearInterval(piv); clearInterval(giv); };
   }, [stage]);
 
@@ -3333,6 +3333,13 @@ const SettingsPanel = () => {
   const [ollamaStatus, setOllamaStatus] = React.useState("idle");
   const [activeSkin,   setActiveSkin]   = React.useState(() => localStorage.getItem("timerSkinActive") || "eclipse");
   const [showPurge,    setShowPurge]    = React.useState(false);
+  const [navDir,       setNavDir]       = React.useState("forward"); // "forward"|"back"
+
+  // Directional navigation helper
+  function navigateTo(v) {
+    setNavDir(v === "main" ? "back" : "forward");
+    setView(v);
+  }
 
   React.useEffect(() => {
     window.toggleSettingsPanel = () => setOpen((o) => { if (o) setView("main"); return !o; });
@@ -3392,10 +3399,10 @@ const SettingsPanel = () => {
       </button>
       <div className="settings-panel settings-panel-open">
         <div className="settings-hdr">
-          <button className="st-back" onClick={() => setView("main")}>‹</button>
+          <button className="st-back" onClick={() => navigateTo("main")}>‹</button>
           <span>Themes</span>
         </div>
-        <div className="settings-body">
+        <div className="settings-body"><div key={view} className={"settings-view-anim settings-view-" + navDir}>
           {SKINS_DEF.map(function(skin) {
             var isUnlocked = skin.unlocked === true || (typeof skin.unlocked === "function" && skin.unlocked());
             var isActive   = activeSkin === skin.id;
@@ -3428,7 +3435,7 @@ const SettingsPanel = () => {
               </div>
             );
           })}
-        </div>
+        </div></div>
       </div>
     </div>
   );
@@ -3446,10 +3453,10 @@ const SettingsPanel = () => {
         </button>
         <div className="settings-panel settings-panel-open settings-view-achievements">
           <div className="settings-hdr">
-            <button className="st-back" onClick={() => setView("main")}>‹</button>
+            <button className="st-back" onClick={() => navigateTo("main")}>‹</button>
             <span>Achievements</span>
           </div>
-          <div className="settings-body">
+          <div className="settings-body"><div key={view} className={"settings-view-anim settings-view-" + navDir}>
             {cats.map(function(cat) {
               var inCat = ACHIEVEMENTS_DEF.filter(function(a){ return a.cat === cat; });
               return (
@@ -3457,11 +3464,13 @@ const SettingsPanel = () => {
                   <div className="st-section-title">{cat}</div>
                   <div className="ach-grid">
                     {inCat.map(function(a) {
-                      var unlocked = a.check();
-                      var hasLore  = !!DISPATCHES[a.id];
-                      var isRead   = !!localStorage.getItem("dispatch_read_" + a.id);
-                      var prog = a.prog ? a.prog() : null;
-                      var tileClass = "ach-tile" + (unlocked ? " ach-unlocked" : "") + (unlocked && hasLore ? " ach-clickable" : "");
+                      var unlocked    = a.check();
+                      var hasLore     = !!DISPATCHES[a.id];
+                      var isRead      = !!localStorage.getItem("dispatch_read_" + a.id);
+                      var prog        = a.prog ? a.prog() : null;
+                      var displayName = unlocked && a.unlockedName ? a.unlockedName : a.name;
+                      var displayDesc = unlocked && a.unlockedDesc ? a.unlockedDesc : a.desc;
+                      var tileClass   = "ach-tile" + (unlocked ? " ach-unlocked" : "") + (unlocked && hasLore ? " ach-clickable" : "");
                       return (
                         <div key={a.id} className={tileClass}
                           onClick={function() {
@@ -3473,8 +3482,8 @@ const SettingsPanel = () => {
                             }
                           }}>
                           <span className="ach-icon">{a.icon}</span>
-                          <span className="ach-name">{a.name}</span>
-                          <span className="ach-desc">{a.desc}</span>
+                          <span className="ach-name">{displayName}</span>
+                          <span className="ach-desc">{displayDesc}</span>
                           {prog && !unlocked && (
                             <div className="ach-prog-wrap">
                               <div className="ach-prog-bar" style={{ width: (prog[0]/prog[1]*100) + "%" }} />
@@ -3496,7 +3505,7 @@ const SettingsPanel = () => {
                 Purge Memory Banks
               </button>
             </div>
-          </div>
+          </div></div>
         </div>
         {showPurge && <PurgeConfirmModal onClose={() => setShowPurge(false)} />}
       </div>
@@ -3523,7 +3532,7 @@ const SettingsPanel = () => {
           <span>Settings</span>
           <button className="settings-x" onClick={() => setOpen(false)}>×</button>
         </div>
-        <div className="settings-body">
+        <div className="settings-body"><div key={view} className={"settings-view-anim settings-view-" + navDir}>
 
           <div className="st-section">
             <div className="st-section-title">General</div>
@@ -3592,19 +3601,19 @@ const SettingsPanel = () => {
 
           {/* Navigation to sub-screens */}
           <div className="st-section st-nav-section">
-            <button className="st-nav-btn" onClick={() => setView("themes")}>
+            <button className="st-nav-btn" onClick={() => navigateTo("themes")}>
               <span className="st-nav-icon">◐</span>
               <span>Themes</span>
               <span className="st-nav-arrow">›</span>
             </button>
-            <button className="st-nav-btn" onClick={() => setView("achievements")}>
+            <button className="st-nav-btn" onClick={() => navigateTo("achievements")}>
               <span className="st-nav-icon">▲</span>
               <span>Achievements</span>
               <span className="st-nav-arrow">›</span>
             </button>
           </div>
 
-        </div>
+        </div></div>
       </div>
     </div>
   );
