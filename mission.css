@@ -502,104 +502,101 @@ input[type="text"] {
   transform: translateX(-100%);
   animation: flare-pulse 3s infinite;
 }
-/* Earliest ready time display styling */
-/* ── Week's Best — expandable HUD (green from original design) ── */
+/* ── Week's Best — premium HUD widget ── */
 .earliest-ready-display {
-  display: inline-block;        /* shrink to content width when collapsed */
+  display: inline-block;
   width: auto;
-  background: rgba(0,0,0,0.4);
-  border: 1px solid rgba(16,221,50,0.3);
-  border-radius: 8px;
-  padding: 8px 12px;
+  min-width: 200px;
+  background: rgba(0,6,2,0.72);
+  border: 1px solid rgba(16,221,50,0.28);
+  border-radius: 6px;
+  padding: 10px 14px 10px 12px;
   margin-top: 10px;
   font-family: "Courier New", monospace;
-  color: rgba(16,221,50,0.9);
   position: relative;
-  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
-  transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  backdrop-filter: blur(12px);
+  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+  /* Corner accents */
+  box-shadow: inset 0 0 0 0 transparent;
 }
-/* When expanded, ensure stats grid has room */
-.earliest-ready-display.er-expanded { min-width: 210px; }
-.earliest-ready-display:hover {
-  background: rgba(0,0,0,0.6);
-  border-color: rgba(16,221,50,0.5);
-  box-shadow: 0 0 10px rgba(16,221,50,0.15);
+.earliest-ready-display::before,
+.earliest-ready-display::after {
+  content: "";
+  position: absolute;
+  width: 7px; height: 7px;
+  border-color: rgba(16,221,50,0.55); border-style: solid;
+  pointer-events: none;
 }
+.earliest-ready-display::before { top:-1px; left:-1px; border-width:1.5px 0 0 1.5px; border-radius:2px 0 0 0; }
+.earliest-ready-display::after  { bottom:-1px; right:-1px; border-width:0 1.5px 1.5px 0; border-radius:0 0 2px 0; }
+.earliest-ready-display:hover   { border-color:rgba(16,221,50,0.48); box-shadow:0 0 16px rgba(16,221,50,0.1); }
+.earliest-ready-display.er-expanded { min-width:220px; }
 
+/* Header — label stack left, time + chevron right */
 .er-header {
   display: flex;
   align-items: center;
-  gap: 8px;
+  justify-content: space-between;
+  gap: 12px;
   cursor: pointer;
   user-select: none;
 }
+.er-header-left { display: flex; flex-direction: column; gap: 2px; }
+.er-label    { font-size:0.48rem; letter-spacing:0.2em; color:rgba(16,221,50,0.45); text-transform:uppercase; }
+.er-sublabel { font-size:0.44rem; letter-spacing:0.14em; color:rgba(16,221,50,0.28); text-transform:uppercase; }
 
-.er-header .info { flex: 1; font-size: 0.7rem; letter-spacing: 0.08em; line-height: 1.5; }
-.er-header .time { font-weight: 700; color: rgba(16,221,50,1); text-shadow: 0 0 5px rgba(16,221,50,0.7); }
-.er-header .date { font-size: 0.56rem; color: rgba(16,221,50,0.5); letter-spacing: 0.12em; }
-
-.er-toggle {
-  font-size: 1rem;
-  color: rgba(16,221,50,0.4);
-  transition: transform 0.3s ease, color 0.2s ease;
+.er-header-right { display:flex; align-items:center; gap:8px; }
+.er-time-display {
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: rgba(16,230,55,0.96);
+  text-shadow: 0 0 10px rgba(16,221,50,0.45);
+  font-variant-numeric: tabular-nums;
   line-height: 1;
-  flex-shrink: 0;
 }
-.er-expanded .er-toggle { transform: rotate(45deg); color: rgba(16,221,50,0.7); }
+
+/* Chevron — rotates when expanded */
+.er-chevron { display:flex; align-items:center; color:rgba(16,221,50,0.38); transition:color 0.2s ease; flex-shrink:0; }
+.er-chevron-svg { transition:transform 0.3s cubic-bezier(0.4,0,0.2,1); }
+.er-expanded .er-chevron { color:rgba(16,221,50,0.65); }
+.er-expanded .er-chevron-svg { transform:rotate(180deg); }
 
 /* Expanding HUD panel */
-.er-hud {
-  max-height: 0;
-  overflow: hidden;
-  transition: max-height 0.36s cubic-bezier(0.4,0,0.2,1);
-}
-.er-expanded .er-hud { max-height: 160px; }
+.er-hud { max-height:0; overflow:hidden; transition:max-height 0.38s cubic-bezier(0.4,0,0.2,1); }
+.er-expanded .er-hud { max-height:180px; }
 
-.er-hud-inner {
-  border-top: 1px solid rgba(16,221,50,0.15);
-  margin-top: 8px;
-  padding-top: 8px;
-}
+.er-hud-inner { padding-top:10px; }
+.er-divider { height:1px; background:rgba(16,221,50,0.12); margin:0 0 10px; }
 
-/* Week dots row */
-.er-week-dots {
+/* Stats — label above, value dominant */
+.er-stats {
   display: flex;
-  gap: 6px;
-  align-items: flex-end;
+  align-items: stretch;
+  gap: 0;
   margin-bottom: 8px;
 }
-.er-dot { display: flex; flex-direction: column; align-items: center; gap: 3px; }
-.er-dot-pip { width: 7px; height: 7px; border-radius: 50%; }
-.er-dot-pip-earned  { background: rgba(16,221,50,0.85); box-shadow: 0 0 5px rgba(16,221,50,0.4); }
-.er-dot-pip-missed  { background: rgba(255,255,255,0.1); }
-.er-dot-pip-future  { background: rgba(255,255,255,0.04); }
-.er-dot-pip-pending { background: transparent; border: 1.5px solid rgba(16,221,50,0.35); }
-.er-dot-lbl { font-size: 0.46rem; color: rgba(16,221,50,0.3); letter-spacing: 0.04em; }
-
-/* Stats grid — 3 cols, cyan data on green container */
-.er-stats {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 5px;
-}
 .er-stat {
+  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 3px;
-  background: rgba(134,223,255,0.05);
-  border: 1px solid rgba(134,223,255,0.12);
-  border-radius: 4px;
-  padding: 6px 4px;
+  gap: 2px;
+  padding: 4px 2px;
 }
-.er-stat-icon { font-size: 0.7rem;  color: rgba(134,223,255,0.45); }
-.er-stat-val  { font-family: "Courier New", monospace; font-size: 0.88rem; font-weight: 700; color: #86dfff; letter-spacing: -0.01em; }
-.er-stat-lbl  { font-family: "Courier New", monospace; font-size: 0.42rem; color: rgba(134,223,255,0.3); letter-spacing: 0.08em; text-transform: uppercase; }
+.er-stat-sep {
+  width: 1px;
+  background: rgba(16,221,50,0.1);
+  align-self: stretch;
+  margin: 2px 0;
+}
+.er-stat-lbl { font-size:0.4rem; color:rgba(16,221,50,0.32); letter-spacing:0.14em; text-transform:uppercase; margin-bottom:2px; }
+.er-stat-val  { font-size:1rem; font-weight:700; color:rgba(16,230,55,0.92); text-shadow:0 0 8px rgba(16,221,50,0.35); letter-spacing:0.02em; line-height:1; }
+.er-stat-val-sm { font-size:0.78rem; }
 
-.earliest-ready-display .date {
-  font-size: 0.8em;
-  opacity: 0.8;
-}
+/* Condition row */
+.er-condition-row { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
+.er-condition-label { font-size:0.42rem; color:rgba(16,221,50,0.32); letter-spacing:0.14em; text-transform:uppercase; }
 
 /* Container for the earliest display */
 #earliest-display {

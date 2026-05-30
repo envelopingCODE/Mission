@@ -2015,30 +2015,33 @@ function buildWeeksBestHUD() {
     ? new Date(parseInt(readyVal)).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false })
     : "—";
 
+  var condStr = renderConditionHearts(getCondition());
+
   return `
     <div class="er-hud-inner">
+      <div class="er-divider"></div>
       <div class="er-stats">
         <div class="er-stat">
-          <span class="er-stat-icon">◻</span>
+          <span class="er-stat-lbl">OPS TODAY</span>
           <span class="er-stat-val">${todayTasks.length}</span>
-          <span class="er-stat-lbl">ops</span>
         </div>
+        <div class="er-stat-sep"></div>
         <div class="er-stat">
-          <span class="er-stat-icon">◈</span>
+          <span class="er-stat-lbl">XP EARNED</span>
           <span class="er-stat-val">${todayXP}</span>
-          <span class="er-stat-lbl">xp</span>
         </div>
+        <div class="er-stat-sep"></div>
         <div class="er-stat">
-          <span class="er-stat-icon">▷</span>
-          <span class="er-stat-val">${deployStr}</span>
-          <span class="er-stat-lbl">deployed</span>
+          <span class="er-stat-lbl">DEPLOYED</span>
+          <span class="er-stat-val er-stat-val-sm">${deployStr}</span>
         </div>
       </div>
-      <div class="er-condition">
-        <span class="er-condition-label">Operator condition</span>
-        <span class="er-hearts">${renderConditionHearts(getCondition())}</span>
+      <div class="er-divider"></div>
+      <div class="er-condition-row">
+        <span class="er-condition-label">CONDITION</span>
+        <span class="er-hearts">${condStr}</span>
       </div>
-      <button class="er-reset-btn" id="er-reset-week">Reset week's best</button>
+      <button class="er-reset-btn" id="er-reset-week">↺ Reset week's record</button>
     </div>`;
 }
 
@@ -2058,13 +2061,19 @@ function updateEarliestReadyDisplay(earliestReadyTime) {
     container.appendChild(el);
   }
 
+  // SVG chevron — rotates 180° when expanded via CSS
+  var chevronSVG = '<svg class="er-chevron-svg" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,5 7,9 12,5"/></svg>';
+
   el.innerHTML = `
     <div class="er-header">
-      <div class="info">
-        <div>WEEK'S BEST: <span class="time">${timeString}</span></div>
-        <div class="date">RESETS MONDAY</div>
+      <div class="er-header-left">
+        <span class="er-label">WEEK'S BEST</span>
+        <span class="er-sublabel">RESETS MONDAY</span>
       </div>
-      <span class="er-toggle">+</span>
+      <div class="er-header-right">
+        <span class="er-time-display">${timeString}</span>
+        <span class="er-chevron">${chevronSVG}</span>
+      </div>
     </div>
     <div class="er-hud"></div>
   `;
