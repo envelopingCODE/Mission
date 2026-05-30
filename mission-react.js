@@ -2844,16 +2844,18 @@ function dispatchDocId(id) {
   return "ST-ARC-" + n.toString(16).toUpperCase().padStart(4, "0");
 }
 
-const DispatchModal = ({ payload, onClose }) => {
-  // payload is either a string ID (achievement) or a raw dispatch object (story event)
-  var d = (typeof payload === "string") ? DISPATCHES[payload] : payload;
-  var id = (typeof payload === "string") ? payload : (payload && payload.id ? payload.id : null);
+const DispatchModal = ({ entry, onClose }) => {
+  // entry = { data: stringID|object, mode: "live"|"local" }
+  var rawData = entry && entry.data !== undefined ? entry.data : entry;
+  var mode    = (entry && entry.mode) ? entry.mode : "live";
+  var d  = (typeof rawData === "string") ? DISPATCHES[rawData] : rawData;
+  var id = (typeof rawData === "string") ? rawData : (rawData && rawData.id ? rawData.id : null);
   if (!d) return null;
 
   var fullText   = d.body;
   var hasChoices = !!(d.choices && d.choices.length >= 2);
-  // phase: "init" | "failed" | "typing" | "done" | "chosen"
-  var [phase, setPhase]             = React.useState("init");
+  // phase: "boot" | "init" | "failed" | "typing" | "done" | "chosen"
+  var [phase, setPhase]             = React.useState("boot");
   var [dots, setDots]               = React.useState(1);
   var [uplinkPct, setUplinkPct]     = React.useState(0);
   var [displayed, setDisplayed]     = React.useState("");
@@ -2874,6 +2876,17 @@ const DispatchModal = ({ payload, onClose }) => {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
   }, [id]);
+
+  // Boot phase — flicker 3 cycles, then:
+  //   live mode  → init (uplink drama)
+  //   local mode → typing (straight to document, no uplink)
+  React.useEffect(() => {
+    if (phase !== "boot") return;
+    var dur  = mode === "local" ? 520 : 900;
+    var next = mode === "local" ? "typing" : "init";
+    var t = setTimeout(function() { setPhase(next); }, dur);
+    return function() { clearTimeout(t); };
+  }, [phase, mode]);
 
   // Init phase — pulse dots + fill progress bar to ~68-74%, then fail
   React.useEffect(() => {
@@ -2949,6 +2962,13 @@ const DispatchModal = ({ payload, onClose }) => {
 
         <div className={"dispatch-body" + (phase === "typing" ? " dispatch-body-live" : "")}
              onClick={skipToEnd}>
+          {phase === "boot" && (
+            <div className="dispatch-boot">
+              <div className="dispatch-boot-line1">{d.classification || "PRIMEROS // M-VI // FIELD COMM RELAY"}</div>
+              <div className="dispatch-boot-line2">DOCUMENT SUBSYSTEM LOADING</div>
+              <div className="dispatch-boot-cursor">_</div>
+            </div>
+          )}
           {(phase === "init" || phase === "failed") && (
             <div className="dispatch-uplink">
               <span className="dispatch-uplink-line">
@@ -3039,34 +3059,71 @@ const DispatchModal = ({ payload, onClose }) => {
   );
 };
 
-// ── Purge confirmation terminal ───────────────────────────────────────────
+// ── Purge confirmation terminal — 3-stage emergency sequence ─────────────
 const PurgeConfirmModal = ({ onClose }) => {
-  var [done, setDone] = React.useState(false);
+  var [stage,   setStage]   = React.useState("confirm"); // confirm|executing|done
+  var [purgePct, setPurgePct] = React.useState(0);
+  var [glitch,  setGlitch]  = React.useState(false);
+  var pIvRef = React.useRef(null);
+  var gIvRef = React.useRef(null);
+
   React.useEffect(() => {
-    var fn = (e) => { if (e.key === "Escape" || e.key === "n" || e.key === "N") onClose(); };
+    var fn = (e) => {
+      if (stage === "confirm" && (e.key === "Escape" || e.key === "n" || e.key === "N")) onClose();
+    };
     document.addEventListener("keydown", fn);
-    return () => document.removeEventListener("keydown", fn);
-  }, []);
-  function executePurge() {
-    Object.keys(localStorage).forEach(function(k) {
-      if (k === "storyCodex" || k === "seenFallbacks" || k === "operatorCondition" ||
-          k === "lastStoryEvent" || k === "lastKnownStreak" ||
-          k === "timerSkinUnlocked" || k === "timerSkinActive" ||
-          k === "shownAchievements" ||
-          k.startsWith("dispatch_read_")) {
-        localStorage.removeItem(k);
+    return () => {
+      document.removeEventListener("keydown", fn);
+      if (pIvRef.current) clearInterval(pIvRef.current);
+      if (gIvRef.current) clearInterval(gIvRef.current);
+    };
+  }, [stage]);
+
+  function startPurge() {
+    setStage("executing");
+    setPurgePct(0);
+    var pct = 0;
+    // Fill bar over ~2.6s
+    pIvRef.current = setInterval(function() {
+      pct += 2;
+      setPurgePct(Math.min(100, Math.floor(pct)));
+      if (pct >= 100) {
+        clearInterval(pIvRef.current);
+        clearInterval(gIvRef.current);
+        // Execute the actual purge at 100%
+        Object.keys(localStorage).forEach(function(k) {
+          if (k === "storyCodex" || k === "seenFallbacks" || k === "operatorCondition" ||
+              k === "lastStoryEvent" || k === "lastKnownStreak" ||
+              k === "timerSkinUnlocked" || k === "timerSkinActive" ||
+              k === "shownAchievements" ||
+              k.startsWith("dispatch_read_")) {
+            localStorage.removeItem(k);
+          }
+        });
+        localStorage.setItem("purgedOnce", "true");
+        localStorage.setItem("purgeRunUnlockPending", "true");
+        setGlitch(false);
+        setStage("done");
+        setTimeout(onClose, 2600);
       }
-    });
-    localStorage.setItem("purgedOnce", "true");
-    localStorage.setItem("purgeRunUnlockPending", "true");
-    setDone(true);
-    setTimeout(onClose, 2200);
+    }, 52);
+    // Random glitch flashes during execution
+    gIvRef.current = setInterval(function() {
+      if (Math.random() < 0.35) {
+        setGlitch(true);
+        setTimeout(function() { setGlitch(false); }, 60 + Math.random() * 100);
+      }
+    }, 180);
   }
+
   return (
-    <div className="purge-overlay" onClick={onClose}>
-      <div className="purge-terminal" onClick={(e) => e.stopPropagation()}>
+    <div className="purge-overlay" onClick={stage === "confirm" ? onClose : undefined}>
+      {stage === "executing" && <div className="purge-edge-danger" />}
+      <div className={"purge-terminal" + (glitch ? " purge-glitch" : "")}
+           onClick={function(e){ e.stopPropagation(); }}>
         <div className="purge-scanlines" />
-        {!done ? (
+
+        {stage === "confirm" && (
           <div>
             <div className="purge-line">&gt; PURGE MEMORY BANKS</div>
             <div className="purge-line purge-dim">&gt; CLAUSE 8: THE STUDENT MAY INSTRUCT THE SYSTEM TO FORGET.</div>
@@ -3078,17 +3135,36 @@ const PurgeConfirmModal = ({ onClose }) => {
             <div className="purge-line">&gt;</div>
             <div className="purge-line">&gt; CONTINUE?</div>
             <div className="purge-buttons">
-              <button className="purge-btn purge-btn-y" onClick={executePurge}>[Y] CONFIRM PURGE</button>
+              <button className="purge-btn purge-btn-y" onClick={startPurge}>[Y] CONFIRM PURGE</button>
               <button className="purge-btn purge-btn-n" onClick={onClose}>[N] ABORT</button>
             </div>
           </div>
-        ) : (
+        )}
+
+        {stage === "executing" && (
           <div>
-            <div className="purge-line">&gt; PURGE INITIATED.</div>
-            <div className="purge-line purge-warning">&gt; ALL LOGS ERASED.</div>
+            <div className="purge-line purge-warning">&gt; EMERGENCY SHUTDOWN PROTOCOL INITIATED</div>
+            <div className="purge-line">&gt; PURGING MEMORY BANKS...</div>
+            <div className="purge-exec-wrap">
+              <div className="purge-exec-bar">
+                <div className="purge-exec-fill" style={{ width: purgePct + "%" }} />
+              </div>
+              <span className="purge-exec-pct">{purgePct}%</span>
+            </div>
+            <div className="purge-line purge-dim">&gt; DO NOT INTERRUPT THE PURGE SEQUENCE.</div>
+            {purgePct >= 35 && <div className="purge-line purge-warning">&gt; [ALERT] OPERATOR LOG DELETION IN PROGRESS</div>}
+            {purgePct >= 62 && <div className="purge-line purge-warning">&gt; [ALERT] CONDITION DATA PERMANENTLY ERASED</div>}
+            {purgePct >= 85 && <div className="purge-line purge-warning">&gt; [ALERT] STORY ARCHIVES DESTROYED — POINT OF NO RETURN</div>}
+          </div>
+        )}
+
+        {stage === "done" && (
+          <div>
+            <div className="purge-line">&gt; PURGE COMPLETE.</div>
+            <div className="purge-line purge-warning">&gt; ALL MEMORY BANKS ERASED.</div>
             <div className="purge-line">&gt;</div>
-            <div className="purge-line">&gt; SYSTEM RESET COMPLETE.</div>
-            <div className="purge-line purge-dim">&gt; THE VI HAS NO RECORD OF WHAT CAME BEFORE.</div>
+            <div className="purge-line">&gt; THE VI HAS NO RECORD OF WHAT CAME BEFORE.</div>
+            <div className="purge-line purge-dim">&gt; SYSTEM RESET COMPLETE. AWAITING NEW OPERATOR.</div>
           </div>
         )}
       </div>
@@ -3202,15 +3278,19 @@ const AchievementToastSystem = () => {
   );
 };
 
-// Standalone portal — accepts a string ID (achievement) or raw dispatch object (story event)
+// Standalone portal — accepts showDispatch(data) or showDispatch(data, "local")
+// mode "live"  = full uplink drama (story events, first op, survivor)
+// mode "local" = quick boot flicker then straight to typing (achievement tiles)
 const DispatchPortal = () => {
-  const [payload, setPayload] = React.useState(null);
+  const [entry, setEntry] = React.useState(null); // { data, mode }
   React.useEffect(() => {
-    window.showDispatch = (data) => setPayload(data);
+    window.showDispatch = function(data, mode) {
+      setEntry({ data: data, mode: mode || "live" });
+    };
     return () => { delete window.showDispatch; };
   }, []);
-  if (!payload) return null;
-  return <DispatchModal payload={payload} onClose={() => setPayload(null)} />;
+  if (!entry) return null;
+  return <DispatchModal entry={entry} onClose={() => setEntry(null)} />;
 };
 
 const StToggle = ({ label, desc, checked, onChange }) => (
@@ -3368,7 +3448,10 @@ const SettingsPanel = () => {
                         <div key={a.id} className={tileClass}
                           onClick={function() {
                             if (unlocked && hasLore && typeof window.showDispatch === "function") {
-                              window.showDispatch(a.id);
+                              // first_op and survivor are live transmissions even from achievements screen
+                              var liveIds = ["first_op", "survivor", "neon_proto"];
+                              var dispMode = liveIds.indexOf(a.id) !== -1 ? "live" : "local";
+                              window.showDispatch(a.id, dispMode);
                             }
                           }}>
                           <span className="ach-icon">{a.icon}</span>
