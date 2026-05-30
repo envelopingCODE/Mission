@@ -1192,6 +1192,65 @@ const CuteRobotFace = ({
         tension: 0.05,
       },
     },
+
+    // ── NEW STATES ──────────────────────────────────────────────────────────
+
+    // Combat-ready snap: eyes narrow to tactical slits, mouth becomes a
+    // determined flat line. Triggered on ready-signal send.
+    alert: {
+      leftEye: {
+        path: "M-25,-4 A15,3 0 1,1 -5,-4",
+        blinkPath: "M-25,-4 A15,1 0 1,1 -5,-4",
+        animationParams: { glowIntensity: { values: "1;0.96;1", duration: "0.8s" }, floatOffset: { range: [0,0], duration: "1s" } },
+      },
+      rightEye: {
+        path: "M5,-4 A15,3 0 1,1 25,-4",
+        blinkPath: "M5,-4 A15,1 0 1,1 25,-4",
+        animationParams: { glowIntensity: { values: "1;0.96;1", duration: "0.8s" }, floatOffset: { range: [0,0], duration: "1s" } },
+      },
+      mouth: "M-28,22 Q0,23 28,22",
+      color: "#b0f0ff",
+      opacity: 1.0,
+      emotional_metadata: { energy_level: 0.95, cognitive_state: "combat_ready", tension: 0.9, blink_interval: { min: 8000, max: 14000 } },
+    },
+
+    // Deep processing: eyes slightly narrowed, focused. Eye-scanning animation
+    // added via useEffect. Replaces "glitched" for Ollama generation.
+    composing: {
+      leftEye: {
+        path: "M-25,-5 A15,7 0 1,1 -5,-5",
+        blinkPath: "M-25,-5 A15,1 0 1,1 -5,-5",
+        animationParams: { glowIntensity: { values: "0.88;0.78;0.88", duration: "1.6s" }, floatOffset: { range: [0,0], duration: "1s" } },
+      },
+      rightEye: {
+        path: "M5,-5 A15,7 0 1,1 25,-5",
+        blinkPath: "M5,-5 A15,1 0 1,1 25,-5",
+        animationParams: { glowIntensity: { values: "0.88;0.78;0.88", duration: "1.6s" }, floatOffset: { range: [0,0], duration: "1s" } },
+      },
+      mouth: "M-22,22 Q0,26 22,22",
+      color: "#86dfff",
+      opacity: 0.90,
+      emotional_metadata: { energy_level: 0.6, cognitive_state: "processing", tension: 0.35, blink_interval: { min: 3000, max: 5000 } },
+    },
+
+    // Flow / locked-in: half-lidded deliberate eyes, very faint upward curve —
+    // not sleepy, not excited. Hyper-focused. Micro-movements suppressed.
+    flow: {
+      leftEye: {
+        path: "M-25,-4 A15,5 0 1,1 -5,-4",
+        blinkPath: "M-25,-4 A15,1 0 1,1 -5,-4",
+        animationParams: { glowIntensity: { values: "0.82;0.78;0.82", duration: "3.5s" }, floatOffset: { range: [0,0], duration: "1s" } },
+      },
+      rightEye: {
+        path: "M5,-4 A15,5 0 1,1 25,-4",
+        blinkPath: "M5,-4 A15,1 0 1,1 25,-4",
+        animationParams: { glowIntensity: { values: "0.82;0.78;0.82", duration: "3.5s" }, floatOffset: { range: [0,0], duration: "1s" } },
+      },
+      mouth: "M-26,20 Q0,27 26,20",
+      color: "#70d8e0",
+      opacity: 0.88,
+      emotional_metadata: { energy_level: 0.82, cognitive_state: "deep_focus", tension: 0.08, blink_interval: { min: 7000, max: 12000 } },
+    },
   };
 
   // Add this helper function after the expressions object
@@ -1322,12 +1381,53 @@ const CuteRobotFace = ({
     };
   }, [isSpeaking]);
 
+  // ── Composing: eye scan left-right during Ollama processing ──────────────
+  React.useEffect(() => {
+    if (currentEmotion !== "composing") return;
+    var positions = [
+      { x: -7, y: 0 }, { x: -3, y: 0 }, { x: 3, y: 0 },
+      { x: 7, y: 0 },  { x: 3, y: 0 }, { x: -3, y: 0 },
+    ];
+    var idx = 0;
+    var iv = setInterval(function () {
+      setEyePosition(positions[idx % positions.length]);
+      idx++;
+    }, 360);
+    return function () { clearInterval(iv); setEyePosition({ x: 0, y: 0 }); };
+  }, [currentEmotion]);
+
   // ── Window hooks (must be in CuteRobotFace — states live here) ──────────
   React.useEffect(() => {
     window.setRobotSpeaking = (active) => setIsSpeaking(active);
+    // Ollama processing now uses "composing" rather than "glitched"
     window.setRobotProcessing = (active) => {
       setIsProcessing(active);
-      setCurrentEmotion(active ? "glitched" : "neutral");
+      setCurrentEmotion(active ? "composing" : "neutral");
+    };
+    // Set a named emotion; auto-returns to neutral after durationMs (0 = persistent)
+    window.setRobotEmotion = function (emotion, durationMs) {
+      setCurrentEmotion(emotion);
+      if (durationMs) setTimeout(function () { setCurrentEmotion("neutral"); }, durationMs);
+    };
+    // One-shot insight flash: pupil surge + radial particle burst
+    window.triggerInsightFlash = function () {
+      setPupilSize(1.8);
+      var burst = Array.from({ length: 14 }, function (_, i) {
+        var angle = (i / 14) * Math.PI * 2;
+        return {
+          id: Date.now() + i,
+          x: Math.cos(angle) * (15 + Math.random() * 20),
+          y: Math.sin(angle) * (15 + Math.random() * 20) - 10,
+          size: 1 + Math.random() * 2,
+          color: i % 3 === 0 ? "#ffdf80" : "#86dfff",
+          duration: 1.2 + Math.random() * 0.8,
+        };
+      });
+      setParticles(function (p) { return p.concat(burst); });
+      setTimeout(function () {
+        setPupilSize(1.0);
+        setParticles(function (p) { return p.filter(function (px) { return !burst.some(function (b) { return b.id === px.id; }); }); });
+      }, 1600);
     };
     window.robotLookAway = () => {
       if (lookAwayTimerRef.current) clearTimeout(lookAwayTimerRef.current);
@@ -1340,6 +1440,8 @@ const CuteRobotFace = ({
     return () => {
       delete window.setRobotSpeaking;
       delete window.setRobotProcessing;
+      delete window.setRobotEmotion;
+      delete window.triggerInsightFlash;
       delete window.robotLookAway;
       if (lookAwayTimerRef.current) clearTimeout(lookAwayTimerRef.current);
     };

@@ -856,6 +856,8 @@ function createMissionClickHandler(element) {
         localStorage.setItem("timerSkinUnlocked", "neon");
         localStorage.setItem("timerSkinActive", "neon");
         if (typeof window._onTimerSkinUnlock === "function") window._onTimerSkinUnlock("neon");
+        // Insight flash — the buddy reacts to a major unlock
+        if (typeof window.triggerInsightFlash === "function") window.triggerInsightFlash();
         var nb = document.createElement("div");
         nb.className = "buddy-suggestion";
         nb.textContent = "10 objectives cleared. Neon ring protocol unlocked.";
@@ -867,6 +869,17 @@ function createMissionClickHandler(element) {
         }, 5000);
       }
     }
+
+    // Flow state detection — 3+ completions within 10 min triggers locked-in mode
+    (function () {
+      var now = Date.now();
+      if (!window._flowTaskTimes) window._flowTaskTimes = [];
+      window._flowTaskTimes.push(now);
+      window._flowTaskTimes = window._flowTaskTimes.filter(function (t) { return now - t < 600000; });
+      if (window._flowTaskTimes.length >= 3 && typeof window.setRobotEmotion === "function") {
+        window.setRobotEmotion("flow", 90000); // hold for 90s, refreshed by next task
+      }
+    })();
 
     // Update the button HUD
     updateWrapButtonHUD();
@@ -1936,6 +1949,10 @@ updateEarliestReadyDisplay(storedEarliestReady ? parseInt(storedEarliestReady) :
 // Attach the handler to the button and check initial state
 if (readyButtonEl) {
   readyButtonEl.addEventListener("click", readyButtonClickHandler);
+  readyButtonEl.addEventListener("click", function () {
+    // Alert / Combat-Ready expression on deploy — snaps to attention
+    if (typeof window.setRobotEmotion === "function") window.setRobotEmotion("alert", 2500);
+  });
   readyButtonEl.addEventListener("click", checkCategoryNeglect);
   readyButtonEl.addEventListener("click", suggestQuickWin);
   readyButtonEl.addEventListener("click", renderStreakBar);
