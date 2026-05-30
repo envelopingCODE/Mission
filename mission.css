@@ -5379,43 +5379,125 @@ svg.minimalist-face {
 }
 
 /* ==================== DISPATCH MODAL — Recovered Terminal Document ==================== */
+@keyframes dispatchOverlayIn {
+  from { opacity:0; }
+  to   { opacity:1; }
+}
+@keyframes dispatchDocIn {
+  0%   { opacity:0; transform:scaleY(0.93) translateY(-6px); filter:brightness(2.5); }
+  18%  { opacity:1; transform:scaleY(1.02) translateY(0);    filter:brightness(1.5); }
+  35%  { transform:scaleY(0.99);                             filter:brightness(1.1); }
+  100% { transform:scaleY(1);                                filter:brightness(1);   }
+}
+@keyframes dispatchCursorBlink {
+  0%,100% { opacity:1; }
+  50%      { opacity:0; }
+}
+
 .dispatch-overlay {
-  position:fixed; inset:0; z-index:99999;
-  background:rgba(0,4,2,0.96);
-  display:flex; align-items:center; justify-content:center;
-  padding:1.5rem; cursor:pointer;
+  position: fixed; inset: 0; z-index: 99999;
+  background: radial-gradient(ellipse at 50% 40%, rgba(0,12,5,0.97) 0%, rgba(0,2,1,0.99) 70%);
+  display: flex; align-items: center; justify-content: center;
+  padding: 1.5rem; cursor: pointer;
+  animation: dispatchOverlayIn 0.18s ease;
 }
+
 .dispatch-doc {
-  position:relative; max-width:500px; width:100%; max-height:85vh;
-  background:rgba(0,7,3,0.99);
-  border:1px solid rgba(15,200,80,0.28); border-radius:3px;
-  display:flex; flex-direction:column; overflow:hidden; cursor:default;
-  box-shadow:0 0 40px rgba(15,200,80,0.07), inset 0 0 60px rgba(0,0,0,0.5);
+  position: relative; max-width: 540px; width: 100%; max-height: 88vh;
+  background: rgba(0,9,4,0.99);
+  border: 1px solid rgba(15,210,75,0.32); border-radius: 2px;
+  display: flex; flex-direction: column; overflow: hidden; cursor: default;
+  box-shadow:
+    0 0 0 1px rgba(15,210,75,0.07),
+    0 0 35px rgba(15,210,75,0.14),
+    0 0 90px rgba(15,210,75,0.06),
+    0 24px 80px rgba(0,0,0,0.8),
+    inset 0 0 100px rgba(0,0,0,0.5);
+  animation: dispatchDocIn 0.4s cubic-bezier(0.22,1,0.36,1);
 }
+
+/* CRT scanlines */
 .dispatch-scanlines {
-  position:absolute; inset:0; pointer-events:none; z-index:1;
-  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.18) 2px,rgba(0,0,0,0.18) 4px);
+  position: absolute; inset: 0; pointer-events: none; z-index: 5;
+  background: repeating-linear-gradient(
+    0deg, transparent, transparent 3px,
+    rgba(0,0,0,0.14) 3px, rgba(0,0,0,0.14) 4px
+  );
 }
-.dispatch-hdr  { padding:1rem 1.2rem 0.7rem; border-bottom:1px solid rgba(15,200,80,0.18); flex-shrink:0; }
-.dispatch-class  { font-family:"Courier New",monospace; font-size:0.5rem; color:rgba(15,200,80,0.38); letter-spacing:0.18em; text-transform:uppercase; margin-bottom:0.35rem; }
-.dispatch-origin { font-family:"Courier New",monospace; font-size:0.62rem; color:rgba(15,200,80,0.65); letter-spacing:0.1em; line-height:1.4; }
-.dispatch-sub    { font-family:"Courier New",monospace; font-size:0.52rem; color:rgba(15,200,80,0.38); letter-spacing:0.1em; margin-top:0.2rem; }
-.dispatch-rule   { height:1px; background:rgba(15,200,80,0.12); flex-shrink:0; }
+
+/* Corner accent brackets */
+.dispatch-corner {
+  position: absolute; width: 18px; height: 18px; z-index: 6; pointer-events: none;
+  border-color: rgba(15,210,75,0.55); border-style: solid;
+}
+.dispatch-corner-tl { top: 0; left: 0; border-width: 2px 0 0 2px; }
+.dispatch-corner-br { bottom: 0; right: 0; border-width: 0 2px 2px 0; }
+
+/* Header */
+.dispatch-hdr { padding: 1.1rem 1.3rem 0.8rem; border-bottom: 1px solid rgba(15,210,75,0.15); flex-shrink: 0; }
+.dispatch-meta-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.45rem; }
+.dispatch-class { font-family:"Courier New",monospace; font-size:0.5rem; color:rgba(255,195,55,0.65); letter-spacing:0.2em; text-transform:uppercase; }
+.dispatch-docid { font-family:"Courier New",monospace; font-size:0.46rem; color:rgba(15,210,75,0.28); letter-spacing:0.1em; }
+.dispatch-origin {
+  font-family:"Courier New",monospace; font-size:0.68rem; font-weight:700;
+  color:rgba(15,220,80,0.92); letter-spacing:0.08em; line-height:1.4;
+  text-shadow: 0 0 10px rgba(15,220,80,0.35);
+  margin-bottom:0.2rem;
+}
+.dispatch-cursor {
+  display: inline-block; width: 7px; height: 12px; background: rgba(15,220,80,0.75);
+  margin-left: 5px; vertical-align: middle;
+  animation: dispatchCursorBlink 1.1s step-end infinite;
+}
+.dispatch-sub    { font-family:"Courier New",monospace; font-size:0.52rem; color:rgba(15,200,75,0.42); letter-spacing:0.1em; margin-bottom:0.35rem; }
+.dispatch-status { font-family:"Courier New",monospace; font-size:0.44rem; color:rgba(15,200,75,0.3); letter-spacing:0.14em; text-transform:uppercase; margin-top:0.35rem; }
+.dispatch-rule   { height:1px; background:linear-gradient(90deg,transparent,rgba(15,210,75,0.2) 20%,rgba(15,210,75,0.2) 80%,transparent); flex-shrink:0; }
+
+/* Body */
 .dispatch-body {
-  flex:1; overflow-y:auto; padding:1.2rem 1.4rem;
-  font-family:"Courier New",monospace; font-size:0.68rem;
-  color:rgba(15,200,80,0.82); line-height:1.9; white-space:pre-line;
+  flex:1; overflow-y:auto; padding:1.3rem 1.5rem 1rem;
+  font-family:"Courier New",monospace; font-size:0.7rem;
+  color:rgba(15,215,78,0.84); line-height:2; white-space:pre-line; letter-spacing:0.02em;
+  text-shadow: 0 0 8px rgba(15,215,78,0.2);
 }
 .dispatch-body::-webkit-scrollbar { width:3px; }
-.dispatch-body::-webkit-scrollbar-thumb { background:rgba(15,200,80,0.2); }
-.dispatch-footer { flex-shrink:0; padding:0.6rem 1.2rem; border-top:1px solid rgba(15,200,80,0.1); font-family:"Courier New",monospace; font-size:0.48rem; color:rgba(15,200,80,0.32); letter-spacing:0.1em; line-height:1.5; }
-.dispatch-close  { flex-shrink:0; width:100%; background:transparent; border:none; border-top:1px solid rgba(15,200,80,0.15); color:rgba(15,200,80,0.4); font-family:"Courier New",monospace; font-size:0.58rem; letter-spacing:0.22em; padding:0.75rem; cursor:pointer; text-transform:uppercase; transition:color 0.2s,background 0.2s; }
-.dispatch-close:hover { background:rgba(15,200,80,0.04); color:rgba(15,200,80,0.7); }
+.dispatch-body::-webkit-scrollbar-thumb { background:rgba(15,210,75,0.2); border-radius:2px; }
 
+/* Inline text treatments */
+.dispatch-redacted {
+  display: inline-block; background: rgba(15,210,75,0.85); color: transparent;
+  border-radius: 1px; padding: 0 2px; letter-spacing: 0.06em;
+  box-shadow: 0 0 6px rgba(15,210,75,0.4);
+}
+.dispatch-bracket { color: rgba(255,195,55,0.6); }
+
+/* Footer + close */
+.dispatch-footer {
+  flex-shrink:0; padding:0.65rem 1.3rem; border-top:1px solid rgba(15,210,75,0.1);
+  font-family:"Courier New",monospace; font-size:0.5rem;
+  color:rgba(15,200,75,0.35); letter-spacing:0.1em; line-height:1.6;
+}
+.dispatch-close {
+  flex-shrink:0; width:100%; background:transparent; border:none;
+  border-top:1px solid rgba(15,210,75,0.12);
+  color:rgba(15,210,75,0.38); font-family:"Courier New",monospace;
+  font-size:0.56rem; letter-spacing:0.2em; padding:0.8rem;
+  cursor:pointer; text-transform:uppercase; text-align:center;
+  transition:color 0.25s, background 0.25s;
+}
+.dispatch-close:hover { background:rgba(15,210,75,0.05); color:rgba(15,210,75,0.75); }
+
+/* Achievement tile lore states */
 .ach-clickable { cursor:pointer; }
 .ach-clickable:hover { border-color:rgba(134,223,255,0.3); }
-.ach-unread { position:absolute; top:4px; left:5px; width:5px; height:5px; border-radius:50%; background:rgba(15,200,80,0.8); box-shadow:0 0 4px rgba(15,200,80,0.5); }
-.ach-lore-hint { font-family:"Courier New",monospace; font-size:0.4rem; color:rgba(134,223,255,0.22); letter-spacing:0.08em; text-transform:uppercase; margin-top:2px; }
+.ach-unread {
+  position:absolute; top:4px; left:5px; width:5px; height:5px; border-radius:50%;
+  background:rgba(15,210,75,0.85); box-shadow:0 0 5px rgba(15,210,75,0.55);
+}
+.ach-lore-hint {
+  font-family:"Courier New",monospace; font-size:0.4rem;
+  color:rgba(134,223,255,0.2); letter-spacing:0.08em; text-transform:uppercase; margin-top:2px;
+}
 
 /* ==================== SESSION CEREMONY ==================== */
 .session-ceremony {

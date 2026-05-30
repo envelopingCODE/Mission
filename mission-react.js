@@ -2677,6 +2677,21 @@ var DISPATCHES = {
 };
 
 // ── Dispatch modal component ──────────────────────────────────────────────
+// Renders [REDACTED] as visual black bars; other [BRACKETS] in amber.
+function renderDispatchBody(text) {
+  var parts = text.split(/(\[REDACTED\]|\[[A-Z0-9 _\-—]+\])/g);
+  return parts.map(function(part, i) {
+    if (part === "[REDACTED]") return React.createElement("span", { key: i, className: "dispatch-redacted" }, "██████████");
+    if (/^\[[A-Z0-9 _\-—]+\]$/.test(part)) return React.createElement("span", { key: i, className: "dispatch-bracket" }, part);
+    return part;
+  });
+}
+
+function dispatchDocId(id) {
+  var n = id.split("").reduce(function(a, c) { return (a * 31 + c.charCodeAt(0)) & 0xffff; }, 0);
+  return "ST-ARC-" + n.toString(16).toUpperCase().padStart(4, "0");
+}
+
 const DispatchModal = ({ id, onClose }) => {
   var d = DISPATCHES[id];
   if (!d) return null;
@@ -2690,17 +2705,23 @@ const DispatchModal = ({ id, onClose }) => {
     <div className="dispatch-overlay" onClick={onClose}>
       <div className="dispatch-doc" onClick={(e) => e.stopPropagation()}>
         <div className="dispatch-scanlines" />
+        <div className="dispatch-corner dispatch-corner-tl" />
+        <div className="dispatch-corner dispatch-corner-br" />
         <div className="dispatch-hdr">
-          <div className="dispatch-class">{d.classification}</div>
-          <div className="dispatch-origin">{d.header}</div>
+          <div className="dispatch-meta-row">
+            <span className="dispatch-class">{d.classification}</span>
+            <span className="dispatch-docid">{dispatchDocId(id)}</span>
+          </div>
+          <div className="dispatch-origin">{d.header}<span className="dispatch-cursor" /></div>
           {d.sub && <div className="dispatch-sub">{d.sub}</div>}
+          <div className="dispatch-status">DECRYPTION COMPLETE // SOURCE: STATION NETWORK ARCHIVE</div>
         </div>
         <div className="dispatch-rule" />
-        <div className="dispatch-body">{d.body}</div>
+        <div className="dispatch-body">{renderDispatchBody(d.body)}</div>
         <div className="dispatch-rule" />
         {d.footer && <div className="dispatch-footer">{d.footer}</div>}
         <button className="dispatch-close" onClick={onClose}>
-          [ Close Transmission ]
+          ▸ Close Transmission
         </button>
       </div>
     </div>
@@ -2735,6 +2756,8 @@ const StToggle = ({ label, desc, checked, onChange }) => (
 const SettingsPanel = () => {
   const [open,         setOpen]         = React.useState(false);
   const [view,         setView]         = React.useState("main"); // "main"|"themes"|"achievements"
+  const viewRef = React.useRef("main"); // keeps closure in toggleSettingsView fresh
+  viewRef.current = view; // sync on every render
   const [cfg,          setCfg]          = React.useState(() => window.AppSettings.get());
   const [ollamaStatus, setOllamaStatus] = React.useState("idle");
   const [activeSkin,   setActiveSkin]   = React.useState(() => localStorage.getItem("timerSkinActive") || "eclipse");
@@ -2745,9 +2768,9 @@ const SettingsPanel = () => {
     window.openSettingsView    = (v) => { setOpen(true); setView(v); };
     window.toggleSettingsView  = (v) => {
       setOpen((o) => {
-        if (!o) { setView(v); return true; }
-        if (view === v) return false; // already on this view — close
-        setView(v); return true;      // switch view, stay open
+        if (!o) { setView(v); viewRef.current = v; return true; }
+        if (viewRef.current === v) return false; // same view — close
+        setView(v); viewRef.current = v; return true;
       });
     };
     return () => {
