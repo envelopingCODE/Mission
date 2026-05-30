@@ -848,6 +848,17 @@ function createMissionClickHandler(element) {
     // Track task for daily wrap
     trackDailyTask(taskDetails);
 
+    // First Op dispatch — fires on the very first task ever completed
+    (function () {
+      var allKeys = Object.keys(localStorage).filter(function (k) { return k.startsWith("dailyTasks_"); });
+      var total = allKeys.reduce(function (s, k) { return s + (JSON.parse(localStorage.getItem(k)) || []).length; }, 0);
+      if (total === 1 && !localStorage.getItem("dispatch_read_first_op")) {
+        setTimeout(function () {
+          if (typeof window.showDispatch === "function") window.showDispatch("first_op");
+        }, 1800);
+      }
+    })();
+
     // Neon skin unlock — rewarded at 10 tasks in a single day
     if (!localStorage.getItem("timerSkinUnlocked")) {
       var unlockKey = new Date().toISOString().split("T")[0];
@@ -856,8 +867,11 @@ function createMissionClickHandler(element) {
         localStorage.setItem("timerSkinUnlocked", "neon");
         localStorage.setItem("timerSkinActive", "neon");
         if (typeof window._onTimerSkinUnlock === "function") window._onTimerSkinUnlock("neon");
-        // Insight flash — the buddy reacts to a major unlock
         if (typeof window.triggerInsightFlash === "function") window.triggerInsightFlash();
+        // Neon Protocol dispatch — appears after the buddy animation settles
+        setTimeout(function () {
+          if (typeof window.showDispatch === "function") window.showDispatch("neon_proto");
+        }, 2200);
         var nb = document.createElement("div");
         nb.className = "buddy-suggestion";
         nb.textContent = "10 objectives cleared. Neon ring protocol unlocked.";
