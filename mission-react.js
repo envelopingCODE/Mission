@@ -2198,11 +2198,9 @@ const CyberpunkInterface = () => {
             return;
           }
 
-          // Generate message
-          const message = generateMessage(task);
-
-          // Add to queue and mark as processed
-          setQueue((prev) => [...prev, { message, id: task.id }]);
+          // Emoji notifications archived — narrative messages from
+          // displayRandomMessage() in mission.js are the active voice now.
+          // The event listener stays so the robot face animation still fires.
           processedTaskIdsRef.current.add(task.id);
         };
 
