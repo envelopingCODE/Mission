@@ -2748,7 +2748,7 @@ const SettingsPanel = () => {
 
   const DOT   = { idle: "rgba(134,223,255,0.2)", checking: "rgba(244,197,66,0.8)", ok: "#0fdfab", fail: "#ff6b6b" };
   const DLBL  = { idle: "Not tested", checking: "Checking…", ok: "Connected", fail: "Unreachable" };
-  const SHORTCUTS = [["c","Capture"],["r","Ready signal"],["t","Timer"],["s","Settings"],["Esc","Dismiss"]];
+  const SHORTCUTS = [["c","Capture"],["r","Ready signal"],["t","Timer"],["s","Settings"],["a","Achievements"],["Esc","Dismiss"]];
 
   // ── Themes screen (early return — must be before main return) ──────────
   if (view === "themes" && open) return (
