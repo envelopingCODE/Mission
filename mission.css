@@ -5541,6 +5541,24 @@ svg.minimalist-face {
   position:absolute; top:4px; left:5px; width:5px; height:5px; border-radius:50%;
   background:rgba(15,210,75,0.85); box-shadow:0 0 5px rgba(15,210,75,0.55);
 }
+/* Purge Memory Banks */
+.purge-section { padding:0.8rem 1.2rem 1rem; border-top:1px solid rgba(255,80,60,0.1); margin-top:0.4rem; }
+.purge-trigger { background:transparent; border:1px solid rgba(255,80,60,0.22); color:rgba(255,80,60,0.4); font-family:"Courier New",monospace; font-size:0.56rem; letter-spacing:0.14em; padding:0.42rem 0.85rem; cursor:pointer; border-radius:2px; transition:color 0.2s,border-color 0.2s; }
+.purge-trigger:hover { color:rgba(255,80,60,0.8); border-color:rgba(255,80,60,0.45); }
+.purge-overlay { position:fixed; inset:0; z-index:99999; background:rgba(0,0,0,0.98); display:flex; align-items:center; justify-content:center; padding:2rem; }
+.purge-terminal { position:relative; max-width:480px; width:100%; background:rgba(0,5,2,0.99); border:1px solid rgba(255,80,60,0.32); border-radius:2px; padding:1.8rem 2rem; box-shadow:0 0 30px rgba(255,80,60,0.07),0 0 80px rgba(0,0,0,0.8); }
+.purge-scanlines { position:absolute; inset:0; pointer-events:none; background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,0.12) 3px,rgba(0,0,0,0.12) 4px); }
+.purge-line    { font-family:"Courier New",monospace; font-size:0.68rem; color:rgba(15,210,75,0.82); line-height:2.1; letter-spacing:0.04em; }
+.purge-warning { color:rgba(255,80,60,0.88); }
+.purge-amber   { color:rgba(255,195,55,0.8); }
+.purge-dim     { color:rgba(15,210,75,0.3); font-size:0.58rem; }
+.purge-buttons { display:flex; gap:0.8rem; margin-top:1.4rem; }
+.purge-btn     { font-family:"Courier New",monospace; font-size:0.6rem; letter-spacing:0.12em; padding:0.5rem 1rem; border-radius:2px; cursor:pointer; transition:background 0.2s,color 0.2s; }
+.purge-btn-y   { background:rgba(255,80,60,0.1); border:1px solid rgba(255,80,60,0.38); color:rgba(255,80,60,0.82); }
+.purge-btn-y:hover { background:rgba(255,80,60,0.2); color:rgba(255,100,80,1); }
+.purge-btn-n   { background:rgba(15,210,75,0.05); border:1px solid rgba(15,210,75,0.22); color:rgba(15,210,75,0.55); }
+.purge-btn-n:hover { background:rgba(15,210,75,0.1); color:rgba(15,210,75,0.82); }
+
 .ach-lore-hint {
   font-family:"Courier New",monospace; font-size:0.4rem;
   color:rgba(134,223,255,0.2); letter-spacing:0.08em; text-transform:uppercase; margin-top:2px;

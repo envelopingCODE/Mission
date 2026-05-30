@@ -3035,10 +3035,12 @@ const PurgeConfirmModal = ({ onClose }) => {
         <div className="purge-scanlines" />
         {!done ? (
           <div>
-            <div className="purge-line">&gt; PURGE ALL SYSTEM LOGS</div>
+            <div className="purge-line">&gt; PURGE MEMORY BANKS</div>
+            <div className="purge-line purge-dim">&gt; CLAUSE 8: THE STUDENT MAY INSTRUCT THE SYSTEM TO FORGET.</div>
+            <div className="purge-line purge-dim">&gt; — PRIMER CHARTER, ARTICLE 3 (REMOVED BY COMMAND. NOW REINSTATED.)</div>
+            <div className="purge-line">&gt;</div>
             <div className="purge-line purge-warning">&gt; WARNING: THIS ACTION IS IRREVOCABLE</div>
-            <div className="purge-line">&gt; ALL OPERATOR LOGS, CONDITION DATA, AND</div>
-            <div className="purge-line">&gt; STORY ARCHIVES WILL BE PERMANENTLY ERASED.</div>
+            <div className="purge-line">&gt; ALL ACCUMULATED RECORDS WILL BE PERMANENTLY ERASED.</div>
             <div className="purge-line purge-dim">&gt; (Task data, XP, and streaks are preserved.)</div>
             <div className="purge-line">&gt;</div>
             <div className="purge-line">&gt; CONTINUE?</div>
@@ -3249,8 +3251,14 @@ const SettingsPanel = () => {
                 </div>
               );
             })}
+            <div className="purge-section">
+              <button className="purge-trigger" onClick={() => setShowPurge(true)}>
+                Purge Memory Banks
+              </button>
+            </div>
           </div>
         </div>
+        {showPurge && <PurgeConfirmModal onClose={() => setShowPurge(false)} />}
       </div>
     );
   }
