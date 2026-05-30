@@ -1447,6 +1447,60 @@ const CuteRobotFace = ({
     };
   }, []);
 
+  // ── Head tilt per emotional state ────────────────────────────────────────
+  // Each value maps emotion → rotation degrees. Subtle but perceptible.
+  var EMOTION_TILT = {
+    neutral: 0, happy: 1, excited: 1.5, glitched: -1,
+    curious: 3, playful: 2.5, perplexed: -3, sleepy: -2,
+    "heart-eyes": 1.5, alert: 0, composing: -2, flow: -1,
+  };
+
+  // ── Glow temperature per emotional state ─────────────────────────────────
+  // Warm cyan for positive/high-arousal; cool blue for focused/neutral; dim for low.
+  var EMOTION_GLOW = {
+    neutral:      "#00e6e6",
+    happy:        "#00ffcc",
+    excited:      "#00ffbb",
+    "heart-eyes": "#ff69b4",
+    glitched:     "#ff00ff",
+    curious:      "#00e6e6",
+    playful:      "#00ffcc",
+    perplexed:    "#00ccee",
+    sleepy:       "#0099bb",
+    alert:        "#6699ff",   // cooler, blue-shifted
+    composing:    "#5588ee",   // coolest, focused
+    flow:         "#4477cc",   // dim blue, deep concentration
+  };
+
+  // ── Micro-blink on emotion transition — masks path snap, creates continuity ─
+  // Emotion changes feel mechanical without this. 80ms eye-close makes the
+  // swap invisible. Inspired by Breazeal's continuity principle.
+  var prevEmotionRef = React.useRef(currentEmotion);
+  React.useEffect(function () {
+    if (prevEmotionRef.current !== currentEmotion) {
+      setIsBlinking(true);
+      setTimeout(function () { setIsBlinking(false); }, 80);
+      prevEmotionRef.current = currentEmotion;
+    }
+  }, [currentEmotion]);
+
+  // ── Proximity dilation — pupils dilate when cursor is close to the face ──
+  React.useEffect(function () {
+    var handleProximity = function (e) {
+      var wrapper = document.querySelector(".minimalist-face-wrapper");
+      if (!wrapper) return;
+      var r = wrapper.getBoundingClientRect();
+      var cx = r.left + r.width / 2;
+      var cy = r.top + r.height / 2;
+      var dist = Math.sqrt(Math.pow(e.clientX - cx, 2) + Math.pow(e.clientY - cy, 2));
+      if (dist < 28) {
+        setPupilSize(function (p) { return p < 1.4 ? 1.4 : p; });
+      }
+    };
+    window.addEventListener("mousemove", handleProximity);
+    return function () { window.removeEventListener("mousemove", handleProximity); };
+  }, []);
+
   //################## SECTION 6: Render Logic ##################
   // Get current expression based on emotion
   const currentExpression = expressions[currentEmotion] || expressions.neutral;
@@ -1516,7 +1570,7 @@ const CuteRobotFace = ({
   return (
     <SVGComponent
       className="minimalist-face w-full h-full"
-      id="robot-face" // Using ID instead of ref
+      id="robot-face"
       xmlns="http://www.w3.org/2000/svg"
       viewBox="-50 -50 100 100"
       initial={{ opacity: 0, scale: 0.8 }}
@@ -1526,6 +1580,11 @@ const CuteRobotFace = ({
           ? { ease: window.CraftedMotion.EASING.gentleBreathe, duration: 0.6 }
           : { ease: "easeOut", duration: 0.5 }
       }
+      style={{
+        transform: "rotate(" + (EMOTION_TILT[currentEmotion] || 0) + "deg)",
+        transition: "transform 0.55s cubic-bezier(0.34,1.56,0.64,1)",
+        filter: "drop-shadow(0 0 6px " + (EMOTION_GLOW[currentEmotion] || "#00e6e6") + "22)",
+      }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
@@ -1682,6 +1741,13 @@ const CuteRobotFace = ({
           <stop offset="0%" stopColor="#86dfff" stopOpacity="0.1" />
           <stop offset="50%" stopColor="#4a9eff" stopOpacity="0.05" />
           <stop offset="60%" stopColor="#2c3e50" stopOpacity="0" />
+        </radialGradient>
+
+        {/* Screen glare — top-left reflection simulates real display panel */}
+        <radialGradient id="glareGrad" cx="20%" cy="18%" r="55%">
+          <stop offset="0%" stopColor="white" stopOpacity="0.22" />
+          <stop offset="60%" stopColor="white" stopOpacity="0.04" />
+          <stop offset="100%" stopColor="white" stopOpacity="0" />
         </radialGradient>
 
         {/* CRT Screen effect */}
@@ -2079,6 +2145,13 @@ const CuteRobotFace = ({
           ))}
         </g>
       </g>
+
+      {/* Screen glare — top-left soft reflection, makes face look like a real display */}
+      <ellipse cx="-22" cy="-28" rx="18" ry="10"
+        fill="url(#glareGrad)"
+        transform="rotate(-20 -22 -28)"
+        style={{ pointerEvents: "none" }}
+      />
     </SVGComponent>
   );
 };

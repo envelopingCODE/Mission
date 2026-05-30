@@ -250,8 +250,25 @@ body {
 .minimalist-face-wrapper {
   width: 100%;
   height: 100%;
-  max-width: 150px; /* or adjust as needed */
+  max-width: 150px;
   max-height: 150px;
+}
+
+/* Idle body sway — CSS fallback for when CraftedMotion isn't loaded.
+   6-second cycle: ±1.5px vertical float + ±0.2° rotation.
+   The SVG already handles the emotion-specific tilt via inline style;
+   this animation is always-on underneath that transform. */
+@keyframes robotIdleSway {
+  0%   { transform: translateY(0px) rotate(0deg); }
+  22%  { transform: translateY(-1.4px) rotate(0.18deg); }
+  50%  { transform: translateY(0px) rotate(0deg); }
+  78%  { transform: translateY(1.4px) rotate(-0.18deg); }
+  100% { transform: translateY(0px) rotate(0deg); }
+}
+.minimalist-face {
+  animation: robotIdleSway 6s ease-in-out infinite;
+  transform-box: fill-box;
+  transform-origin: center;
 }
 
 .container2 {
