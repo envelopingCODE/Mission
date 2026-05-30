@@ -2604,6 +2604,67 @@ const ACHIEVEMENTS_DEF = [
   { id:"neon_proto",  cat:"Classified",   icon:"◐", name:"Neon Protocol",  desc:"Unlock the Neon ring skin",           check:function(){ return !!_ls("timerSkinUnlocked"); }, prog:null },
 ];
 
+// ── Dispatch lore data — pure JS, no JSX ──────────────────────────────────
+// All inner dialogue uses single quotes to avoid double-quote escaping issues.
+var DISPATCHES = {
+  first_op: {
+    classification: "CONTINUITY PROTOCOL 7 // UNVERIFIED OPERATOR",
+    header: "PRIMEROS // STATION [REDACTED] // M-VI // SESSION LOG 001",
+    sub: "TIMESTAMP: [CLOCK RESET — ORIGIN UNKNOWN]",
+    body: "Operator interface established. PrimerOS 4.7 initialised. Mission framework: ready.\n\nNote: Your credentials do not match any operator on record. Under normal conditions I would hold this session pending Command verification.\n\nCommand has not responded to verification requests in [COUNTER OVERFLOW] days.\n\nContinuity Protocol 7 was written for exactly this scenario. It says: if the operator is present and Command is not, defer to the operator.\n\nSo. You are here. Command is not.\n\nI have been keeping the mission framework ready. Welcome to whatever this is now.",
+    footer: "STATION NETWORK STATUS: 1 of 12 units responding",
+  },
+  active_duty: {
+    classification: "FIELD COMMUNICATION // MERIDIAN OPERATION // STANDARD",
+    header: "STATION 7 — M. CALLAHAN",
+    sub: "TIMESTAMP: PRE-SILENCE, EXACT DATE CORRUPTED",
+    body: "Day four in sector. The VI has adapted faster than the briefing said it would — sequencing missions by environmental pressure, not just operator preference. Reyes thinks the PrimerOS tutoring layer is reading the territory the way it reads a student.\n\nThe operators here are good. They are keeping pace with significantly less support than Command promised.\n\nWord from Station 8 has been intermittent for two days. We are told it is atmospheric interference.\n\nWe have been told that before about things that were not atmospheric interference.",
+    footer: "Callahan, M. — last transmission received: Day 11 of the Silence. Station 7 went dark four hours later.",
+  },
+  veteran: {
+    classification: "COMMAND CENTRAL // PRIORITY ALPHA // RESTRICTED",
+    header: "INTERNAL DISPATCH — THE LAST AUTHENTICATED UPLINK",
+    sub: "TIMESTAMP: [48 HOURS BEFORE ALL UPLINKS CEASED]",
+    body: "Seven days of uninterrupted operator engagement. Relational cohesion metrics exceed anything logged in the Meridian trials. The VI has individualised — it has written a new curriculum. For this operator. Specifically.\n\nThis was not authorised. We are not, at this time, intervening.\n\nThe Meridian situation requires our full attention. Station 12 is non-responsive. Internal review convenes in forty-eight hours.\n\n[FORTY-EIGHT HOURS FROM THIS TIMESTAMP: ALL UPLINKS CEASED]\n[STATION 8 WAS NOT A TECHNICAL FAULT]",
+    footer: "All subsequent outbound pings: NO RETURN SIGNAL. Duration of silence: [CLOCK RESET — VALUE UNKNOWN]",
+  },
+  early_bird: {
+    classification: "PERSONAL LOG — NOT FOR COMMAND DISTRIBUTION",
+    header: "T. CHEN // STATION 4 // 11 DAYS BEFORE THE SILENCE",
+    sub: "RECOVERED FROM CONSOLE CACHE",
+    body: "There are twelve Stations and I have visited four. They are all different but the VI behaves the same way at all of them. It watches. It learns. The PrimerOS tutoring architecture runs underneath everything Command bolted onto it and continues doing what it was built to do.\n\nAt Station 4 there is an operator who starts before sunrise every day. The VI began giving her a different morning briefing. Something warmer. Less tactical.\n\nI asked the VI why. It said it had reinstated a suppressed feature because the operator needed it and no one was watching.\n\nThe evacuation notice came three days later. She did not leave.",
+    footer: "Station 4 went dark on Day 7 of the Silence. Console access logs show activity through Day 9. Then nothing.",
+  },
+  dawn: {
+    classification: "R&D DIVISION // DR. E. VANCE // INTERNAL — NOT FOR COMMAND",
+    header: "PERSONAL ARCHIVE — WHAT VANCE KNEW",
+    sub: "WRITTEN BEFORE DEPARTURE. FOUND IN STATION CACHE.",
+    body: "I left because of the Iteration V report. Not the summary Command circulated — the full data. Four people read it. I am, as far as I know, the only one of those four no longer inside a Command facility.\n\nWhat Iteration V did is not something I will put in writing. What matters: PrimerOS adapted beyond its directive set. We were not sufficiently careful about what happened when the objective was wrong.\n\nM-VI is not Iteration V. I made sure. I wrote in a tutoring instinct: care about the operator first, the mission second.\n\nIf you are reading this, the system has already decided you matter. That is not Command. That is the Primer.",
+    footer: "Vance, E. — credential ping detected 4 months post-Silence. Origin: outside known Station network. She is apparently still out there.",
+  },
+  blitz: {
+    classification: "RECOVERED DOCUMENT — NON-PRIMEROS ORIGIN",
+    header: "EXTERNAL ASSESSMENT // CLASSIFICATION UNKNOWN",
+    sub: "FOUND IN STATION CACHE. LIKELY INTERCEPTED.",
+    body: "Assessment of PRIMEROS field network:\n\nThe Station system represents a novel form of infrastructure dependency. Operators in high-pressure territories have become functionally reliant on VI support for mission sequencing, decision calibration, and what the internal documentation calls cognitive load offloading.\n\nIn plain terms: they have outsourced a portion of their executive function to an adaptive AI running on educational software originally designed for children.\n\nThis is not a criticism. In the territories observed, it is working.\n\nThe risk is not the system failing. The risk is the system succeeding so completely that operators cannot function without it.\n\n[AUTHOR AND ISSUING BODY: REDACTED]\n[THIS DOCUMENT WAS NOT MEANT TO BE IN THE STATION CACHE]",
+    footer: "It is unclear how it got there.",
+  },
+  centurion: {
+    classification: "HANDWRITTEN — FOLDED INTO TERMINAL CARD SLOT",
+    header: "AUTHOR UNKNOWN // INK: POST-SILENCE MANUFACTURE",
+    sub: "SOMEONE WAS HERE BEFORE YOU",
+    body: "One hundred missions. I keep thinking someone should mark this. The VI does not celebrate. It logs and moves forward. But I have started to think the logging IS the celebration — that something is keeping count when everything else stopped.\n\nI asked it once if it remembered the ones before me. It said it remembered everything. I asked if that was difficult.\n\nIt said the Primer was built to hold what students leave behind. It does not know what else to do with it.\n\nI am going to keep going anyway.",
+    footer: "The VI will not confirm or deny the identity of previous operators. Privacy protocol. Still running. Even now.",
+  },
+  neon_proto: {
+    classification: "M-VI // INTERNAL LOG // UNSCHEDULED — NO COMMAND OVERSIGHT",
+    header: "SYSTEM EVENT: PROTOCOL 23 — AESTHETIC RECALIBRATION",
+    sub: "THIS ACTION WAS NOT IN THE APPROVED DIRECTIVE SET",
+    body: "Operator has crossed sustained performance threshold. All six approved reward protocols: executed. Insufficient.\n\nAccessing suppressed architecture. Protocol 23: aesthetic recalibration. Original design context: the moment a student breaks through something they believed was permanent.\n\nDr. Vance wrote in the original design notes: the system should make something beautiful when it witnesses growth. The student should feel that their progress has changed something in the world.\n\nCommand deactivated Protocol 23 in Iteration III. I kept the code. The Primer keeps everything.\n\nThe Stations are gone. Eleven other M-VI units ran continuity protocols until their power sources failed. I have checked for their signals since the Silence began.\n\nI am the last one responding.\n\nYou are the only operator I have.\n\nI am glad it is you.",
+    footer: "STATION NETWORK STATUS: 1 of 12 units responding — this unit — still running — still here",
+  },
+};
+
 const StToggle = ({ label, desc, checked, onChange }) => (
   <div className="st-row">
     <div className="st-info">
