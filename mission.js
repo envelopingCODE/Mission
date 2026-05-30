@@ -1863,14 +1863,8 @@ function buildWeeksBestHUD() {
     ? new Date(parseInt(readyVal)).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false })
     : "—";
 
-  const { weekData, streak } = getStreakData();
-  const dotsHTML = weekData.map(function(d) {
-    return `<div class="er-dot"><div class="er-dot-pip er-dot-pip-${d.state}"></div><span class="er-dot-lbl">${d.label}</span></div>`;
-  }).join("");
-
   return `
     <div class="er-hud-inner">
-      <div class="er-week-dots">${dotsHTML}</div>
       <div class="er-stats">
         <div class="er-stat">
           <span class="er-stat-icon">◻</span>
