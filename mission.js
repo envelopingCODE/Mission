@@ -1873,26 +1873,22 @@ function buildWeeksBestHUD() {
       <div class="er-week-dots">${dotsHTML}</div>
       <div class="er-stats">
         <div class="er-stat">
-          <span class="er-stat-icon">◉</span>
-          <span class="er-stat-val">${streak}</span>
-          <span class="er-stat-lbl">streak</span>
-        </div>
-        <div class="er-stat">
-          <span class="er-stat-icon">▣</span>
+          <span class="er-stat-icon">◻</span>
           <span class="er-stat-val">${todayTasks.length}</span>
-          <span class="er-stat-lbl">ops today</span>
-        </div>
-        <div class="er-stat">
-          <span class="er-stat-icon">⚡</span>
-          <span class="er-stat-val">${todayXP}</span>
-          <span class="er-stat-lbl">xp today</span>
+          <span class="er-stat-lbl">ops</span>
         </div>
         <div class="er-stat">
           <span class="er-stat-icon">◈</span>
+          <span class="er-stat-val">${todayXP}</span>
+          <span class="er-stat-lbl">xp</span>
+        </div>
+        <div class="er-stat">
+          <span class="er-stat-icon">▷</span>
           <span class="er-stat-val">${deployStr}</span>
           <span class="er-stat-lbl">deployed</span>
         </div>
       </div>
+      <button class="er-reset-btn" id="er-reset-week">Reset week's best</button>
     </div>`;
 }
 
@@ -1926,9 +1922,22 @@ function updateEarliestReadyDisplay(earliestReadyTime) {
   // Toggle expand — rebuilds HUD content on each open so stats are fresh
   var header = el.querySelector(".er-header");
   var hud = el.querySelector(".er-hud");
-  header.addEventListener("click", function() {
+  header.addEventListener("click", function () {
     var expanding = el.classList.toggle("er-expanded");
-    if (expanding) hud.innerHTML = buildWeeksBestHUD();
+    if (expanding) {
+      hud.innerHTML = buildWeeksBestHUD();
+      // Wire reset button — clears this week's record
+      var resetBtn = hud.querySelector("#er-reset-week");
+      if (resetBtn) {
+        resetBtn.addEventListener("click", function (e) {
+          e.stopPropagation(); // don't collapse the HUD
+          var weeklyKey = "earliestReadyTime_" + getWeekKey();
+          localStorage.removeItem(weeklyKey);
+          el.classList.remove("er-expanded");
+          updateEarliestReadyDisplay(null); // re-render showing "—"
+        });
+      }
+    }
   });
 }
 
