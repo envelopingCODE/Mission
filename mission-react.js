@@ -3070,36 +3070,30 @@ const DispatchModal = ({ entry, onClose }) => {
 
 // ── Purge confirmation terminal — 3-stage emergency sequence ─────────────
 const PurgeConfirmModal = ({ onClose }) => {
-  var [stage,   setStage]   = React.useState("confirm"); // confirm|executing|done
+  var [stage,    setStage]    = React.useState("confirm");
   var [purgePct, setPurgePct] = React.useState(0);
-  var [glitch,  setGlitch]  = React.useState(false);
-  var pIvRef = React.useRef(null);
-  var gIvRef = React.useRef(null);
+  var [glitch,   setGlitch]   = React.useState(false);
 
+  // Keydown: only dismiss on confirm stage
   React.useEffect(() => {
     var fn = (e) => {
       if (stage === "confirm" && (e.key === "Escape" || e.key === "n" || e.key === "N")) onClose();
     };
     document.addEventListener("keydown", fn);
-    return () => {
-      document.removeEventListener("keydown", fn);
-      if (pIvRef.current) clearInterval(pIvRef.current);
-      if (gIvRef.current) clearInterval(gIvRef.current);
-    };
+    return () => document.removeEventListener("keydown", fn);
   }, [stage]);
 
-  function startPurge() {
-    setStage("executing");
-    setPurgePct(0);
+  // Intervals live here — not in the click handler — so stage-change cleanup can't kill them
+  React.useEffect(() => {
+    if (stage !== "executing") return;
     var pct = 0;
-    // Fill bar over ~2.6s
-    pIvRef.current = setInterval(function() {
+    var piv = setInterval(function() {
       pct += 2;
-      setPurgePct(Math.min(100, Math.floor(pct)));
+      var floored = Math.min(100, Math.floor(pct));
+      setPurgePct(floored);
       if (pct >= 100) {
-        clearInterval(pIvRef.current);
-        clearInterval(gIvRef.current);
-        // Execute the actual purge at 100%
+        clearInterval(piv);
+        clearInterval(giv);
         Object.keys(localStorage).forEach(function(k) {
           if (k === "storyCodex" || k === "seenFallbacks" || k === "operatorCondition" ||
               k === "lastStoryEvent" || k === "lastKnownStreak" ||
@@ -3116,14 +3110,14 @@ const PurgeConfirmModal = ({ onClose }) => {
         setTimeout(onClose, 2600);
       }
     }, 52);
-    // Random glitch flashes during execution
-    gIvRef.current = setInterval(function() {
+    var giv = setInterval(function() {
       if (Math.random() < 0.35) {
         setGlitch(true);
         setTimeout(function() { setGlitch(false); }, 60 + Math.random() * 100);
       }
     }, 180);
-  }
+    return function() { clearInterval(piv); clearInterval(giv); };
+  }, [stage]);
 
   return (
     <div className="purge-overlay" onClick={stage === "confirm" ? onClose : undefined}>
@@ -3144,7 +3138,7 @@ const PurgeConfirmModal = ({ onClose }) => {
             <div className="purge-line">&gt;</div>
             <div className="purge-line">&gt; CONTINUE?</div>
             <div className="purge-buttons">
-              <button className="purge-btn purge-btn-y" onClick={startPurge}>[Y] CONFIRM PURGE</button>
+              <button className="purge-btn purge-btn-y" onClick={() => { setPurgePct(0); setStage("executing"); }}>[Y] CONFIRM PURGE</button>
               <button className="purge-btn purge-btn-n" onClick={onClose}>[N] ABORT</button>
             </div>
           </div>
