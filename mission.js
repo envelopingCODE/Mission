@@ -2101,26 +2101,19 @@ function updateEarliestReadyDisplay(earliestReadyTime) {
     <div class="er-hud"></div>
   `;
 
-  // Toggle expand — rebuilds HUD content on each open so stats are fresh
-  var header = el.querySelector(".er-header");
+  // Pre-build HUD so it's ready immediately on hover (no lazy load)
   var hud = el.querySelector(".er-hud");
-  header.addEventListener("click", function () {
-    var expanding = el.classList.toggle("er-expanded");
-    if (expanding) {
-      hud.innerHTML = buildWeeksBestHUD();
-      // Wire reset button — clears this week's record
-      var resetBtn = hud.querySelector("#er-reset-week");
-      if (resetBtn) {
-        resetBtn.addEventListener("click", function (e) {
-          e.stopPropagation(); // don't collapse the HUD
-          var weeklyKey = "earliestReadyTime_" + getWeekKey();
-          localStorage.removeItem(weeklyKey);
-          el.classList.remove("er-expanded");
-          updateEarliestReadyDisplay(null); // re-render showing "—"
-        });
-      }
-    }
-  });
+  hud.innerHTML = buildWeeksBestHUD();
+
+  // Wire reset button only — hover expand/collapse handled by CSS :hover
+  var resetBtn = hud.querySelector("#er-reset-week");
+  if (resetBtn) {
+    resetBtn.addEventListener("click", function (e) {
+      e.stopPropagation();
+      localStorage.removeItem("earliestReadyTime_" + getWeekKey());
+      updateEarliestReadyDisplay(null);
+    });
+  }
 }
 
 // One-time migration: move the old all-time key into the current week's key

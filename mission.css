@@ -545,21 +545,21 @@ input[type="text"] {
 .er-label        { font-size:0.44rem; letter-spacing:0.2em; color:rgba(16,221,50,0.42); text-transform:uppercase; }
 .er-time-display {
   font-size: 1.3rem; font-weight: 700; letter-spacing: 0.03em;
-  color: rgba(16,232,58,0.96); line-height: 1.1;
-  text-shadow: 0 0 12px rgba(16,221,50,0.4);
+  color: #86dfff; line-height: 1.1;
+  text-shadow: 0 0 10px rgba(134,223,255,0.3);
   font-variant-numeric: tabular-nums;
 }
 .er-sublabel { font-size:0.4rem; letter-spacing:0.14em; color:rgba(16,221,50,0.25); text-transform:uppercase; margin-top:1px; }
 
-/* Chevron — anchored top-right, rotates when expanded */
-.er-chevron { display:flex; align-items:center; color:rgba(16,221,50,0.32); transition:color 0.2s ease; flex-shrink:0; align-self:flex-start; }
+/* Chevron — anchored top-right, rotates on hover */
+.er-chevron { display:flex; align-items:center; color:rgba(16,221,50,0.28); transition:color 0.2s ease; flex-shrink:0; align-self:flex-start; }
 .er-chevron-svg { transition:transform 0.32s cubic-bezier(0.4,0,0.2,1); }
-.er-expanded .er-chevron { color:rgba(16,221,50,0.6); }
-.er-expanded .er-chevron-svg { transform:rotate(180deg); }
+.earliest-ready-display:hover .er-chevron { color:rgba(16,221,50,0.6); }
+.earliest-ready-display:hover .er-chevron-svg { transform:rotate(180deg); }
 
-/* Expanding HUD panel */
-.er-hud { max-height:0; overflow:hidden; transition:max-height 0.38s cubic-bezier(0.4,0,0.2,1); }
-.er-expanded .er-hud { max-height:190px; }
+/* Expanding HUD panel — hover-triggered, whole container is the surface */
+.er-hud { max-height:0; overflow:hidden; transition:max-height 0.4s cubic-bezier(0.4,0,0.2,1); }
+.earliest-ready-display:hover .er-hud { max-height:190px; }
 
 .er-hud-inner { padding-top:10px; }
 .er-divider { height:1px; background:rgba(16,221,50,0.1); margin:0 0 9px; }
@@ -571,24 +571,25 @@ input[type="text"] {
   gap: 0;
   margin-bottom: 9px;
 }
+/* Fixed 3-row grid per cell — icons/values/labels all share the same row heights */
 .er-stat-cell {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-rows: 16px 1.6rem 11px;
   align-items: center;
-  gap: 3px;
-  padding: 4px 2px;
+  justify-items: center;
+  padding: 2px 4px 4px;
   border-right: 1px solid rgba(16,221,50,0.09);
 }
 .er-stat-cell:last-child { border-right: none; }
-.er-stat-ico  { height:14px; display:flex; align-items:center; color:rgba(16,221,50,0.38); }
-.er-stat-num  { font-family:"Courier New",monospace; font-size:0.96rem; font-weight:700; color:rgba(16,232,58,0.9); text-shadow:0 0 7px rgba(16,221,50,0.3); line-height:1; letter-spacing:0.01em; }
-.er-stat-tag  { font-family:"Courier New",monospace; font-size:0.38rem; color:rgba(16,221,50,0.28); letter-spacing:0.14em; text-transform:uppercase; }
+.er-stat-ico  { color:rgba(16,221,50,0.38); display:flex; align-items:center; justify-content:center; }
+.er-stat-num  { font-family:"Courier New",monospace; font-size:0.96rem; font-weight:700; color:#86dfff; text-shadow:0 0 7px rgba(134,223,255,0.28); line-height:1; letter-spacing:0.01em; display:flex; align-items:center; }
+.er-stat-tag  { font-family:"Courier New",monospace; font-size:0.38rem; color:rgba(16,221,50,0.28); letter-spacing:0.14em; text-transform:uppercase; display:flex; align-items:center; }
 
 /* Delta color states */
-.er-delta-early { color:rgba(16,232,58,1)!important; text-shadow:0 0 10px rgba(16,221,50,0.55)!important; }
-.er-delta-late  { color:rgba(255,90,60,0.82)!important; text-shadow:none!important; }
-.er-delta-best  { color:rgba(16,232,58,1)!important; font-size:0.62rem!important; letter-spacing:0.1em!important; text-shadow:0 0 10px rgba(16,221,50,0.55)!important; }
-.er-delta-none  { color:rgba(16,221,50,0.3)!important; }
+.er-delta-early { color:rgba(134,223,255,0.95)!important; text-shadow:0 0 8px rgba(134,223,255,0.38)!important; }
+.er-delta-late  { color:rgba(255,70,50,0.85)!important; text-shadow:none!important; font-size:0.78rem!important; }
+.er-delta-best  { color:rgba(134,223,255,0.95)!important; letter-spacing:0.08em!important; text-shadow:0 0 10px rgba(134,223,255,0.42)!important; }
+.er-delta-none  { color:rgba(134,223,255,0.28)!important; }
 
 /* Condition row */
 .er-condition-row { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
@@ -5549,7 +5550,8 @@ svg.minimalist-face {
   border-radius: 1px; padding: 0 2px; letter-spacing: 0.06em;
   box-shadow: 0 0 6px rgba(15,210,75,0.4);
 }
-.dispatch-bracket { color: rgba(200,235,255,0.5); }
+.dispatch-bracket     { color: rgba(200,235,255,0.5); }
+.dispatch-bracket-err { color: rgba(255,65,50,0.78); text-shadow: 0 0 6px rgba(255,65,50,0.3); }
 
 /* Footer + close */
 .dispatch-footer {

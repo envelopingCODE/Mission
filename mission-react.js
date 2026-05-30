@@ -2829,12 +2829,16 @@ function renderHearts(value) {
 }
 
 // ── Dispatch modal component ──────────────────────────────────────────────
-// Renders [REDACTED] as visual black bars; other [BRACKETS] in amber.
+// [REDACTED] = glowing bar. Error brackets = red. Info brackets = blue-white.
+var ERR_BRACKET = /COUNTER OVERFLOW|CORRUPTED|ERROR|UNKNOWN|OFFLINE|FAILED|NOT FOUND|CLOCK RESET|ORIGIN UNKNOWN|TIMESTAMP CORRUPTED|DATE CORRUPTED|SIGNAL LOST|LINES LOST|TECHNICAL FAULT|ALL UPLINKS CEASED|DATA LOSS/;
 function renderDispatchBody(text) {
   var parts = text.split(/(\[REDACTED\]|\[[A-Z0-9 _\-—]+\])/g);
   return parts.map(function(part, i) {
     if (part === "[REDACTED]") return React.createElement("span", { key: i, className: "dispatch-redacted" }, "██████████");
-    if (/^\[[A-Z0-9 _\-—]+\]$/.test(part)) return React.createElement("span", { key: i, className: "dispatch-bracket" }, part);
+    if (/^\[[A-Z0-9 _\-—]+\]$/.test(part)) {
+      var cls = ERR_BRACKET.test(part) ? "dispatch-bracket-err" : "dispatch-bracket";
+      return React.createElement("span", { key: i, className: cls }, part);
+    }
     return part;
   });
 }
