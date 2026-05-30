@@ -3031,6 +3031,7 @@ const PurgeConfirmModal = ({ onClose }) => {
       if (k === "storyCodex" || k === "seenFallbacks" || k === "operatorCondition" ||
           k === "lastStoryEvent" || k === "lastKnownStreak" ||
           k === "timerSkinUnlocked" || k === "timerSkinActive" ||
+          k === "shownAchievements" ||
           k.startsWith("dispatch_read_")) {
         localStorage.removeItem(k);
       }
