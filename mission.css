@@ -505,10 +505,12 @@ input[type="text"] {
 /* Earliest ready time display styling */
 /* ── Week's Best — expandable HUD (green from original design) ── */
 .earliest-ready-display {
+  display: inline-block;        /* shrink to content width when collapsed */
+  width: auto;
   background: rgba(0,0,0,0.4);
   border: 1px solid rgba(16,221,50,0.3);
   border-radius: 8px;
-  padding: 8px 15px;
+  padding: 8px 12px;
   margin-top: 10px;
   font-family: "Courier New", monospace;
   color: rgba(16,221,50,0.9);
@@ -516,6 +518,8 @@ input[type="text"] {
   text-shadow: 0 1px 2px rgba(0,0,0,0.5);
   transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
 }
+/* When expanded, ensure stats grid has room */
+.earliest-ready-display.er-expanded { min-width: 210px; }
 .earliest-ready-display:hover {
   background: rgba(0,0,0,0.6);
   border-color: rgba(16,221,50,0.5);
@@ -718,6 +722,66 @@ input[type="text"] {
 
 /* Stale tooltip rules removed — Week's Best auto-resets Monday,
    no browser tooltip, reset button lives inside the expanded HUD. */
+
+/* ── Settings sub-screens: navigation, themes, achievements ─────────────── */
+.st-back {
+  background: transparent; border: none; color: rgba(134,223,255,0.5);
+  font-size: 1.3rem; cursor: pointer; padding: 0 0.4rem 0 0; line-height: 1;
+  transition: color 0.2s;
+}
+.st-back:hover { color: #86dfff; }
+
+.st-nav-section { padding-top: 0.5rem; }
+.st-nav-btn {
+  display: flex; align-items: center; gap: 0.6rem; width: 100%;
+  background: rgba(134,223,255,0.05); border: 1px solid rgba(134,223,255,0.1);
+  border-radius: 6px; color: rgba(255,255,255,0.6); font-family: "Courier New", monospace;
+  font-size: 0.63rem; letter-spacing: 0.06em; padding: 0.55rem 0.7rem;
+  cursor: pointer; margin-bottom: 0.4rem; transition: background 0.2s, color 0.2s;
+}
+.st-nav-btn:hover { background: rgba(134,223,255,0.1); color: #86dfff; }
+.st-nav-icon { font-size: 0.75rem; color: rgba(134,223,255,0.5); }
+.st-nav-arrow { margin-left: auto; color: rgba(134,223,255,0.3); font-size: 1rem; }
+
+/* Skin tiles */
+.skin-tile {
+  border: 1px solid rgba(134,223,255,0.12); border-radius: 8px;
+  padding: 0.8rem 0.9rem; margin-bottom: 0.55rem;
+  background: rgba(0,0,0,0.3); transition: border-color 0.2s;
+}
+.skin-tile-active  { border-color: rgba(134,223,255,0.45); background: rgba(134,223,255,0.06); }
+.skin-tile-locked  { opacity: 0.5; }
+.skin-tile:hover   { border-color: rgba(134,223,255,0.28); }
+.skin-tile-header  { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.3rem; }
+.skin-tile-name    { font-family: "Courier New", monospace; font-size: 0.72rem; font-weight: 700; color: #86dfff; letter-spacing: 0.06em; flex: 1; }
+.skin-tile-desc    { font-family: "Courier New", monospace; font-size: 0.52rem; color: rgba(255,255,255,0.4); margin-bottom: 0.3rem; }
+.skin-tile-condition { font-family: "Courier New", monospace; font-size: 0.48rem; color: rgba(134,223,255,0.35); letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 0.4rem; }
+.skin-badge        { font-family: "Courier New", monospace; font-size: 0.45rem; border-radius: 3px; padding: 0.1rem 0.35rem; letter-spacing: 0.08em; text-transform: uppercase; }
+.skin-badge-active   { background: rgba(134,223,255,0.15); color: #86dfff; border: 1px solid rgba(134,223,255,0.3); }
+.skin-badge-unlocked { background: rgba(15,223,171,0.12);  color: #0fdfab;  border: 1px solid rgba(15,223,171,0.3); }
+.skin-badge-locked   { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.3); border: 1px solid rgba(255,255,255,0.1); }
+.skin-tile-btn { font-family: "Courier New", monospace; font-size: 0.55rem; letter-spacing: 0.1em; text-transform: uppercase; background: rgba(134,223,255,0.1); border: 1px solid rgba(134,223,255,0.3); border-radius: 4px; color: #86dfff; padding: 0.25rem 0.6rem; cursor: pointer; transition: background 0.2s; }
+.skin-tile-btn:hover { background: rgba(134,223,255,0.2); }
+.skin-tile-btn-dim   { opacity: 0.45; }
+
+/* Achievement tiles */
+.ach-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
+.ach-tile {
+  border: 1px solid rgba(255,255,255,0.06); border-radius: 6px;
+  padding: 0.6rem 0.5rem; background: rgba(0,0,0,0.25);
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  position: relative; opacity: 0.45; transition: border-color 0.2s;
+}
+.ach-unlocked { opacity: 1; border-color: rgba(134,223,255,0.2); background: rgba(134,223,255,0.04); }
+.ach-icon  { font-size: 1rem; color: rgba(134,223,255,0.4); }
+.ach-unlocked .ach-icon { color: #86dfff; }
+.ach-name  { font-family: "Courier New", monospace; font-size: 0.55rem; font-weight: 700; color: rgba(255,255,255,0.6); text-align: center; letter-spacing: 0.04em; }
+.ach-unlocked .ach-name { color: #86dfff; }
+.ach-desc  { font-family: "Courier New", monospace; font-size: 0.44rem; color: rgba(255,255,255,0.25); text-align: center; }
+.ach-check { position: absolute; top: 4px; right: 5px; font-size: 0.55rem; color: #0fdfab; }
+.ach-prog-wrap { width: 100%; margin-top: 3px; position: relative; height: 3px; background: rgba(255,255,255,0.08); border-radius: 2px; }
+.ach-prog-bar  { height: 100%; background: rgba(134,223,255,0.5); border-radius: 2px; }
+.ach-prog-label { font-family: "Courier New", monospace; font-size: 0.4rem; color: rgba(134,223,255,0.4); margin-top: 3px; text-align: center; }
 
 .er-reset-btn {
   display: block;

@@ -2558,6 +2558,52 @@ const initializeReactComponents = () => {
 // GEAR_PATH on one line — Babel 6 rejects multi-line JSX string attributes
 const GEAR_PATH = "M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z";
 
+// ── Achievement & skin data helpers (read localStorage directly) ──────────
+function _ls(key) { try { return localStorage.getItem(key); } catch(e) { return null; } }
+function _lsJson(key) { try { return JSON.parse(_ls(key)) || []; } catch(e) { return []; } }
+
+function _totalTasks() {
+  return Object.keys(localStorage).filter(function(k){ return k.startsWith("dailyTasks_"); })
+    .reduce(function(s,k){ return s + _lsJson(k).length; }, 0);
+}
+function _bestDay() {
+  var counts = Object.keys(localStorage).filter(function(k){ return k.startsWith("dailyTasks_"); })
+    .map(function(k){ return _lsJson(k).length; });
+  return counts.length ? Math.max.apply(null, counts) : 0;
+}
+function _currentStreak() {
+  var streak = 0, now = new Date();
+  for (var i = 0; i < 366; i++) {
+    var d = new Date(now); d.setDate(d.getDate() - i);
+    var key = d.toISOString().split("T")[0];
+    if (_ls("readyTime_" + key) || _ls("streakRepairComplete_" + key)) { streak++; } else { break; }
+  }
+  return streak;
+}
+function _earliestHour() {
+  var hours = Object.keys(localStorage).filter(function(k){ return k.startsWith("readyTime_"); })
+    .map(function(k){ return new Date(parseInt(_ls(k))).getHours(); });
+  return hours.length ? Math.min.apply(null, hours) : 99;
+}
+
+const SKINS_DEF = [
+  { id:"eclipse", name:"Eclipse", desc:"Dark corona — cyan ring of fire",          unlocked:true,  condition:null },
+  { id:"neon",    name:"Neon",    desc:"Cyan → violet → magenta gradient arc",     unlocked:function(){ return !!_ls("timerSkinUnlocked"); }, condition:"10 objectives in one day" },
+  { id:"phantom", name:"???",     desc:"Classified",                               unlocked:false, condition:"7-day streak", secret:true },
+  { id:"forge",   name:"???",     desc:"Classified",                               unlocked:false, condition:"4 Pomodoro cycles in one session", secret:true },
+];
+
+const ACHIEVEMENTS_DEF = [
+  { id:"first_op",    cat:"Operator",     icon:"▣", name:"First Op",       desc:"Complete your first objective",       check:function(){ return _totalTasks()>=1; },          prog:null },
+  { id:"blitz",       cat:"Operator",     icon:"◈", name:"Blitz",          desc:"10 objectives in a single day",       check:function(){ return _bestDay()>=10; },            prog:function(){ return [Math.min(_bestDay(),10),10]; } },
+  { id:"centurion",   cat:"Operator",     icon:"◉", name:"Centurion",      desc:"100 total objectives cleared",        check:function(){ return _totalTasks()>=100; },        prog:function(){ return [Math.min(_totalTasks(),100),100]; } },
+  { id:"active_duty", cat:"Signal Corps", icon:"▲", name:"Active Duty",    desc:"3-day operational streak",            check:function(){ return _currentStreak()>=3; },       prog:function(){ return [Math.min(_currentStreak(),3),3]; } },
+  { id:"veteran",     cat:"Signal Corps", icon:"▲", name:"Veteran",        desc:"7-day operational streak",            check:function(){ return _currentStreak()>=7; },       prog:function(){ return [Math.min(_currentStreak(),7),7]; } },
+  { id:"early_bird",  cat:"Signal Corps", icon:"◷", name:"Early Bird",     desc:"Signal deployed before 08:00",       check:function(){ return _earliestHour()<8; },         prog:null },
+  { id:"dawn",        cat:"Signal Corps", icon:"◷", name:"Dawn Protocol",  desc:"Signal deployed before 07:00",       check:function(){ return _earliestHour()<7; },         prog:null },
+  { id:"neon_proto",  cat:"Classified",   icon:"◐", name:"Neon Protocol",  desc:"Unlock the Neon ring skin",           check:function(){ return !!_ls("timerSkinUnlocked"); }, prog:null },
+];
+
 const StToggle = ({ label, desc, checked, onChange }) => (
   <div className="st-row">
     <div className="st-info">
@@ -2573,8 +2619,10 @@ const StToggle = ({ label, desc, checked, onChange }) => (
 
 const SettingsPanel = () => {
   const [open,         setOpen]         = React.useState(false);
+  const [view,         setView]         = React.useState("main"); // "main"|"themes"|"achievements"
   const [cfg,          setCfg]          = React.useState(() => window.AppSettings.get());
   const [ollamaStatus, setOllamaStatus] = React.useState("idle");
+  const [activeSkin,   setActiveSkin]   = React.useState(() => localStorage.getItem("timerSkinActive") || "eclipse");
 
   React.useEffect(() => {
     window.toggleSettingsPanel = () => setOpen((o) => !o);
@@ -2609,6 +2657,108 @@ const SettingsPanel = () => {
   const DOT   = { idle: "rgba(134,223,255,0.2)", checking: "rgba(244,197,66,0.8)", ok: "#0fdfab", fail: "#ff6b6b" };
   const DLBL  = { idle: "Not tested", checking: "Checking…", ok: "Connected", fail: "Unreachable" };
   const SHORTCUTS = [["c","Capture"],["r","Ready signal"],["t","Timer"],["s","Settings"],["Esc","Dismiss"]];
+
+  // ── Themes screen (early return — must be before main return) ──────────
+  if (view === "themes" && open) return (
+    <div>
+      <button className={"settings-gear settings-gear-active"} onClick={() => setOpen(false)} title="Close">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <circle cx="12" cy="12" r="3"/><path d={GEAR_PATH} />
+        </svg>
+      </button>
+      <div className="settings-panel settings-panel-open">
+        <div className="settings-hdr">
+          <button className="st-back" onClick={() => setView("main")}>‹</button>
+          <span>Themes</span>
+        </div>
+        <div className="settings-body">
+          {SKINS_DEF.map(function(skin) {
+            var isUnlocked = skin.unlocked === true || (typeof skin.unlocked === "function" && skin.unlocked());
+            var isActive   = activeSkin === skin.id;
+            return (
+              <div key={skin.id} className={"skin-tile" + (isActive ? " skin-tile-active" : "") + (!isUnlocked ? " skin-tile-locked" : "")}>
+                <div className="skin-tile-header">
+                  <span className="skin-tile-name">{skin.secret && !isUnlocked ? "???" : skin.name}</span>
+                  {isActive    && <span className="skin-badge skin-badge-active">Active</span>}
+                  {isUnlocked && !isActive && <span className="skin-badge skin-badge-unlocked">Unlocked</span>}
+                  {!isUnlocked && <span className="skin-badge skin-badge-locked">◉ Locked</span>}
+                </div>
+                <div className="skin-tile-desc">{skin.secret && !isUnlocked ? "Complete the unlock condition to reveal" : skin.desc}</div>
+                {skin.condition && (
+                  <div className="skin-tile-condition">{isUnlocked ? "Unlocked — " + skin.condition : skin.condition}</div>
+                )}
+                {isUnlocked && !isActive && (
+                  <button className="skin-tile-btn" onClick={() => {
+                    localStorage.setItem("timerSkinActive", skin.id);
+                    setActiveSkin(skin.id);
+                    if (typeof window._onTimerSkinUnlock === "function") window._onTimerSkinUnlock(skin.id);
+                  }}>Set active</button>
+                )}
+                {isUnlocked && isActive && (
+                  <button className="skin-tile-btn skin-tile-btn-dim" onClick={() => {
+                    localStorage.setItem("timerSkinActive", "eclipse");
+                    setActiveSkin("eclipse");
+                    if (typeof window._onTimerSkinUnlock === "function") window._onTimerSkinUnlock("eclipse");
+                  }}>Restore default</button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+
+  // ── Achievements screen (early return) ────────────────────────────────
+  if (view === "achievements" && open) {
+    var cats = [];
+    ACHIEVEMENTS_DEF.forEach(function(a) { if (cats.indexOf(a.cat) === -1) cats.push(a.cat); });
+    return (
+      <div>
+        <button className={"settings-gear settings-gear-active"} onClick={() => setOpen(false)} title="Close">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <circle cx="12" cy="12" r="3"/><path d={GEAR_PATH} />
+          </svg>
+        </button>
+        <div className="settings-panel settings-panel-open">
+          <div className="settings-hdr">
+            <button className="st-back" onClick={() => setView("main")}>‹</button>
+            <span>Achievements</span>
+          </div>
+          <div className="settings-body">
+            {cats.map(function(cat) {
+              var inCat = ACHIEVEMENTS_DEF.filter(function(a){ return a.cat === cat; });
+              return (
+                <div key={cat} className="st-section">
+                  <div className="st-section-title">{cat}</div>
+                  <div className="ach-grid">
+                    {inCat.map(function(a) {
+                      var unlocked = a.check();
+                      var prog = a.prog ? a.prog() : null;
+                      return (
+                        <div key={a.id} className={"ach-tile" + (unlocked ? " ach-unlocked" : "")}>
+                          <span className="ach-icon">{a.icon}</span>
+                          <span className="ach-name">{a.name}</span>
+                          <span className="ach-desc">{a.desc}</span>
+                          {prog && !unlocked && (
+                            <div className="ach-prog-wrap">
+                              <div className="ach-prog-bar" style={{ width: (prog[0]/prog[1]*100) + "%" }} />
+                              <span className="ach-prog-label">{prog[0]}/{prog[1]}</span>
+                            </div>
+                          )}
+                          {unlocked && <span className="ach-check">✓</span>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -2683,6 +2833,20 @@ const SettingsPanel = () => {
                 <span className="st-desc">{l}</span>
               </div>
             ))}
+          </div>
+
+          {/* Navigation to sub-screens */}
+          <div className="st-section st-nav-section">
+            <button className="st-nav-btn" onClick={() => setView("themes")}>
+              <span className="st-nav-icon">◐</span>
+              <span>Themes</span>
+              <span className="st-nav-arrow">›</span>
+            </button>
+            <button className="st-nav-btn" onClick={() => setView("achievements")}>
+              <span className="st-nav-icon">▲</span>
+              <span>Achievements</span>
+              <span className="st-nav-arrow">›</span>
+            </button>
           </div>
 
         </div>
