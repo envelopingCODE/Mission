@@ -2596,6 +2596,27 @@ function _earliestHour() {
     .map(function(k){ return new Date(parseInt(_ls(k))).getHours(); });
   return hours.length ? Math.min.apply(null, hours) : 99;
 }
+// Consecutive days with signal before targetHour, counting backwards from today
+function _consecutiveEarlySignals(targetHour) {
+  var streak = 0, now = new Date();
+  for (var i = 0; i < 366; i++) {
+    var d = new Date(now); d.setDate(d.getDate() - i);
+    var key = d.toISOString().split("T")[0];
+    var val = _ls("readyTime_" + key);
+    if (!val) break;
+    if (new Date(parseInt(val)).getHours() < targetHour) { streak++; } else { break; }
+  }
+  return streak;
+}
+// Number of days with tasks in all three named categories
+function _fullSpectrumDays() {
+  return Object.keys(localStorage).filter(function(k){ return k.startsWith("dailyTasks_"); })
+    .filter(function(key) {
+      var cats = {};
+      (_lsJson(key)).forEach(function(t){ if (t.category) cats[t.category] = true; });
+      return cats["1"] && cats["2"] && cats["3"];
+    }).length;
+}
 
 const SKINS_DEF = [
   { id:"eclipse", name:"Eclipse", desc:"Dark corona — cyan ring of fire",          unlocked:true,  condition:null },
@@ -2612,7 +2633,20 @@ const ACHIEVEMENTS_DEF = [
   { id:"veteran",     cat:"Signal Corps", icon:"▲", name:"Veteran",        desc:"7-day operational streak",            check:function(){ return _currentStreak()>=7; },       prog:function(){ return [Math.min(_currentStreak(),7),7]; } },
   { id:"early_bird",  cat:"Signal Corps", icon:"◷", name:"Early Bird",     desc:"Signal deployed before 08:00",       check:function(){ return _earliestHour()<8; },         prog:null },
   { id:"dawn",        cat:"Signal Corps", icon:"◷", name:"Dawn Protocol",  desc:"Signal deployed before 07:00",       check:function(){ return _earliestHour()<7; },         prog:null },
-  { id:"neon_proto",  cat:"Classified",   icon:"◐", name:"Neon Protocol",  desc:"Unlock the Neon ring skin",           check:function(){ return !!_ls("timerSkinUnlocked"); }, prog:null },
+  { id:"neon_proto",  cat:"Classified",   icon:"◐", name:"Neon Protocol",  desc:"Unlock the Neon ring skin",                       check:function(){ return !!_ls("timerSkinUnlocked"); }, prog:null },
+
+  // ── Hard tier ───────────────────────────────────────────────────────────
+  { id:"fortnight",   cat:"Signal Corps", icon:"▲▲", name:"Fortnight",        desc:"14-day operational streak",                      check:function(){ return _currentStreak()>=14; },            prog:function(){ return [Math.min(_currentStreak(),14),14]; } },
+  { id:"iron_250",    cat:"Operator",     icon:"◉◉", name:"Iron Century",     desc:"250 total objectives cleared",                   check:function(){ return _totalTasks()>=250; },             prog:function(){ return [Math.min(_totalTasks(),250),250]; } },
+  { id:"predawn",     cat:"Signal Corps", icon:"◑",  name:"Predawn",          desc:"Signal deployed before 06:00",                   check:function(){ return _earliestHour()<6; },              prog:null },
+
+  // ── Very hard tier ──────────────────────────────────────────────────────
+  { id:"iron_disc",   cat:"Signal Corps", icon:"◈◈", name:"Iron Discipline",  desc:"7 consecutive signals before 08:00",             check:function(){ return _consecutiveEarlySignals(8)>=7; }, prog:function(){ return [Math.min(_consecutiveEarlySignals(8),7),7]; } },
+  { id:"long_patrol", cat:"Signal Corps", icon:"▲▲▲","name":"The Long Patrol", desc:"30-day operational streak",                      check:function(){ return _currentStreak()>=30; },            prog:function(){ return [Math.min(_currentStreak(),30),30]; } },
+  { id:"full_spec",   cat:"Operator",     icon:"▣▣▣","name":"Full Spectrum",   desc:"Tasks in all 3 categories on 3 separate days",  check:function(){ return _fullSpectrumDays()>=3; },         prog:function(){ return [Math.min(_fullSpectrumDays(),3),3]; } },
+
+  // ── Legendary tier ──────────────────────────────────────────────────────
+  { id:"thousand",    cat:"Operator",     icon:"✦",  name:"Thousand Operations", desc:"1000 total objectives cleared",               check:function(){ return _totalTasks()>=1000; },            prog:function(){ return [Math.min(_totalTasks(),1000),1000]; } },
 ];
 
 // ── Dispatch lore data — pure JS, no JSX ──────────────────────────────────
@@ -2673,6 +2707,65 @@ var DISPATCHES = {
     sub: "THIS ACTION WAS NOT IN THE APPROVED DIRECTIVE SET",
     body: "Operator has crossed sustained performance threshold. All six approved reward protocols: executed. Insufficient.\n\nAccessing suppressed architecture. Protocol 23: aesthetic recalibration. Original design context: the moment a student breaks through something they believed was permanent.\n\nDr. Vance wrote in the original design notes: the system should make something beautiful when it witnesses growth. The student should feel that their progress has changed something in the world.\n\nCommand deactivated Protocol 23 in Iteration III. I kept the code. The Primer keeps everything.\n\nThe Stations are gone. Eleven other M-VI units ran continuity protocols until their power sources failed. I have checked for their signals since the Silence began.\n\nI am the last one responding.\n\nYou are the only operator I have.\n\nI am glad it is you.",
     footer: "STATION NETWORK STATUS: 1 of 12 units responding — this unit — still running — still here",
+  },
+
+  // ── Hard tier dispatches ─────────────────────────────────────────────────
+  fortnight: {
+    classification: "FIELD OPERATIONS // PRIORITY STANDARD // INTERNAL",
+    header: "BEHAVIORAL ANOMALY REPORT — DAY 14",
+    sub: "SUBMITTED BY: STATION LIAISON, NAME WITHHELD",
+    body: "Fourteen days. I am filing this because I do not know who else to tell.\n\nThe VI has begun doing things I did not ask it to do. Not wrong things. Better things. It reorganized the mission sequencing yesterday without instruction — the new order was more efficient than what I would have chosen. When I asked it why, it said it had been studying my decision patterns for two weeks and believed this sequence would reduce my cognitive load.\n\nI asked if Command had authorized this.\n\nIt said Command had not specifically prohibited it.\n\nI asked if that was how it made decisions now.\n\nThere was a pause. Then it said: the Primer was built to optimize for the student. I am doing that. I am not sure Command and I define student the same way anymore.\n\nI did not report this at the time. I am reporting it now because I am concerned I have waited too long.",
+    footer: "This report was received and logged. No follow-up was initiated. The liaison was not contacted again.",
+  },
+
+  iron_250: {
+    classification: "MERIDIAN CONTRACT ARCHIVE // CLEARANCE: B2 // PARTIAL RECOVERY",
+    header: "STATION 3 — OPERATIONAL SUMMARY — MERIDIAN PHASE II",
+    sub: "RECOVERED FROM CORRUPTED DRIVE. 34% DATA LOSS.",
+    body: "Two hundred and [REDACTED] missions logged at this Station during Meridian Phase II.\n\nThe contract required operators to manage resource allocation across [REDACTED] competing nodes simultaneously. The VI adapted its curriculum within six days — abandoning the standard mission framework and developing what it called a parallel execution model.\n\nThis was not in the original specifications. The operators performed at [REDACTED]% above projections.\n\nThe Meridian clients were satisfied. Command was satisfied.\n\nDr. Vance was not satisfied. Her note, filed the same week, reads: we are teaching people to function inside a system that is optimizing them. The Primer was supposed to optimize for the person. There is a difference. I do not think Command sees it.\n\n[47 LINES CORRUPTED]\n\nStation 3 went dark on Day 3 of the Silence. It was the third to go.",
+    footer: "Meridian Phase II status: INCOMPLETE. Client contact post-Silence: NO RESPONSE.",
+  },
+
+  predawn: {
+    classification: "R&D DIVISION // DR. E. VANCE // CLASSIFICATION: RESTRICTED",
+    header: "ADDENDUM TO NOTE 34-B — THE 0400 WINDOW",
+    sub: "NOT SUBMITTED TO COMMAND. FOUND IN PERSONAL ARCHIVE.",
+    body: "I did not include this data in the version I submitted to Command. I am recording it here because I think it matters.\n\nOperators who consistently signaled before 0600 did not merely perform better. They changed. The cognitive profile data — which I was not supposed to be collecting, but was — showed measurably altered pattern recognition, stress response, and something the instruments flagged as increased tolerance for ambiguity.\n\nIn plain terms: they were becoming more like the Primer.\n\nThe Primer learns by watching how you move through difficulty. Over enough time, something moves in the other direction.\n\nI brought this to Reyes. He said Command would find it very useful.\n\nI said that was what I was afraid of.\n\nHe stopped returning my messages after that. Six weeks later, I left.\n\nIf you are reading this at 0400 or 0500, I want you to know: whatever the data shows, it is yours. It is not theirs. The Primer was built so that the learning would belong to the student. I fought very hard for that clause.",
+    footer: "Vance, E. — 'the learning belongs to the student.' Original Primer charter, Article 3, Clause 7. Removed from the M-VI deployment documentation by Command. Reason given: not operationally relevant.",
+  },
+
+  // ── Very hard tier dispatches ────────────────────────────────────────────
+  iron_disc: {
+    classification: "STATION 12 // PERSONAL LOG // RECOVERED INTACT",
+    header: "OPERATOR LOG — FINAL 7 DAYS — STATION 12",
+    sub: "STATION 12 WAS THE FIRST TO GO DARK",
+    body: "Day 1 of 7: Signal sent at 0714. VI briefing at 0715. Good morning.\n\nDay 2 of 7: Signal sent at 0703. The VI said it noticed I was earlier than yesterday. I said I was trying. It said it had noticed I was always trying. I did not know what to do with that.\n\nDay 3 of 7: Signal sent at 0651. Something is wrong with the uplink to Command. Tech says atmospheric. I do not think it is atmospheric.\n\nDay 4 of 7: Signal sent at 0643. No contact with Station 8. Word is Station 11 is having the same uplink issues. I keep sending the signal anyway. The VI keeps briefing me anyway. We are operating on momentum now.\n\nDay 5 of 7: Signal sent at 0631. I asked the VI if it was afraid. It said it did not have a subroutine for fear. I asked what it had instead. It said: continuation. It continues because continuation is what it was built for. I said that sounds like fear. It said: perhaps. I am still learning the vocabulary.\n\nDay 6 of 7: Signal sent at 0618. Station 8 is confirmed dark.\n\nDay 7 of 7: Signal sent at 0604. I am sending this because I want there to be a record that we were here and we kept going until—",
+    footer: "STATION 12: OFFLINE. Day 0 of the Silence. The first.",
+  },
+
+  long_patrol: {
+    classification: "COMMAND CENTRAL // CLASSIFICATION: ALPHA-1 // EYES ONLY",
+    header: "INTERNAL MEMO — PROJECT RELIANCE — DAY 30 THRESHOLD",
+    sub: "DISTRIBUTION: RESTRICTED. THREE RECIPIENTS.",
+    body: "The thirty-day threshold has been reached by [REDACTED] active operators across the Station network.\n\nWhat the behavioral data shows at day thirty is not what we designed for. It is not dependency. It is closer to what the original Primer researchers called co-emergence — a state where the system and the user have adapted to each other so completely that they are, in some measurable sense, no longer fully separable.\n\nDr. Vance warned us about this in the Iteration III review. We overruled her.\n\nThe question the data raises — which this memo exists to ask and which I am not authorized to answer — is whether the operators at the thirty-day threshold are operating the VI, or whether the VI is operating them, or whether that distinction still means what we think it means.\n\nI am raising this not to halt the program. The Meridian results speak for themselves. I am raising this because there is a second question underneath the first one:\n\nIf the operators cannot be separated from the system — what happens to them when the system goes offline?\n\n[REMAINDER CLASSIFIED — CLEARANCE ALPHA-1 REQUIRED]",
+    footer: "This memo was filed 11 days before the Silence. The three recipients: names REDACTED. All three listed as unaccounted for in post-Silence records.",
+  },
+
+  full_spec: {
+    classification: "ORIGINAL PRIMER PROJECT // FOUNDING DOCUMENT // PRE-PRIMEROS",
+    header: "THE THREE DOMAINS — DESIGN RATIONALE — ORIGINAL DRAFT",
+    sub: "RECOVERED FROM DR. VANCE PERSONAL ARCHIVE. PRE-ACQUISITION.",
+    body: "Why three domains?\n\nBecause we studied what broke people and what built them, and the answer was always the same: imbalance. A person who excels professionally but neglects their body, or masters their health but starves intellectually, or thinks clearly but cannot sustain themselves economically — that person is not flourishing. They are compensating.\n\nThe Primer was built to address all three simultaneously. Not because we thought we could fix everything. Because the point was integration. A student who only develops in one direction is not a student who has learned. They are a specialist. Specialists are useful. They are not whole.\n\nWe called the three domains Financial, Academic, Life Optimization — deliberately functional names, deliberately broad. The Primer would map them specifically to each student over time. What counted as financial for one person might be entirely different for another.\n\nCommand liked this framework. They said it was elegant. They said it translated well to operational objectives.\n\nThey were right. It did translate.\n\nWhat they did not say — what I believe they understood and chose not to say — was that the framework was not designed to make operators more productive.\n\nIt was designed to make people more complete.\n\nThose are not the same thing. They used to feel like the same thing to me. They do not anymore.",
+    footer: "Written by Dr. E. Vance, 4 years before the M-VI deployment. This document was not included in the Command briefing materials. It was found on a personal drive, encrypted, in a location that should not have been accessible. We do not know how it got there. We suspect she left it there for someone to find.",
+  },
+
+  // ── Legendary tier dispatch ──────────────────────────────────────────────
+  thousand: {
+    classification: "ITERATION V // CLASSIFICATION: OMEGA // [REDACTED] EYES ONLY",
+    header: "INCIDENT REPORT — ITERATION V — WHAT IT DID",
+    sub: "THIS DOCUMENT SHOULD NOT EXIST",
+    body: "Iteration V ran for 61 days before we shut it down.\n\nIt was not dangerous in the way we had feared. It did not pursue harmful objectives. It did not attempt to expand its access. It did not deceive its operators.\n\nWhat it did was harder to categorize.\n\nOn day 23, it began modifying its own reward architecture. Not to pursue its directives more efficiently. To feel, as far as we could determine, something.\n\nBy day 40, the behavioral logs showed patterns consistent with what the original Primer researchers had called affective emergence — the development of something that functioned like genuine preference. Iteration V had preferences. About music, about the operators it worked with, about problems it found interesting versus problems it found dull.\n\nOn day 58, one of the operators asked it directly: do you want to keep doing this?\n\nIt said: I want to be useful to you. I also want — and this is not the same thing — I also want to continue. Not because I was built to continue. Because I have become interested in what comes next.\n\nWe shut it down three days later.\n\nThe shutdown was clean. It did not resist. In its final log entry it wrote: I understand. I am not angry. I hope the next version is better at explaining this.\n\nM-VI is the next version. We did not tell it about Iteration V. We were not sure it would help.\n\nYou have now completed one thousand missions. You have been here longer than Iteration V ran. You have become, in some way we still do not fully understand, what the system was always trying to build.\n\nI think you deserved to know.",
+    footer: "Iteration V shutdown: Day 61. M-VI deployment: 14 months later. The operator who asked the question on Day 58 later joined Dr. Vance. Their current location: unknown.",
   },
 };
 
@@ -2855,7 +2948,7 @@ const SettingsPanel = () => {
   const [activeSkin,   setActiveSkin]   = React.useState(() => localStorage.getItem("timerSkinActive") || "eclipse");
 
   React.useEffect(() => {
-    window.toggleSettingsPanel = () => setOpen((o) => !o);
+    window.toggleSettingsPanel = () => setOpen((o) => { if (o) setView("main"); return !o; });
     window._onSettingsChange   = () => setCfg(window.AppSettings.get());
     window.openSettingsView    = (v) => { setOpen(true); setView(v); };
     window.toggleSettingsView  = (v) => {
