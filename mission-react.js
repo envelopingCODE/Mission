@@ -2785,8 +2785,10 @@ function dispatchDocId(id) {
   return "ST-ARC-" + n.toString(16).toUpperCase().padStart(4, "0");
 }
 
-const DispatchModal = ({ id, onClose }) => {
-  var d = DISPATCHES[id];
+const DispatchModal = ({ payload, onClose }) => {
+  // payload is either a string ID (achievement) or a raw dispatch object (story event)
+  var d = (typeof payload === "string") ? DISPATCHES[payload] : payload;
+  var id = (typeof payload === "string") ? payload : (payload && payload.id ? payload.id : null);
   if (!d) return null;
 
   var fullText = d.body;
@@ -2799,7 +2801,7 @@ const DispatchModal = ({ id, onClose }) => {
 
   // Escape / read flag
   React.useEffect(() => {
-    localStorage.setItem("dispatch_read_" + id, "1");
+    if (id) localStorage.setItem("dispatch_read_" + id, "1");
     var fn = (e) => { if (e.key === "Escape") onClose(); };
     document.addEventListener("keydown", fn);
     return () => {
@@ -2913,16 +2915,15 @@ const DispatchModal = ({ id, onClose }) => {
   );
 };
 
-// Standalone portal — completely outside SettingsPanel, own React root.
-// window.showDispatch(id) renders the modal; onClose hides it.
+// Standalone portal — accepts a string ID (achievement) or raw dispatch object (story event)
 const DispatchPortal = () => {
-  const [id, setId] = React.useState(null);
+  const [payload, setPayload] = React.useState(null);
   React.useEffect(() => {
-    window.showDispatch = (did) => setId(did);
+    window.showDispatch = (data) => setPayload(data);
     return () => { delete window.showDispatch; };
   }, []);
-  if (!id) return null;
-  return <DispatchModal id={id} onClose={() => setId(null)} />;
+  if (!payload) return null;
+  return <DispatchModal payload={payload} onClose={() => setPayload(null)} />;
 };
 
 const StToggle = ({ label, desc, checked, onChange }) => (
@@ -3056,7 +3057,7 @@ const SettingsPanel = () => {
             <circle cx="12" cy="12" r="3"/><path d={GEAR_PATH} />
           </svg>
         </button>
-        <div className="settings-panel settings-panel-open">
+        <div className="settings-panel settings-panel-open settings-view-achievements">
           <div className="settings-hdr">
             <button className="st-back" onClick={() => setView("main")}>‹</button>
             <span>Achievements</span>

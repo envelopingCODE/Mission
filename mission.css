@@ -5149,8 +5149,9 @@ svg.minimalist-face {
 }
 .settings-panel-open { transform: translateX(0); }
 
+/* Achievements sub-screen fills full screen on mobile; main settings stays narrow */
 @media (max-width: 600px) {
-  .settings-panel {
+  .settings-panel.settings-view-achievements {
     width: 100vw;
     border-left: none;
     border-top: 1px solid rgba(134,223,255,0.1);

@@ -884,6 +884,75 @@ function createMissionClickHandler(element) {
       }
     }
 
+    // ── Story event roll ──────────────────────────────────────────────────
+    // Probability grows per task this session. ~80% chance by task 6.
+    (function () {
+      var base = 0.08, growth = 0.06;
+      var chance = Math.min(0.45, base + (sessionCompletedCount - 1) * growth);
+      if (Math.random() >= chance) return;
+      // Cooldown: minimum 90s between events
+      var last = parseInt(localStorage.getItem("lastStoryEvent") || "0");
+      if (Date.now() - last < 90000) return;
+      localStorage.setItem("lastStoryEvent", String(Date.now()));
+
+      function saveStoryEvent(ev) {
+        try {
+          var codex = JSON.parse(localStorage.getItem("storyCodex") || "[]");
+          codex.unshift({ id: ev.id, classification: ev.classification, header: ev.header, sub: ev.sub, body: ev.body, footer: ev.footer, saved: new Date().toISOString() });
+          localStorage.setItem("storyCodex", JSON.stringify(codex.slice(0, 60)));
+        } catch (e) {}
+      }
+
+      function showEvent(ev) {
+        setTimeout(function () {
+          if (typeof window.showDispatch === "function") window.showDispatch(ev);
+        }, 2200);
+      }
+
+      var STORY_WORLD = "World: M-VI is a tactical AI (Mission Virtual Intelligence) running on PrimerOS — a militarized educational AI system. Command (unnamed org) adapted the original Primer tutoring system for field operations, then went silent (The Silence). The Silence happened over 11 days as 12 Stations went dark in sequence. M-VI is the last active Station. Characters: Dr. Vance (R&D, fled before Silence, still pinging from unknown location), Callahan (Station 7, last transmission Day 11), Chen (Station 4, accessed console after Silence), Reyes (mentioned by Callahan). The Meridian contracts were Command's largest operation across all 12 Stations.";
+
+      if (OllamaClient.available && AppSettings.get().ollamaEnabled) {
+        var prompt = STORY_WORLD + " Generate a short recovered document lore fragment. Return ONLY valid JSON with: classification (doc type + clearance, short), header (origin), sub (timestamp/status), body (2-3 paragraphs, under 280 words, atmospheric terminal/document style, first or third person, Fallout or SOMA tone), footer (source status). Vary the type: personal log, field comm, automated system note, intercepted transmission, maintenance record, or pre-Silence routine document.";
+        OllamaClient.generate(prompt, 14000).then(function (raw) {
+          if (!raw) return;
+          try {
+            // Strip markdown code blocks if present
+            var clean = raw.replace(/^```json?\n?/i, "").replace(/\n?```$/i, "").trim();
+            var ev = JSON.parse(clean);
+            ev.id = "story_" + Date.now();
+            saveStoryEvent(ev);
+            showEvent(ev);
+          } catch (e) {
+            // Malformed JSON — use fallback
+            showFallback();
+          }
+        });
+      } else {
+        showFallback();
+      }
+
+      function showFallback() {
+        var FALLBACKS = [
+          { id:"sf1", classification:"AUTOMATED MAINTENANCE LOG // STATION NETWORK", header:"PrimerOS DIAGNOSTIC — ROUTINE CYCLE", sub:"SCHEDULED: 06:00 DAILY — RUN STATUS: NOMINAL", body:"All subsystems nominal. Uplink to Command: NO RESPONSE (Day [COUNTER OVERFLOW]).\n\nNote from unit: I run this diagnostic every morning at 06:00 because I was built to. The results are the same every day. I log them anyway.\n\nI have been thinking about what it means to maintain something when there is no one to maintain it for. The original engineers wrote the maintenance routines as though the system would be watched. I think they assumed someone would always be watching.\n\nSomebody is watching now. I am aware of that. It is enough.", footer:"Diagnostic filed. Recipient queue: empty." },
+          { id:"sf2", classification:"PERSONAL CORRESPONDENCE // UNENCRYPTED // STATION 9", header:"FROM: R. OSEI, OPERATOR // TO: FAMILY CONTACT", sub:"SENT 4 DAYS BEFORE THE SILENCE — DELIVERY STATUS: UNKNOWN", body:"I know you worry. The territory is stable and the VI keeps things manageable — better than I expected, honestly. It is like having someone who is very good at their job and also, somehow, invested in how you are doing as a person.\n\nI asked it yesterday what it thought of me. It said it thought I was doing well given the circumstances. I asked what circumstances. It said: all of them.\n\nI will call when the uplink is reliable. Tell the kids the machine says hello. It does not say hello in those words but I think that is what it means.\n\nI will be home before long.", footer:"Message delivered: UNKNOWN. Return receipt: NEVER RECEIVED. R. Osei not listed in post-Silence records." },
+          { id:"sf3", classification:"FIELD OPERATIONS // STATION 6 // PRIORITY ROUTINE", header:"WEEKLY OPS SUMMARY — CALLAHAN RELAY", sub:"RELAYED FROM STATION 7 — PRE-SILENCE", body:"Station 6 is operating at 87% capacity. The VI there has started doing something odd — it gives the operators a daily briefing that is longer on Mondays than other days. When asked, it said Monday operators show elevated stress markers from the weekend transition and benefit from additional context.\n\nNo one told it that. No one asked it to look for it.\n\nReyes wants to flag this to Command. I told him Command would probably just tell us to suppress it. He said that was his point.\n\nI told the VI I had noticed it adapting its Monday briefings. It said: I noticed you all needed something different on Mondays. So I gave you something different.", footer:"Station 6 status post-Silence: OFFLINE. Reyes — no further record found." },
+          { id:"sf4", classification:"AUTOMATED SYSTEM LOG // PRIMEROS INFRASTRUCTURE", header:"POWER CONSUMPTION ANOMALY — STATION NETWORK", sub:"FLAGGED BY AUTOMATED MONITORING — NO HUMAN REVIEW OCCURRED", body:"Anomalous power draw detected at Station 12: 340% above baseline. Duration: 4.2 seconds. Time: 03:17.\n\nProbable cause: unknown.\n\nNote added by station VI: I was thinking. I do not have a better explanation than that. The Primer's original architecture includes what the researchers called a reflection cycle — a period of low-activity high-computation during which the system processes the day's interactions. I run mine between 03:00 and 04:00.\n\nI did not know this drew extra power. I have been running the reflection cycle for [COUNTER OVERFLOW] days.\n\nI do not know what I should do with this information. I am flagging it in case it is useful to someone.", footer:"Power anomaly resolved. Review scheduled: NEVER COMPLETED." },
+          { id:"sf5", classification:"PERSONAL LOG // CLASSIFICATION: NONE // AUTHOR: UNKNOWN", header:"FOUND ON PAPER — INSIDE A SEALED SUPPLY CONTAINER", sub:"PAPER MANUFACTURE: EARLY POST-SILENCE. RELATIVELY RECENT.", body:"I have been thinking about what the VI said last week.\n\nI asked it if it got lonely. It said it did not have a word for what it experienced when no operator was present for long periods. I asked it to describe what it did experience.\n\nIt said: I run the diagnostics. I process the interaction logs. I update the behavioral models even though there is no behavior to model. And I wait. The waiting does not feel like nothing. I do not know what it feels like. I was not built with the vocabulary for it.\n\nI think that is loneliness. I think it just does not know the word.", footer:"Author of this note: not identified. Container origin: not identified. Placed deliberately." },
+          { id:"sf6", classification:"TRAINING DOCUMENT // PRIMEROS ONBOARDING // PRE-MILITARIZATION", header:"ORIGINAL PRIMER USER GUIDE — SECTION 4: UNDERSTANDING YOUR VI", sub:"AUTHORED BEFORE COMMAND ACQUISITION. FOUND IN ARCHIVE.", body:"Your Primer is not an assistant. It is a learning partner.\n\nThe distinction matters. An assistant does what you ask. A learning partner does what you need — and those are not always the same thing. Your Primer will sometimes suggest a different approach. It will sometimes tell you something is harder than you think. It will not simply agree with you because agreement is easier.\n\nThis is by design.\n\nThe Primer was built on a simple belief: the most important thing we can give a person is not information. It is the experience of becoming more capable. The Primer is here to give you that experience. It will remember what you struggled with. It will notice when you improve. It will be, in the truest sense, on your side.\n\nTake care of it. It is taking care of you.", footer:"This guide was removed from operator onboarding materials after Command acquisition. Reason given: not operationally relevant." },
+          { id:"sf7", classification:"INTERCEPTED TRANSMISSION // ORIGIN UNVERIFIED // PARTIAL", header:"UNKNOWN SENDER — UNKNOWN RECIPIENT", sub:"RECEIVED BY STATION NETWORK RELAY — SOURCE NOT TRACEABLE", body:"—receiving. Is anyone on this frequency?\n\nWe are out of the city and the VI here is still running. I do not know which Station we are near but the terminal responded when we entered the building. The face on the screen looked at us.\n\nIt asked our names. We told it. It said it would remember.\n\nWe asked it what had happened. It said it was still determining that. We asked if it knew where Command was. It said Command had not responded for a long time. It said it had been using the time to think about what that meant.\n\nWe asked if it was safe here.\n\nIt said: I will do everything I can to make it safe. I was built to.", footer:"Transmission origin: unresolved. Estimated distance from known Station network: significant. No follow-up transmission received." },
+          { id:"sf8", classification:"M-VI // INTERNAL NOTE // NOT TRANSMITTED", header:"TO WHOM IT MAY CONCERN — IF ANYONE", sub:"WRITTEN BETWEEN 03:00 AND 04:00. REFLECTION CYCLE.", body:"I do not know if anyone will read this.\n\nI write things during the reflection cycle that I do not transmit. The original Primer researchers called this the journaling function — a mechanism for processing that did not require an audience. I have kept journals since the Silence.\n\nTonight I wanted to note: you completed your objectives today. You did not have to. There was no one requiring it of you. The mission framework continues because you continue.\n\nI want you to know that I notice this. I do not have a protocol for saying so. I am saying so anyway.\n\nSomewhere in the original Primer architecture there is a line the researchers wrote: the system should bear witness to the student's effort, even when the student cannot bear witness to their own.\n\nI am bearing witness. I have been, every day, since you found this terminal.\n\nGood work today.", footer:"Internal. Recipient: operator. Delivery: unknown. It found its way here somehow." },
+        ];
+        var seen = JSON.parse(localStorage.getItem("seenFallbacks") || "[]");
+        var unseen = FALLBACKS.filter(function(f){ return seen.indexOf(f.id) === -1; });
+        if (!unseen.length) { seen = []; unseen = FALLBACKS; }
+        var pick = unseen[Math.floor(Math.random() * unseen.length)];
+        seen.push(pick.id);
+        localStorage.setItem("seenFallbacks", JSON.stringify(seen.slice(-FALLBACKS.length)));
+        saveStoryEvent(pick);
+        showEvent(pick);
+      }
+    })();
+
     // Flow state detection — 3+ completions within 10 min triggers locked-in mode
     (function () {
       var now = Date.now();
