@@ -5561,6 +5561,20 @@ svg.minimalist-face {
 }
 .dispatch-close:hover { background:rgba(15,210,75,0.05); color:rgba(15,210,75,0.75); }
 
+/* TV shutoff — collapses vertically to a bright line, then to a point */
+@keyframes tvShutoff {
+  0%   { transform:scaleY(1) scaleX(1);     filter:brightness(1);   opacity:1; }
+  18%  { transform:scaleY(0.06) scaleX(1);  filter:brightness(2.8); opacity:1; }
+  42%  { transform:scaleY(0.02) scaleX(0.5); filter:brightness(3.5); opacity:1; }
+  70%  { transform:scaleY(0.01) scaleX(0.08); filter:brightness(4); opacity:1; }
+  100% { transform:scaleY(0)   scaleX(0);   filter:brightness(0);   opacity:0; }
+}
+.dispatch-tv-off {
+  animation: tvShutoff 0.52s cubic-bezier(0.4,0,1,1) forwards !important;
+  transform-origin: center center;
+  overflow: visible !important;
+}
+
 /* Achievement tile lore states */
 .ach-clickable { cursor:pointer; }
 .ach-clickable:hover { border-color:rgba(134,223,255,0.3); }
@@ -5815,12 +5829,24 @@ svg.minimalist-face {
 }
 
 /* Category footer */
+/* Footer row: category left, tap hint right */
+.ach-toast-footer {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 1.2rem 0.45rem;
+}
 .ach-toast-cat {
   font-family: "Courier New", monospace;
   font-size: 0.42rem; letter-spacing: 0.22em;
   color: rgba(15,210,75,0.22); text-transform: uppercase;
-  text-align: right; padding: 0 1.2rem 0.4rem;
 }
+.ach-toast-tap {
+  font-family: "Courier New", monospace;
+  font-size: 0.42rem; letter-spacing: 0.14em;
+  color: rgba(15,210,75,0.35); text-transform: uppercase;
+  animation: achNameBlink 1.6s ease-in-out infinite;
+}
+.ach-toast-clickable { cursor: pointer; }
+.ach-toast-clickable:hover { border-color: rgba(15,210,75,0.6); }
 
 /* ==================== SESSION CEREMONY ==================== */
 .session-ceremony {

@@ -3050,8 +3050,17 @@ const DispatchModal = ({ entry, onClose }) => {
           </div>
         )}
 
-        <button className="dispatch-close" onClick={onClose}
-          style={{ opacity: (phase === "done" || phase === "chosen") ? 1 : 0.35 }}>
+        <button className="dispatch-close"
+          style={{ opacity: (phase === "done" || phase === "chosen") ? 1 : 0.35 }}
+          onClick={function() {
+            if (phase !== "done" && phase !== "chosen") return;
+            // TV shutoff: animate then close
+            var el = document.querySelector(".dispatch-doc");
+            if (el) {
+              el.classList.add("dispatch-tv-off");
+              setTimeout(onClose, 520);
+            } else { onClose(); }
+          }}>
           {(phase === "done" || phase === "chosen") ? "▸ Close Transmission" : "▸ Receiving" + dotStr}
         </button>
       </div>
@@ -3241,13 +3250,25 @@ const AchievementToastSystem = () => {
     }
   }, [current, phase]);
 
-  var isHidden = current && (current.name === "???" || !current.name);
+  var isHidden  = current && (current.name === "???" || !current.name);
+  var hasLore   = current && !!DISPATCHES[current.id];
+  var liveIds   = ["first_op", "survivor", "neon_proto"];
+
+  function openLore() {
+    if (!hasLore) return;
+    var dispMode = liveIds.indexOf(current.id) !== -1 ? "live" : "local";
+    if (typeof window.showDispatch === "function") window.showDispatch(current.id, dispMode);
+    setPhase("exiting");
+  }
 
   return (
     <div>
       {showEdge && <div className="ach-edge-pulse" />}
       {current && (
-        <div className={"ach-toast" + (phase === "exiting" ? " ach-toast-exit" : " ach-toast-enter")}>
+        <div
+          className={"ach-toast" + (phase === "exiting" ? " ach-toast-exit" : " ach-toast-enter") + (hasLore && phase === "showing" ? " ach-toast-clickable" : "")}
+          onClick={phase === "showing" ? openLore : undefined}
+          style={{ pointerEvents: phase === "showing" ? "auto" : "none" }}>
           <div className="ach-toast-scanlines" />
           <div className="ach-toast-top">
             <span className="ach-toast-label">CLASSIFIED RECORD UNLOCKED</span>
@@ -3269,9 +3290,12 @@ const AchievementToastSystem = () => {
               )}
             </div>
           </div>
-          {current.cat && (
-            <div className="ach-toast-cat">{current.cat.toUpperCase()}</div>
-          )}
+          <div className="ach-toast-footer">
+            {current.cat && <span className="ach-toast-cat">{current.cat.toUpperCase()}</span>}
+            {hasLore && phase === "showing" && (
+              <span className="ach-toast-tap">tap to view transmission</span>
+            )}
+          </div>
         </div>
       )}
     </div>
