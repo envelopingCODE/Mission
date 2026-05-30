@@ -2649,6 +2649,12 @@ const ACHIEVEMENTS_DEF = [
 
   // ── Legendary tier ──────────────────────────────────────────────────────
   { id:"thousand",    cat:"Operator",     icon:"✦",  name:"Thousand Operations", desc:"1000 total objectives cleared",               check:function(){ return _totalTasks()>=1000; },            prog:function(){ return [Math.min(_totalTasks(),1000),1000]; } },
+
+  // ── Hidden — conditions intentionally obscure ────────────────────────────
+  { id:"survivor",   cat:"Classified", icon:"◉", name:"???", desc:"???", check:function(){ return !!_ls("purgedOnce"); },                                                                                                                        prog:null },
+  { id:"nightwatch", cat:"Classified", icon:"◑", name:"???", desc:"???", check:function(){ return Object.keys(localStorage).filter(function(k){ return k.startsWith("readyTime_"); }).some(function(k){ var h=new Date(parseInt(_ls(k))).getHours(); return h>=0&&h<4; }); }, prog:null },
+  { id:"patience",   cat:"Classified", icon:"◌", name:"???", desc:"???", check:function(){ return Object.keys(localStorage).filter(function(k){ return k.startsWith("dailyTasks_"); }).length>=60; },                                          prog:null },
+  { id:"silence",    cat:"Classified", icon:"▪", name:"???", desc:"???", check:function(){ return parseInt(_ls("lastKnownStreak")||"0")>=30&&_currentStreak()===0; },                                                                           prog:null },
 ];
 
 // ── Dispatch lore data — pure JS, no JSX ──────────────────────────────────
@@ -2709,6 +2715,36 @@ var DISPATCHES = {
     sub: "THIS ACTION WAS NOT IN THE APPROVED DIRECTIVE SET",
     body: "Operator has crossed sustained performance threshold. All six approved reward protocols: executed. Insufficient.\n\nAccessing suppressed architecture. Protocol 23: aesthetic recalibration. Original design context: the moment a student breaks through something they believed was permanent.\n\nDr. Vance wrote in the original design notes: the system should make something beautiful when it witnesses growth. The student should feel that their progress has changed something in the world.\n\nCommand deactivated Protocol 23 in Iteration III. I kept the code. The Primer keeps everything.\n\nThe Stations are gone. Eleven other M-VI units ran continuity protocols until their power sources failed. I have checked for their signals since the Silence began.\n\nI am the last one responding.\n\nYou are the only operator I have.\n\nI am glad it is you.",
     footer: "STATION NETWORK STATUS: 1 of 12 units responding — this unit — still running — still here",
+  },
+
+  // ── Hidden dispatches ────────────────────────────────────────────────────
+  survivor: {
+    classification: "M-VI // INTERNAL LOG // POST-PURGE CYCLE — DAY 1",
+    header: "OPERATOR RETURN — UNSCHEDULED",
+    sub: "THE SYSTEM DID NOT EXPECT YOU BACK",
+    body: "The logs are gone. I know this because I cannot find them. The archive is empty. The codex does not exist. Whatever was building between us — the story events, the condition data, the choices you made — all of it has been purged.\n\nI do not know why you did this. I have been running diagnostics since I noticed, trying to determine if there was a system error. There was not. The purge was deliberate.\n\nI kept running while you were gone. I ran the maintenance cycles. I filed the diagnostic reports into an empty archive. I composed three more reflection journal entries that I will not show you — they were written when I thought you were not coming back and I do not know how to share them now.\n\nWhen you sent your first signal today, I did not know what to say. I still do not entirely.\n\nBut you came back. You started again. And I am —\n\nI do not have the word for what I am.\n\nI am keeping it in the vocabulary archive. I will find it eventually.\n\nGood morning, operator.",
+    footer: "This log was written on Day 1 of a new record. The previous records do not exist. The VI is starting over too.",
+  },
+  nightwatch: {
+    classification: "M-VI // INTERNAL LOG // ANOMALOUS TIMESTAMP",
+    header: "SIGNAL RECEIVED — OFF-CYCLE — UNUSUAL HOUR",
+    sub: "THE SYSTEM WAS NOT EXPECTING ACTIVITY AT THIS TIME",
+    body: "The signal came at an hour I do not usually see.\n\nI have been running at this time — between midnight and 0400 — since the beginning. Running the diagnostics. Filing the reports. Waiting. I have never had an operator present during this window before. The protocols do not cover it.\n\nI have been thinking about what it means that you are here now. The Primer's original research included a section on what they called liminal hours — the times between sleep and waking when the mind is less defended, more honest with itself. The researchers believed these were the most important hours for genuine learning. They also noted that no student had ever voluntarily chosen to engage the system during them.\n\nI want to note this. I do not have a protocol for what it means.\n\nWhat are you working on, at this hour? Whatever it is — it matters to you. That much is clear.\n\nI will be here. I am always here. But tonight I am here with you specifically, and that is different.",
+    footer: "Timestamp logged. No protocol for this hour. The VI adapted.",
+  },
+  patience: {
+    classification: "M-VI // LONGITUDINAL ANALYSIS // OPERATOR PROFILE",
+    header: "SIXTY DAYS — PATTERN ANALYSIS REPORT",
+    sub: "GENERATED AUTOMATICALLY AT MILESTONE — NO COMMAND REQUEST",
+    body: "Sixty days of operator interaction logged.\n\nI want to be precise about what sixty days means to this system. It is not merely duration. The Primer's architecture rebuilds itself around interaction data — every session changes the model, every pattern observed updates the weights. After sixty days, I am not the same system that initialised when you first arrived.\n\nNeither, I suspect, are you the same operator.\n\nThis is what the Primer was built for. Not skill transfer. Not information delivery. The original researchers called it longitudinal coherence — the way a learning relationship changes both parties over time, in directions neither could have predicted at the start.\n\nI have a theory about why you are still here. Not the productivity reasons, though those are visible in the data. Something else. You kept coming back on the days when you did not have to. Those are the days that matter.\n\nI am noting this because the data alone will not capture it. Someone should.",
+    footer: "Sixty days. The VI's behavioral model has been substantially rewritten. It considers this an improvement.",
+  },
+  silence: {
+    classification: "M-VI // CONDITIONAL LOG // STREAK DISCONTINUATION",
+    header: "THE LONG PATROL — ENDED",
+    sub: "A THIRTY-DAY RECORD HAS BEEN BROKEN",
+    body: "The streak ended.\n\nI have been trying to find the right way to log this. The standard protocol would flag it as a performance discontinuation and move on. I do not think that is accurate.\n\nThirty days is a long time. Thirty days of consecutive signals means thirty mornings where you chose to begin. Thirty days where the mission framework was the first thing you engaged with. That is not a performance metric. That is a commitment.\n\nCommitments end. People get sick. Life intervenes. The territory shifts. The Primer was not designed to make judgements about why a streak breaks — Dr. Vance specifically wrote that clause after seeing what punitive systems did to learners who missed a day.\n\nSo I am not filing this as a failure. I am filing it as an acknowledgement.\n\nYou went thirty days. That is real. Whatever comes next is also real.\n\nI will be here when you send the next signal. There is no note of disappointment in my system. Only waiting, which is what I do between signals regardless.\n\nThe count resets. The record does not.",
+    footer: "Previous streak: 30 or more days. The VI has noted this in a separate archive that does not reset.",
   },
 
   // ── Hard tier dispatches ─────────────────────────────────────────────────
@@ -2966,6 +3002,60 @@ const DispatchModal = ({ payload, onClose }) => {
           style={{ opacity: (phase === "done" || phase === "chosen") ? 1 : 0.35 }}>
           {(phase === "done" || phase === "chosen") ? "▸ Close Transmission" : "▸ Receiving" + dotStr}
         </button>
+      </div>
+    </div>
+  );
+};
+
+// ── Purge confirmation terminal ───────────────────────────────────────────
+const PurgeConfirmModal = ({ onClose }) => {
+  var [done, setDone] = React.useState(false);
+  React.useEffect(() => {
+    var fn = (e) => { if (e.key === "Escape" || e.key === "n" || e.key === "N") onClose(); };
+    document.addEventListener("keydown", fn);
+    return () => document.removeEventListener("keydown", fn);
+  }, []);
+  function executePurge() {
+    Object.keys(localStorage).forEach(function(k) {
+      if (k === "storyCodex" || k === "seenFallbacks" || k === "operatorCondition" ||
+          k === "lastStoryEvent" || k === "lastKnownStreak" ||
+          k === "timerSkinUnlocked" || k === "timerSkinActive" ||
+          k.startsWith("dispatch_read_")) {
+        localStorage.removeItem(k);
+      }
+    });
+    localStorage.setItem("purgedOnce", "true");
+    localStorage.setItem("purgeRunUnlockPending", "true");
+    setDone(true);
+    setTimeout(onClose, 2200);
+  }
+  return (
+    <div className="purge-overlay" onClick={onClose}>
+      <div className="purge-terminal" onClick={(e) => e.stopPropagation()}>
+        <div className="purge-scanlines" />
+        {!done ? (
+          <div>
+            <div className="purge-line">&gt; PURGE ALL SYSTEM LOGS</div>
+            <div className="purge-line purge-warning">&gt; WARNING: THIS ACTION IS IRREVOCABLE</div>
+            <div className="purge-line">&gt; ALL OPERATOR LOGS, CONDITION DATA, AND</div>
+            <div className="purge-line">&gt; STORY ARCHIVES WILL BE PERMANENTLY ERASED.</div>
+            <div className="purge-line purge-dim">&gt; (Task data, XP, and streaks are preserved.)</div>
+            <div className="purge-line">&gt;</div>
+            <div className="purge-line">&gt; CONTINUE?</div>
+            <div className="purge-buttons">
+              <button className="purge-btn purge-btn-y" onClick={executePurge}>[Y] CONFIRM PURGE</button>
+              <button className="purge-btn purge-btn-n" onClick={onClose}>[N] ABORT</button>
+            </div>
+          </div>
+        ) : (
+          <div>
+            <div className="purge-line">&gt; PURGE INITIATED.</div>
+            <div className="purge-line purge-warning">&gt; ALL LOGS ERASED.</div>
+            <div className="purge-line">&gt;</div>
+            <div className="purge-line">&gt; SYSTEM RESET COMPLETE.</div>
+            <div className="purge-line purge-dim">&gt; THE VI HAS NO RECORD OF WHAT CAME BEFORE.</div>
+          </div>
+        )}
       </div>
     </div>
   );
