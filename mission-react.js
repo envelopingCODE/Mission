@@ -2695,18 +2695,77 @@ function dispatchDocId(id) {
 const DispatchModal = ({ id, onClose }) => {
   var d = DISPATCHES[id];
   if (!d) return null;
+
+  var fullText = d.body;
+  // phase: "init" | "failed" | "typing" | "done"
+  var [phase, setPhase]       = React.useState("init");
+  var [dots, setDots]         = React.useState(1);
+  var [displayed, setDisplayed] = React.useState("");
+  var timerRef  = React.useRef(null);
+  var indexRef  = React.useRef(0);
+
+  // Escape / read flag
   React.useEffect(() => {
     localStorage.setItem("dispatch_read_" + id, "1");
     var fn = (e) => { if (e.key === "Escape") onClose(); };
     document.addEventListener("keydown", fn);
-    return () => document.removeEventListener("keydown", fn);
+    return () => {
+      document.removeEventListener("keydown", fn);
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
   }, [id]);
+
+  // Init phase — pulse dots, then transition to failed
+  React.useEffect(() => {
+    if (phase !== "init") return;
+    var iv = setInterval(() => setDots((d) => (d % 3) + 1), 380);
+    var t  = setTimeout(() => { clearInterval(iv); setPhase("failed"); }, 1350);
+    return () => { clearInterval(iv); clearTimeout(t); };
+  }, [phase]);
+
+  // Failed phase — brief pause, then start typing
+  React.useEffect(() => {
+    if (phase !== "failed") return;
+    var t = setTimeout(() => setPhase("typing"), 650);
+    return () => clearTimeout(t);
+  }, [phase]);
+
+  // Typing phase — character-by-character with variable speed
+  React.useEffect(() => {
+    if (phase !== "typing") return;
+    indexRef.current = 0;
+    setDisplayed("");
+    var typeNext = function () {
+      var i = indexRef.current;
+      if (i >= fullText.length) { setPhase("done"); return; }
+      var ch = fullText[i];
+      indexRef.current = i + 1;
+      setDisplayed(function (prev) { return prev + ch; });
+      var delay = ch === "\n" ? (fullText[i + 1] === "\n" ? 90 : 55) : (8 + Math.random() * 18);
+      timerRef.current = setTimeout(typeNext, delay);
+    };
+    timerRef.current = setTimeout(typeNext, 60);
+    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
+  }, [phase]);
+
+  // Skip to end on body click during typing
+  var skipToEnd = function () {
+    if (phase !== "typing") return;
+    if (timerRef.current) clearTimeout(timerRef.current);
+    indexRef.current = fullText.length;
+    setDisplayed(fullText);
+    setPhase("done");
+  };
+
+  var dotStr = ".".repeat(dots);
+
   return (
     <div className="dispatch-overlay" onClick={onClose}>
       <div className="dispatch-doc" onClick={(e) => e.stopPropagation()}>
         <div className="dispatch-scanlines" />
         <div className="dispatch-corner dispatch-corner-tl" />
         <div className="dispatch-corner dispatch-corner-br" />
+
         <div className="dispatch-hdr">
           <div className="dispatch-meta-row">
             <span className="dispatch-class">{d.classification}</span>
@@ -2714,14 +2773,47 @@ const DispatchModal = ({ id, onClose }) => {
           </div>
           <div className="dispatch-origin">{d.header}<span className="dispatch-cursor" /></div>
           {d.sub && <div className="dispatch-sub">{d.sub}</div>}
-          <div className="dispatch-status">DECRYPTION COMPLETE // SOURCE: STATION NETWORK ARCHIVE</div>
         </div>
+
         <div className="dispatch-rule" />
-        <div className="dispatch-body">{renderDispatchBody(d.body)}</div>
+
+        <div className={"dispatch-body" + (phase === "typing" ? " dispatch-body-live" : "")}
+             onClick={skipToEnd}>
+          {(phase === "init" || phase === "failed") && (
+            <div className="dispatch-uplink">
+              <span className="dispatch-uplink-line">
+                {"ATTEMPTING TO INITIALIZE UPLINK" + dotStr}
+              </span>
+              {phase === "failed" && (
+                <span>
+                  {"\n\n"}
+                  <span className="dispatch-uplink-fail">UPLINK FAILED</span>
+                  {"\n"}
+                  <span className="dispatch-uplink-cache">
+                    READING FROM LOCAL CACHE{dotStr}
+                  </span>
+                </span>
+              )}
+            </div>
+          )}
+          {(phase === "typing" || phase === "done") && (
+            <span>
+              {renderDispatchBody(displayed)}
+              {phase === "typing" && <span className="dispatch-type-cur" />}
+            </span>
+          )}
+          {phase === "typing" && (
+            <div className="dispatch-skip-hint">click to skip</div>
+          )}
+        </div>
+
         <div className="dispatch-rule" />
-        {d.footer && <div className="dispatch-footer">{d.footer}</div>}
-        <button className="dispatch-close" onClick={onClose}>
-          ▸ Close Transmission
+        {(phase === "done") && d.footer && (
+          <div className="dispatch-footer">{d.footer}</div>
+        )}
+        <button className="dispatch-close" onClick={onClose}
+          style={{ opacity: phase === "done" ? 1 : 0.35 }}>
+          {phase === "done" ? "▸ Close Transmission" : "▸ Receiving" + dotStr}
         </button>
       </div>
     </div>
