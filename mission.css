@@ -5873,6 +5873,58 @@ svg.minimalist-face {
 .ach-toast-clickable { cursor: pointer; }
 .ach-toast-clickable:hover { border-color: rgba(15,210,75,0.6); }
 
+/* ── Settings breadcrumb ─────────────────────────────────────────────────── */
+.st-breadcrumb { color:rgba(134,223,255,0.25); font-size:0.85em; margin-right:0.2rem; }
+
+/* ── Purge inline (in main settings System section) ─────────────────────── */
+.purge-trigger-inline {
+  background:transparent; border:1px solid rgba(255,80,60,0.18);
+  color:rgba(255,80,60,0.38); font-family:"Courier New",monospace;
+  font-size:0.54rem; letter-spacing:0.12em; padding:0.35rem 0.7rem;
+  cursor:pointer; border-radius:2px; transition:color 0.2s, border-color 0.2s;
+}
+.purge-trigger-inline:hover { color:rgba(255,80,60,0.75); border-color:rgba(255,80,60,0.42); }
+
+/* ── M-VI Demo panel ─────────────────────────────────────────────────────── */
+.demo-emotion-grid {
+  display:grid; grid-template-columns:repeat(3,1fr); gap:5px; margin-bottom:0.5rem;
+}
+.demo-emotion-btn {
+  font-family:"Courier New",monospace; font-size:0.54rem; letter-spacing:0.06em;
+  background:rgba(134,223,255,0.05); border:1px solid rgba(134,223,255,0.14);
+  color:rgba(134,223,255,0.5); border-radius:3px; padding:0.32rem 0.2rem;
+  cursor:pointer; transition:background 0.15s, color 0.15s, border-color 0.15s;
+  text-align:center;
+}
+.demo-emotion-btn:hover { background:rgba(134,223,255,0.1); color:rgba(134,223,255,0.85); border-color:rgba(134,223,255,0.3); }
+.demo-emotion-active   { background:rgba(134,223,255,0.15)!important; color:#86dfff!important; border-color:rgba(134,223,255,0.45)!important; }
+.demo-feature-row { display:flex; align-items:center; gap:0.5rem; padding:0.22rem 0; }
+.demo-feature-check { color:#0fdfab; font-size:0.6rem; flex-shrink:0; }
+
+/* ── First-run briefing banner ───────────────────────────────────────────── */
+.frb {
+  position:fixed; bottom:1.2rem; left:50%; transform:translateX(-50%) translateY(20px);
+  z-index:88000; background:rgba(0,8,4,0.95); border:1px solid rgba(15,210,75,0.3);
+  border-radius:6px; padding:0.6rem 0.9rem; display:flex; align-items:center; gap:0.6rem;
+  backdrop-filter:blur(12px); opacity:0; transition:opacity 0.3s ease, transform 0.3s ease;
+  max-width:calc(100vw - 3rem); pointer-events:auto;
+}
+.frb.frb-in { opacity:1; transform:translateX(-50%) translateY(0); }
+.frb-text { font-family:"Courier New",monospace; font-size:0.58rem; color:rgba(15,220,78,0.7); letter-spacing:0.06em; }
+.frb-btn  { font-family:"Courier New",monospace; font-size:0.52rem; letter-spacing:0.1em; border-radius:3px; padding:0.22rem 0.6rem; cursor:pointer; transition:background 0.15s; }
+.frb-now  { background:rgba(15,210,75,0.15); border:1px solid rgba(15,210,75,0.35); color:rgba(15,220,78,0.85); }
+.frb-now:hover { background:rgba(15,210,75,0.25); }
+.frb-later { background:rgba(134,223,255,0.08); border:1px solid rgba(134,223,255,0.2); color:rgba(134,223,255,0.6); }
+.frb-later:hover { background:rgba(134,223,255,0.15); }
+.frb-close { background:transparent; border:none; color:rgba(255,255,255,0.25); font-size:0.9rem; cursor:pointer; padding:0 0.1rem; }
+
+/* ── Streak legend one-time hint ─────────────────────────────────────────── */
+.streak-legend-hint {
+  font-family:"Courier New",monospace; font-size:0.44rem; color:rgba(134,223,255,0);
+  letter-spacing:0.08em; margin-top:0.25rem; transition:color 0.5s ease;
+}
+.streak-legend-hint.slh-in { color:rgba(134,223,255,0.38); }
+
 /* ==================== SESSION CEREMONY ==================== */
 .session-ceremony {
   position: fixed;

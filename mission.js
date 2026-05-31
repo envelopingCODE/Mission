@@ -1451,6 +1451,45 @@ document.addEventListener("DOMContentLoaded", () => {
   loadMissions();
   renderStreakBar();
   updateSessionProgress();
+
+  // ── First-run briefing banner (Actions 1/2/4/5 from UX audit) ─────────
+  if (!localStorage.getItem("firstRunShown")) {
+    localStorage.setItem("firstRunShown", "1");
+    setTimeout(function() {
+      var b = document.createElement("div");
+      b.className = "frb";
+      b.innerHTML = '<span class="frb-text">M-VI mission briefing available.</span>' +
+        '<button class="frb-btn frb-now">Read now</button>' +
+        '<button class="frb-btn frb-later">During break</button>' +
+        '<button class="frb-close">×</button>';
+      document.body.appendChild(b);
+      requestAnimationFrame(function() { b.classList.add("frb-in"); });
+      b.querySelector(".frb-now").onclick = function() {
+        if (typeof window.showDispatch === "function") window.showDispatch("first_op", "live");
+        b.remove();
+      };
+      b.querySelector(".frb-later").onclick = function() {
+        localStorage.setItem("pendingBriefing", "true"); b.remove();
+      };
+      b.querySelector(".frb-close").onclick = function() { b.remove(); };
+      setTimeout(function() { if (b.parentNode) b.remove(); }, 18000);
+    }, 4000);
+  }
+
+  // ── Streak bar one-time legend hint (Action 12) ────────────────────────
+  if (!localStorage.getItem("streakLegendShown")) {
+    localStorage.setItem("streakLegendShown", "1");
+    setTimeout(function() {
+      var sb = document.getElementById("streak-bar");
+      if (!sb) return;
+      var hint = document.createElement("div");
+      hint.className = "streak-legend-hint";
+      hint.textContent = "Signal before 10:00 weekdays = earned dot";
+      sb.appendChild(hint);
+      setTimeout(function() { hint.classList.add("slh-in"); }, 50);
+      setTimeout(function() { hint.classList.remove("slh-in"); setTimeout(function(){hint.remove();}, 400); }, 6000);
+    }, 2000);
+  }
   const initialSuggestions = TaskSystem.getMostFrequentTasks();
   if (initialSuggestions.length) {
     inputEl.placeholder = initialSuggestions[0];
