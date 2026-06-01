@@ -2174,7 +2174,6 @@ const CyberpunkInterface = () => {
 
   // Enhanced displayRandomMessage function
   const displayRandomMessage = React.useCallback(() => {
-    // Access the existing motivationalMessages array from window scope
     if (window.motivationalMessages && window.motivationalMessages.length > 0) {
       const message =
         window.motivationalMessages[
@@ -2182,8 +2181,6 @@ const CyberpunkInterface = () => {
         ];
       setMotivationalMessage(message);
       setShowMessage(true);
-
-      // Hide the message after 3 seconds
       setTimeout(() => {
         setShowMessage(false);
         setMotivationalMessage("");
