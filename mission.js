@@ -237,13 +237,8 @@ function renderStreakBar() {
     </div>`
   ).join("");
 
-  const repairHTML = repair.available
-    ? `<div class="streak-repair">
-        <span class="repair-label">Repair available</span>
-        <span class="repair-pip ${repair.progress >= 1 ? "repair-pip-done" : ""}"></span>
-        <span class="repair-pip ${repair.progress >= 2 ? "repair-pip-done" : ""}"></span>
-      </div>`
-    : "";
+  // Repair indicator removed from streak bar — lives in Week's Best HUD instead.
+  // The dot states (earned/missed/pending) already communicate streak state visually.
 
   const streakNumClass = streak === 0 ? "streak-num streak-zero" : "streak-num";
 
@@ -255,8 +250,7 @@ function renderStreakBar() {
         <span class="${streakNumClass}">${streak}</span>
         <span class="streak-unit">day${streak !== 1 ? "s" : ""}</span>
       </div>
-    </div>
-    ${repairHTML}`;
+    </div>`;
 }
 
 // ========================================
@@ -2106,6 +2100,17 @@ function buildWeeksBestHUD() {
         <span class="er-condition-label">CONDITION</span>
         <span class="er-hearts">${condStr}</span>
       </div>
+      ${(function() {
+        var repair = getRepairState();
+        if (!repair.available) return "";
+        return `<div class="er-repair-row">
+          <span class="er-repair-label">Streak repair — complete 2 ops</span>
+          <span class="er-repair-pips">
+            <span class="repair-pip ${repair.progress >= 1 ? "repair-pip-done" : ""}"></span>
+            <span class="repair-pip ${repair.progress >= 2 ? "repair-pip-done" : ""}"></span>
+          </span>
+        </div>`;
+      })()}
       <button class="er-reset-btn" id="er-reset-week">↺  Reset week's record</button>
     </div>`;
 }

@@ -3519,29 +3519,30 @@ const SettingsPanel = () => {
     </div>
   );
 
+  // ── Demo effects at top level (hooks cannot be inside conditionals) ──────
+  var DEMO_EMOTIONS = ["neutral","happy","excited","alert","composing","flow","curious","perplexed","playful","sleepy","glitched"];
+  React.useEffect(function() {
+    if (view !== "demo" || !autoCycle) return;
+    var idx = 0;
+    var iv = setInterval(function() {
+      idx = (idx + 1) % DEMO_EMOTIONS.length;
+      var em = DEMO_EMOTIONS[idx];
+      setDemoActive(em);
+      if (typeof window.setRobotEmotion === "function") window.setRobotEmotion(em, 0);
+    }, 2600);
+    return function() { clearInterval(iv); };
+  }, [view, autoCycle]);
+
+  React.useEffect(function() {
+    return function() {
+      // Reset buddy to neutral when leaving demo screen
+      if (typeof window.setRobotEmotion === "function") window.setRobotEmotion("neutral", 0);
+    };
+  }, [view]);
+
   // ── M-VI Demo screen (early return) ──────────────────────────────────
   if (view === "demo" && open) {
-    var DEMO_EMOTIONS = ["neutral","happy","excited","alert","composing","flow","curious","perplexed","playful","sleepy","glitched"];
-    var DEMO_LABELS   = ["Neutral","Happy","Excited","Alert","Composing","Flow","Curious","Perplexed","Playful","Sleepy","Glitched"];
-
-    React.useEffect(function() {
-      if (!autoCycle) return;
-      var idx = 0;
-      var iv = setInterval(function() {
-        idx = (idx + 1) % DEMO_EMOTIONS.length;
-        var em = DEMO_EMOTIONS[idx];
-        setDemoActive(em);
-        if (typeof window.setRobotEmotion === "function") window.setRobotEmotion(em, 0);
-      }, 2600);
-      return function() { clearInterval(iv); };
-    }, [autoCycle]);
-
-    // Reset to neutral when leaving demo
-    React.useEffect(function() {
-      return function() {
-        if (typeof window.setRobotEmotion === "function") window.setRobotEmotion("neutral", 0);
-      };
-    }, []);
+    var DEMO_LABELS = ["Neutral","Happy","Excited","Alert","Composing","Flow","Curious","Perplexed","Playful","Sleepy","Glitched"];
 
     var FEATURES = [
       "Idle body sway (6s CSS cycle)",

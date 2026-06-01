@@ -5379,37 +5379,31 @@ svg.minimalist-face {
   text-transform: uppercase;
 }
 
-/* Repair mechanic */
-.streak-repair {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  margin-top: 0.45rem;
-}
-
-.repair-label {
-  font-family: "Courier New", monospace;
-  font-size: 0.52rem;
-  color: rgba(255, 180, 50, 0.55);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
+/* Repair pips — used in Week's Best HUD now, not streak bar */
 .repair-pip {
   display: inline-block;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: rgba(255, 180, 50, 0.18);
-  border: 1px solid rgba(255, 180, 50, 0.4);
+  width: 6px; height: 6px; border-radius: 50%;
+  background: rgba(134,223,255,0.1);
+  border: 1px solid rgba(134,223,255,0.3);
   transition: background 0.3s ease;
 }
-
 .repair-pip-done {
-  background: rgba(255, 180, 50, 0.75);
-  border-color: rgba(255, 180, 50, 0.75);
-  box-shadow: 0 0 5px rgba(255, 180, 50, 0.3);
+  background: rgba(134,223,255,0.7);
+  border-color: rgba(134,223,255,0.7);
+  box-shadow: 0 0 5px rgba(134,223,255,0.3);
 }
+
+/* Repair row inside Week's Best HUD */
+.er-repair-row {
+  display: flex; align-items: center; gap: 0.5rem;
+  padding: 0.45rem 0 0; border-top: 1px solid rgba(16,221,50,0.08);
+  margin-top: 0.3rem;
+}
+.er-repair-label {
+  font-family:"Courier New",monospace; font-size:0.42rem;
+  color:rgba(134,223,255,0.45); letter-spacing:0.1em; text-transform:uppercase; flex:1;
+}
+.er-repair-pips { display:flex; gap:4px; }
 
 /* ==================== DISPATCH MODAL — Recovered Terminal Document ==================== */
 @keyframes dispatchOverlayIn {
