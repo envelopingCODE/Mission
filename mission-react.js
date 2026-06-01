@@ -3169,11 +3169,7 @@ const PurgeConfirmModal = ({ onClose }) => {
         clearInterval(piv);
         clearInterval(giv);
         Object.keys(localStorage).forEach(function(k) {
-          if (k === "storyCodex" || k === "seenFallbacks" || k === "operatorCondition" ||
-              k === "lastStoryEvent" || k === "lastKnownStreak" ||
-              k === "timerSkinUnlocked" || k === "timerSkinActive" ||
-              k === "shownAchievements" ||
-              k.startsWith("dispatch_read_")) {
+          if (k !== "appSettings") {
             localStorage.removeItem(k);
           }
         });
@@ -3208,7 +3204,7 @@ const PurgeConfirmModal = ({ onClose }) => {
             <div className="purge-line">&gt;</div>
             <div className="purge-line purge-warning">&gt; WARNING: THIS ACTION IS IRREVOCABLE</div>
             <div className="purge-line">&gt; ALL ACCUMULATED RECORDS WILL BE PERMANENTLY ERASED.</div>
-            <div className="purge-line purge-dim">&gt; (Task data, XP, and streaks are preserved.)</div>
+            <div className="purge-line purge-dim">&gt; (Your settings and preferences are retained.)</div>
             <div className="purge-line">&gt;</div>
             <div className="purge-line">&gt; CONTINUE?</div>
             <div className="purge-buttons">
@@ -3513,6 +3509,7 @@ const SettingsPanel = () => {
           })}
         </div></div>
       </div>
+      {showPurge && <PurgeConfirmModal onClose={() => setShowPurge(false)} />}
     </div>
   );
 
@@ -3668,6 +3665,13 @@ const SettingsPanel = () => {
                 </div>
               );
             })}
+            <div className="st-section">
+              <div className="st-section-title">System</div>
+              <button className="purge-trigger purge-trigger-inline"
+                onClick={() => setShowPurge(true)}>
+                Purge Memory Banks
+              </button>
+            </div>
           </div></div>
         </div>
         {showPurge && <PurgeConfirmModal onClose={() => setShowPurge(false)} />}
@@ -3792,6 +3796,7 @@ const SettingsPanel = () => {
 
         </div></div>
       </div>
+      {showPurge && <PurgeConfirmModal onClose={() => setShowPurge(false)} />}
     </div>
   );
 };
