@@ -3411,6 +3411,8 @@ const SettingsPanel = () => {
   const [activeSkin,   setActiveSkin]   = React.useState(() => localStorage.getItem("timerSkinActive") || "eclipse");
   const [showPurge,    setShowPurge]    = React.useState(false);
   const [navDir,       setNavDir]       = React.useState("forward"); // "forward"|"back"
+  const [autoCycle,    setAutoCycle]    = React.useState(false);
+  const [demoActive,   setDemoActive]   = React.useState(null);
 
   // Directional navigation helper
   function navigateTo(v) {
@@ -3521,8 +3523,6 @@ const SettingsPanel = () => {
   if (view === "demo" && open) {
     var DEMO_EMOTIONS = ["neutral","happy","excited","alert","composing","flow","curious","perplexed","playful","sleepy","glitched"];
     var DEMO_LABELS   = ["Neutral","Happy","Excited","Alert","Composing","Flow","Curious","Perplexed","Playful","Sleepy","Glitched"];
-    var [autoCycle,  setAutoCycle]  = React.useState(false);
-    var [demoActive, setDemoActive] = React.useState(null);
 
     React.useEffect(function() {
       if (!autoCycle) return;
