@@ -3785,15 +3785,6 @@ const SettingsPanel = () => {
             </button>
           </div>
 
-          {/* System — Purge Memory Banks lives here, not buried in Achievements */}
-          <div className="st-section">
-            <div className="st-section-title">System</div>
-            <button className="purge-trigger purge-trigger-inline"
-              onClick={() => setShowPurge(true)}>
-              Purge Memory Banks
-            </button>
-          </div>
-
         </div></div>
       </div>
       {showPurge && <PurgeConfirmModal onClose={() => setShowPurge(false)} />}
