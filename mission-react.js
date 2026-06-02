@@ -2599,6 +2599,17 @@ const initializeReactComponents = () => {
     }
   }
 
+  // Mount Purge portal (independent root — survives SettingsPanel view-changes)
+  const purgeMount = document.getElementById("purge-mount");
+  if (purgeMount && !window.purgeRoot) {
+    try {
+      window.purgeRoot = ReactDOM.createRoot(purgeMount);
+      window.purgeRoot.render(<PurgePortal />);
+    } catch (e) {
+      console.error("PurgePortal mount error:", e);
+    }
+  }
+
   // Mount Settings panel (independent root — crash here won't affect other mounts)
   const settingsMount = document.getElementById("settings-mount");
   if (settingsMount && !window.settingsRoot) {
@@ -3366,6 +3377,16 @@ const AchievementToastSystem = () => {
   );
 };
 
+// ── Purge portal — own React root so it survives SettingsPanel view changes ──
+const PurgePortal = () => {
+  var [visible, setVisible] = React.useState(false);
+  React.useEffect(() => {
+    window.showPurgeModal = function() { setVisible(true); };
+  }, []);
+  if (!visible) return null;
+  return <PurgeConfirmModal onClose={() => setVisible(false)} />;
+};
+
 // Standalone portal — accepts showDispatch(data) or showDispatch(data, "local")
 // mode "live"  = full uplink drama (story events, first op, survivor)
 // mode "local" = quick boot flicker then straight to typing (achievement tiles)
@@ -3402,7 +3423,7 @@ const SettingsPanel = () => {
   const [cfg,          setCfg]          = React.useState(() => window.AppSettings.get());
   const [ollamaStatus, setOllamaStatus] = React.useState("idle");
   const [activeSkin,   setActiveSkin]   = React.useState(() => localStorage.getItem("timerSkinActive") || "eclipse");
-  const [showPurge,    setShowPurge]    = React.useState(false);
+  // showPurge lives in PurgePortal (own React root) — call window.showPurgeModal()
   const [navDir,       setNavDir]       = React.useState("forward"); // "forward"|"back"
   const [autoCycle,    setAutoCycle]    = React.useState(false);
   const [demoActive,   setDemoActive]   = React.useState(null);
@@ -3509,7 +3530,6 @@ const SettingsPanel = () => {
           })}
         </div></div>
       </div>
-      {showPurge && <PurgeConfirmModal onClose={() => setShowPurge(false)} />}
     </div>
   );
 
@@ -3668,13 +3688,12 @@ const SettingsPanel = () => {
             <div className="st-section">
               <div className="st-section-title">System</div>
               <button className="purge-trigger purge-trigger-inline"
-                onClick={() => setShowPurge(true)}>
+                onClick={() => { if (typeof window.showPurgeModal === "function") window.showPurgeModal(); }}>
                 Purge Memory Banks
               </button>
             </div>
           </div></div>
         </div>
-        {showPurge && <PurgeConfirmModal onClose={() => setShowPurge(false)} />}
       </div>
     );
   }
@@ -3787,7 +3806,6 @@ const SettingsPanel = () => {
 
         </div></div>
       </div>
-      {showPurge && <PurgeConfirmModal onClose={() => setShowPurge(false)} />}
     </div>
   );
 };
