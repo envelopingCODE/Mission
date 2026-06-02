@@ -1200,7 +1200,7 @@ input[type="text"] {
   -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
   position: relative;
-  overflow: hidden;
+  overflow: clip; /* clip = visual-only, no scroll container — preserves backdrop-filter in Firefox */
 }
 
 .container2::before {
