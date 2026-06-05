@@ -845,12 +845,101 @@ function scrollToXPMeter() {
 // Keep track of recently notified task IDs to prevent duplicate notifications
 const recentlyNotifiedTasks = new Set();
 
+// ── Inline task editing ───────────────────────────────────────────────────────
+// Desktop: hover task → press E.  Mobile: double-tap task.
+// No button — zero DOM clutter.
+
+window._hoveredMission = null; // tracks which <li> the cursor is over
+
+function attachMissionEditHandlers(li) {
+  var descEl = li.querySelector(".mission-desc");
+  if (!descEl) return;
+  var originalText = descEl.textContent;
+  var isEditing = false;
+
+  function enterEditMode() {
+    if (isEditing) return;
+    isEditing = true;
+    li.classList.add("editing");
+    originalText = descEl.textContent;
+    descEl.contentEditable = "true";
+    descEl.classList.add("editing");
+    descEl.focus();
+    var range = document.createRange();
+    range.selectNodeContents(descEl);
+    window.getSelection().removeAllRanges();
+    window.getSelection().addRange(range);
+  }
+
+  function exitEditMode(save) {
+    if (!isEditing) return;
+    var newText = descEl.textContent.trim();
+    if (save && newText && newText !== originalText.trim()) {
+      descEl.textContent = " " + newText;
+      originalText = descEl.textContent;
+      saveMissions();
+    } else if (!save) {
+      descEl.textContent = originalText;
+    }
+    isEditing = false;
+    descEl.contentEditable = "false";
+    descEl.classList.remove("editing");
+    // Defer: blur fires before click — keep editing guard up until click resolves
+    setTimeout(function() { li.classList.remove("editing"); }, 0);
+  }
+
+  // Store enterEditMode so the global E-key handler can call it
+  li._missionEnterEdit = enterEditMode;
+
+  // Desktop: track hover so global keydown knows which task to edit
+  li.addEventListener("mouseenter", function() { window._hoveredMission = li; });
+  li.addEventListener("mouseleave", function() {
+    if (window._hoveredMission === li) window._hoveredMission = null;
+  });
+
+  // Editing keyboard controls
+  descEl.addEventListener("keydown", function(e) {
+    if (e.key === "Enter") { e.preventDefault(); exitEditMode(true); }
+    if (e.key === "Escape") { exitEditMode(false); }
+  });
+  descEl.addEventListener("blur", function() {
+    if (isEditing) exitEditMode(true);
+  });
+
+  // Mobile: double-tap (two taps < 320ms) to enter edit mode
+  var lastTapTime = 0;
+  li.addEventListener("touchend", function(e) {
+    var t = Date.now();
+    if (t - lastTapTime < 320) {
+      e.preventDefault(); // prevent double-tap zoom
+      enterEditMode();
+      lastTapTime = 0;
+    } else {
+      lastTapTime = t;
+    }
+  });
+}
+
+// Global E key — enter edit mode on the currently hovered mission
+document.addEventListener("keydown", function(e) {
+  if (e.key !== "e" && e.key !== "E") return;
+  var tag = (e.target.tagName || "").toLowerCase();
+  if (tag === "input" || tag === "textarea" || e.target.isContentEditable) return;
+  if (window._hoveredMission && typeof window._hoveredMission._missionEnterEdit === "function") {
+    e.preventDefault();
+    window._hoveredMission._missionEnterEdit();
+  }
+});
+
 function createMissionClickHandler(element) {
   element.addEventListener("click", function (e) {
     // Stop event propagation to prevent multiple triggers
     e.stopPropagation();
 
-    const xp = parseInt(e.target.dataset.xp);
+    // Don't complete while editing task text
+    if (element.classList.contains("editing")) return;
+
+    const xp = parseInt(element.dataset.xp);
 
     // Create a unique ID for this task
     const taskId = Date.now();
@@ -864,11 +953,11 @@ function createMissionClickHandler(element) {
     // Mark this element as processed
     element.dataset.processed = "true";
 
-    // Extract mission text (everything before the XP value)
-    const missionText = e.target.innerText.split(" — ")[0].trim();
+    // Extract mission text (everything before the XP/pomo suffix)
+    const missionText = element.innerText.split(" — ")[0].trim();
 
     // Get prefix class to determine priority
-    const prefixSpan = e.target.querySelector("span");
+    const prefixSpan = element.querySelector("span");
     const priority = prefixSpan
       ? prefixSpan.className.includes("prefix-1")
         ? "high"
@@ -1062,7 +1151,7 @@ function createMissionClickHandler(element) {
 
     // Continue with original functionality
     addXp(xp);
-    e.target.remove();
+    element.remove();
     saveMissions();
     displayRandomMessage(category);
     playCompletionSound();
@@ -1124,9 +1213,7 @@ function addMission(sanitizedInput) {
     const pomoDisplay = pomoToMinutes(pomoEstimate);
 
     const newEl = document.createElement("li");
-    newEl.innerHTML = `<span class="${prefixClass}">${
-      modifiedMission.split(":")[0]
-    }:</span> ${modifiedMission.split(":")[1]} — ${xpValue} XP<span class="pomo-estimate" title="Estimated duration">${pomoDisplay}</span>`;
+    newEl.innerHTML = `<span class="${prefixClass}">${modifiedMission.split(":")[0]}:</span><span class="mission-desc" contenteditable="false"> ${modifiedMission.split(":")[1] || ""}</span> — ${xpValue} XP<span class="pomo-estimate" title="Estimated duration">${pomoDisplay}</span>`;
     newEl.className = "mission";
     newEl.dataset.xp = xpValue;
 
@@ -1144,6 +1231,7 @@ function addMission(sanitizedInput) {
 
     // Use the new click handler function
     createMissionClickHandler(newEl);
+    attachMissionEditHandlers(newEl);
 
     missionListEl.appendChild(newEl);
 
@@ -1677,20 +1765,18 @@ function handleTouchEnd(e) {
 }
 
 function saveMissions() {
-  const missionsEl = document.getElementsByClassName("mission"); // Get all elements with the 'mission' class
+  const missionsEl = document.getElementsByClassName("mission");
   const missionsData = Array.from(missionsEl).map((missionEl) => {
-    const prefixClass = missionEl.querySelector("span").className; // Get the prefix class from the <span>
-    const missionText = missionEl.textContent.split(" — ")[0]; // Get the mission text before the XP
-    const xp = missionEl.dataset.xp; // Get the XP value from the data attribute
-
-    return {
-      text: missionText,
-      prefixClass: prefixClass,
-      xp: xp,
-    };
+    const prefixSpan = missionEl.querySelector("span[class^='prefix']") || missionEl.querySelector("span");
+    const prefixClass = prefixSpan ? prefixSpan.className : "prefix-default";
+    const descSpan = missionEl.querySelector(".mission-desc");
+    const missionText = (descSpan && prefixSpan)
+      ? (prefixSpan.textContent + descSpan.textContent).trim()
+      : missionEl.textContent.split(" — ")[0].trim();
+    const xp = missionEl.dataset.xp;
+    return { text: missionText, prefixClass: prefixClass, xp: xp };
   });
-
-  localStorage.setItem("missions", JSON.stringify(missionsData)); // Save the structured data to localStorage
+  localStorage.setItem("missions", JSON.stringify(missionsData));
 }
 
 function loadMissions() {
@@ -1706,9 +1792,12 @@ function loadMissions() {
       prefixSpan.className = mission.prefixClass; // Apply the saved prefix class
       prefixSpan.textContent = mission.text.split(":")[0] + ":";
 
-      const missionText = document.createTextNode(
-        " " + mission.text.split(":")[1] + " — " + mission.xp + " XP"
-      );
+      const descSpan = document.createElement("span");
+      descSpan.className = "mission-desc";
+      descSpan.contentEditable = "false";
+      descSpan.textContent = " " + (mission.text.split(":")[1] || "");
+
+      const metaText = document.createTextNode(" — " + mission.xp + " XP");
 
       // Pomodoro estimate badge
       const loadPomoCategory = getCategoryKeyFromPrefixClass(mission.prefixClass);
@@ -1718,9 +1807,10 @@ function loadMissions() {
       pomoSpan.title = "Estimated duration";
       pomoSpan.textContent = pomoToMinutes(loadPomoEstimate);
 
-      // Append the prefix, mission text, and estimate badge
+      // Append prefix, description, meta text, and pomo badge
       newEl.appendChild(prefixSpan);
-      newEl.appendChild(missionText);
+      newEl.appendChild(descSpan);
+      newEl.appendChild(metaText);
       newEl.appendChild(pomoSpan);
       newEl.className = "mission";
       newEl.dataset.xp = mission.xp;
@@ -1739,6 +1829,7 @@ function loadMissions() {
 
       // Use the new click handler function
       createMissionClickHandler(newEl);
+      attachMissionEditHandlers(newEl);
 
       missionListEl.appendChild(newEl);
 
@@ -4756,9 +4847,10 @@ window.DistractionSystem = {
 // Esc → dismiss any open overlay
 // ========================================
 document.addEventListener("keydown", (e) => {
-  // Never intercept when the user is typing
+  // Never intercept when the user is typing in any input or contenteditable
   const tag = document.activeElement && document.activeElement.tagName;
   if (tag === "INPUT" || tag === "TEXTAREA") return;
+  if (document.activeElement && document.activeElement.isContentEditable) return;
   // Don't intercept modified keys (Ctrl/Meta/Alt combos) to avoid browser conflicts
   if (e.ctrlKey || e.metaKey || e.altKey) return;
 

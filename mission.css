@@ -6029,6 +6029,43 @@ svg.minimalist-face {
   user-select: none;
 }
 
+/* ==================== MISSION INLINE EDIT ==================== */
+/* Trigger: hover + E (desktop) | double-tap (mobile). No button. */
+
+/* Description span — inline, becomes a proper text field on edit */
+.mission-desc {
+  display: inline;
+}
+
+/* Active edit state on the whole row:
+   - cancel the hover translate/scale so the task stays still while typing
+   - add a left-border flash so it's clear which task is being edited      */
+.mission.editing {
+  transform: none !important;
+  scale: 1 !important;
+  border-left: 3px solid rgba(134, 223, 255, 0.75) !important;
+  background: rgba(134, 223, 255, 0.04) !important;
+}
+
+/* The editable span itself — looks and feels like a text input */
+.mission-desc[contenteditable="true"] {
+  outline: none;
+  border-bottom: 1.5px solid #86dfff;
+  background: transparent;
+  padding-bottom: 2px;
+  user-select: text !important;
+  cursor: text;
+  /* Cyan blinking caret — matches the app palette */
+  caret-color: #86dfff;
+  /* Underline pulses like a text cursor to signal "type here" */
+  animation: mission-edit-pulse 1.1s ease-in-out infinite;
+}
+
+@keyframes mission-edit-pulse {
+  0%, 100% { border-bottom-color: rgba(134, 223, 255, 0.9); }
+  50%       { border-bottom-color: rgba(134, 223, 255, 0.25); }
+}
+
 /* ==================== POMODORO CHECK BAR ==================== */
 #pomo-check-bar {
   position: fixed;
