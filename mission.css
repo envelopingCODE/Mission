@@ -6066,6 +6066,96 @@ svg.minimalist-face {
   50%       { border-bottom-color: rgba(134, 223, 255, 0.25); }
 }
 
+/* ==================== EMPTY STATE ==================== */
+/* Fix 2: visible affordance when the mission list is empty.
+   Fix 4: the first-time variant teaches the category prefix system by example. */
+.mission-empty-state {
+  list-style: none;
+  padding: 2.4rem 1.5rem 1.8rem;
+  text-align: center;
+  pointer-events: none;
+  animation: es-fade-in 0.5s ease;
+}
+@keyframes es-fade-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.es-primary {
+  font-family: "Courier New", monospace;
+  font-size: 0.78rem;
+  letter-spacing: 0.12em;
+  color: rgba(134, 223, 255, 0.45);
+  margin-bottom: 0.65rem;
+  text-transform: uppercase;
+}
+.es-categories {
+  font-family: "Courier New", monospace;
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.3);
+  margin-bottom: 0.5rem;
+  letter-spacing: 0.04em;
+}
+.es-cat {
+  font-weight: 700;
+  font-size: 0.78rem;
+}
+.es-hint {
+  font-family: "Courier New", monospace;
+  font-size: 0.6rem;
+  color: rgba(134, 223, 255, 0.22);
+  letter-spacing: 0.05em;
+}
+.es-hint em {
+  font-style: normal;
+  color: rgba(134, 223, 255, 0.35);
+}
+
+/* ==================== SHORTCUT HINT BAR ==================== */
+/* Fix 4: one-time chip strip on first input focus — teaches keyboard shortcuts.
+   Appears bottom-center, auto-dismisses after 6s, never shows again. */
+.shortcut-hint-bar {
+  position: fixed;
+  bottom: 1.5rem;
+  left: 50%;
+  transform: translateX(-50%) translateY(70px);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: rgba(0, 8, 16, 0.92);
+  border: 1px solid rgba(134, 223, 255, 0.14);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  padding: 0.5rem 1.2rem;
+  border-radius: 5px;
+  font-family: "Courier New", monospace;
+  font-size: 0.62rem;
+  color: rgba(134, 223, 255, 0.4);
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+  z-index: 9990;
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 0.22s ease, opacity 0.22s ease;
+}
+.shortcut-hint-bar.sh-visible {
+  transform: translateX(-50%) translateY(0);
+  opacity: 1;
+}
+.sh-key {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(134, 223, 255, 0.07);
+  border: 1px solid rgba(134, 223, 255, 0.22);
+  color: rgba(134, 223, 255, 0.65);
+  padding: 0.1rem 0.38rem;
+  border-radius: 2px;
+  font-size: 0.58rem;
+  letter-spacing: 0.01em;
+  min-width: 1.4rem;
+  text-align: center;
+}
+
 /* ==================== UNDO TOAST ==================== */
 /* Norman reversibility principle: operator must be able to undo any action.
    Bottom-center, same z-layer as the pomo chip strip, styled as diagnostic

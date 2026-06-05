@@ -660,9 +660,19 @@ function getWeekKey() {
 // ========================================
 // SESSION PROGRESS (Flow: immediate feedback + clear goals)
 // ========================================
+// Session counters — persisted to sessionStorage so a page refresh
+// during an active session doesn't wipe the operator's progress context.
+// sessionStorage auto-clears when the tab closes, which is the correct
+// scope: a new browser session genuinely is a new session.
 let sessionCompletedCount = 0;
 let sessionXpEarned = 0;
 let sessionCeremonyShown = false;
+
+function _saveSessionState() {
+  sessionStorage.setItem("sCount",    String(sessionCompletedCount));
+  sessionStorage.setItem("sXp",       String(sessionXpEarned));
+  sessionStorage.setItem("sCeremony", sessionCeremonyShown ? "1" : "0");
+}
 
 function updateSessionProgress() {
   const el = document.getElementById("session-progress");
@@ -673,16 +683,71 @@ function updateSessionProgress() {
     el.className = "session-progress-done";
     if (!sessionCeremonyShown) {
       sessionCeremonyShown = true;
+      _saveSessionState();
       showSessionCeremony(sessionCompletedCount, sessionXpEarned);
-      changeCondition(0.25); // completing a full session is a quiet positive
+      changeCondition(0.25);
     }
   } else {
-    if (remaining > 0) sessionCeremonyShown = false; // reset if tasks are added again
+    if (remaining > 0 && sessionCeremonyShown) {
+      sessionCeremonyShown = false;
+      _saveSessionState();
+    }
     el.textContent = sessionCompletedCount > 0 || remaining > 0
       ? `${sessionCompletedCount} done · ${remaining} left`
       : "";
     el.className = "";
   }
+  renderEmptyState();
+}
+
+// ── Empty state — Fix 2 + Fix 4 (progressive disclosure) ─────────────────
+// Three contexts: first-ever load (teach category system), post-purge
+// (M-VI re-initialises), board-clear (session done). The first-time state
+// is the primary onboarding surface for the prefix system.
+function renderEmptyState() {
+  var existing = document.getElementById("mission-empty-state");
+  var realCount = missionListEl.querySelectorAll(".mission").length;
+
+  if (realCount > 0) {
+    if (existing) existing.remove();
+    return;
+  }
+  if (existing) return; // already rendered
+
+  var isPostPurge  = !!localStorage.getItem("purgedOnce");
+  var hasHistory   = Object.keys(localStorage).some(function(k) { return k.startsWith("dailyTasks_"); });
+  var isBoardClear = sessionCompletedCount > 0;
+  var isFirstTime  = !hasHistory && !isPostPurge && !isBoardClear;
+
+  var el = document.createElement("li");
+  el.id = "mission-empty-state";
+  el.className = "mission-empty-state";
+
+  if (isPostPurge) {
+    el.innerHTML =
+      '<div class="es-primary">Memory banks cleared. System ready.</div>' +
+      '<div class="es-hint">Initialize your first objective above.</div>';
+  } else if (isBoardClear) {
+    el.innerHTML =
+      '<div class="es-primary">Board clear.</div>' +
+      '<div class="es-hint">All objectives executed.</div>';
+  } else if (isFirstTime) {
+    el.innerHTML =
+      '<div class="es-primary">Initialize your first objective.</div>' +
+      '<div class="es-categories">' +
+        '<span class="es-cat prefix-1">1.</span> Financial &nbsp;&middot;&nbsp; ' +
+        '<span class="es-cat prefix-2">2.</span> Academic &nbsp;&middot;&nbsp; ' +
+        '<span class="es-cat prefix-3">3.</span> Life &nbsp;&middot;&nbsp; ' +
+        '<span class="es-cat prefix-default">no prefix</span> General' +
+      '</div>' +
+      '<div class="es-hint">e.g. &nbsp;<em>1. Secure Funding: get new client</em></div>';
+  } else {
+    el.innerHTML =
+      '<div class="es-primary">No objectives queued.</div>' +
+      '<div class="es-hint">Add one above.</div>';
+  }
+
+  missionListEl.appendChild(el);
 }
 
 function showSessionCeremony(taskCount, xpEarned) {
@@ -1111,6 +1176,7 @@ function undoLastCompletion() {
   // ── Reverse session counters ─────────────────────────────────────────
   if (sessionCompletedCount > 0) sessionCompletedCount--;
   if (sessionXpEarned >= snap.xp) sessionXpEarned -= snap.xp;
+  _saveSessionState();
   updateSessionProgress();
 
   // ── Rebuild the <li> and put it back at the top of the list ─────────
@@ -1513,6 +1579,7 @@ function createMissionClickHandler(element) {
 
     addXp(xp);
     element.remove();
+    renderEmptyState();
     showUndoToast();
     saveMissions();
     displayRandomMessage(category);
@@ -1526,6 +1593,7 @@ function createMissionClickHandler(element) {
     // Session progress (Flow: immediate feedback)
     sessionCompletedCount++;
     sessionXpEarned += xp;
+    _saveSessionState();
     updateSessionProgress();
 
     // Streak repair progress
@@ -1601,6 +1669,7 @@ function addMission(sanitizedInput) {
     attachMissionEditHandlers(newEl);
 
     missionListEl.appendChild(newEl);
+    renderEmptyState(); // clears empty state when first task is added
     AffectInference.recordAddition();
 
     // Play the sound after XP is selected and mission is added
@@ -1894,13 +1963,46 @@ const TaskSystem = {
 };
 
 document.addEventListener("DOMContentLoaded", () => {
+  // Fix 1: restore session counters from sessionStorage so a mid-session
+  // page refresh doesn't reset the "N done · N left" progress display.
+  sessionCompletedCount = parseInt(sessionStorage.getItem("sCount") || "0");
+  sessionXpEarned       = parseInt(sessionStorage.getItem("sXp")    || "0");
+  sessionCeremonyShown  = sessionStorage.getItem("sCeremony") === "1";
+
   AppSettings.applyAll();
   OllamaClient.checkAvailable();
   checkStreakBreakCondition();
   TaskSystem.init();
   loadMissions();
   renderStreakBar();
-  updateSessionProgress();
+  updateSessionProgress(); // also calls renderEmptyState()
+
+  // Fix 4: one-time shortcut hint on first focus of the mission input.
+  // Shows a chip strip of all keyboard shortcuts for 6s then self-dismisses.
+  if (!localStorage.getItem("shortcutHintShown")) {
+    var _shortcutHintShown = false;
+    inputEl.addEventListener("focus", function _onFirstFocus() {
+      if (_shortcutHintShown) return;
+      _shortcutHintShown = true;
+      localStorage.setItem("shortcutHintShown", "1");
+      inputEl.removeEventListener("focus", _onFirstFocus);
+      var bar = document.createElement("div");
+      bar.className = "shortcut-hint-bar";
+      bar.innerHTML =
+        '<span class="sh-key">S</span> Settings &nbsp;' +
+        '<span class="sh-key">A</span> Achievements &nbsp;' +
+        '<span class="sh-key">T</span> Timer &nbsp;' +
+        '<span class="sh-key">C</span> Capture &nbsp;' +
+        '<span class="sh-key">E</span> Edit task &nbsp;' +
+        '<span class="sh-key">&#8963;Z</span> Undo';
+      document.body.appendChild(bar);
+      requestAnimationFrame(function() { bar.classList.add("sh-visible"); });
+      setTimeout(function() {
+        bar.classList.remove("sh-visible");
+        setTimeout(function() { bar.remove(); }, 280);
+      }, 6000);
+    });
+  }
 
   // ── First-run briefing banner (Actions 1/2/4/5 from UX audit) ─────────
   if (!localStorage.getItem("firstRunShown")) {

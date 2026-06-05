@@ -278,6 +278,18 @@ const XPSelector = ({ onXPSelect, onCancel }) => {
     }
   }, [
     React.createElement('div', {
+      key: 'subtitle',
+      style: {
+        textAlign: 'center',
+        fontFamily: '"Courier New", monospace',
+        fontSize: '11px',
+        letterSpacing: '0.08em',
+        color: 'rgba(134,223,255,0.38)',
+        marginBottom: '16px',
+        textTransform: 'uppercase'
+      }
+    }, 'Rate objective difficulty'),
+    React.createElement('div', {
       key: 'slider-container',
       className: 'slider-container',
       style: { 
