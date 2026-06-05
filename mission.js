@@ -427,6 +427,169 @@ const OllamaClient = (function () {
 window.AppSettings  = AppSettings;
 window.OllamaClient = OllamaClient;
 
+// ── AffectInference — behavioral state engine ─────────────────────────────
+// Infers operator psychological state from completion rhythm, task addition
+// rate, and physiological proxies (Operator Condition for valence, time-of-day
+// for basal arousal). Implements Russell Circumplex positioning and
+// Yerkes-Dodson adaptive UI responses.
+const AffectInference = (function() {
+  var _completionTimes = [];
+  var _additionTimes   = [];
+  var _state           = "normal";
+  var _russellState    = "neutral";
+
+  var WIN5  =  5 * 60 * 1000;
+  var WIN10 = 10 * 60 * 1000;
+  var WIN15 = 15 * 60 * 1000;
+  var WIN30 = 30 * 60 * 1000;
+
+  function recentCount(arr, ms) {
+    var cut = Date.now() - ms;
+    return arr.filter(function(t) { return t > cut; }).length;
+  }
+
+  function completionIntervals() {
+    var recent = _completionTimes.slice(-5);
+    var gaps = [];
+    for (var i = 1; i < recent.length; i++) gaps.push(recent[i] - recent[i - 1]);
+    return gaps;
+  }
+
+  // ── Valence from Operator Condition hearts (0.5–5.0) ──────────────────
+  function getValence() {
+    var c = (typeof window.getCondition === "function") ? window.getCondition() : 3;
+    if (c >= 3.5) return "positive";
+    if (c <= 2.5) return "negative";
+    return "neutral";
+  }
+
+  // ── Arousal from completion rate × time-of-day basal modifier ─────────
+  function getArousal() {
+    var high  = recentCount(_completionTimes, WIN15);
+    var any30 = recentCount(_completionTimes, WIN30);
+    var h     = new Date().getHours();
+    // Post-lunch dip 12:30–14:00 and evening decline reduce basal arousal
+    var mod   = (h >= 12 && h < 14) ? -1 : (h >= 19) ? -1 : 0;
+    var score = (high >= 2 ? 2 : high >= 1 ? 1 : 0) + mod;
+    if (score >= 2) return "high";
+    if (score <= 0 && any30 === 0) return "low";
+    return "moderate";
+  }
+
+  // ── Russell Circumplex state (2-D: arousal × valence) ─────────────────
+  function getRussellState() {
+    var a = getArousal(), v = getValence();
+    if (a === "high" && v !== "negative") return "flow";
+    if (a === "low"  && v === "negative") return "disengaged";
+    if (a === "high" && v === "negative") return "stressed";
+    return "neutral";
+  }
+
+  // ── Simple 5-category base state ──────────────────────────────────────
+  function infer() {
+    var rec10     = recentCount(_completionTimes, WIN10);
+    var addLast5  = recentCount(_additionTimes,   WIN5);
+    var intervals = completionIntervals();
+    var lastGap   = intervals.length ? intervals[intervals.length - 1] : null;
+    var avgGap    = intervals.length > 1
+      ? intervals.reduce(function(a, b) { return a + b; }, 0) / intervals.length : null;
+
+    if (rec10 >= 3 && addLast5 <= 1 && (!lastGap || lastGap < 5 * 60 * 1000)) return "flow";
+    if (addLast5 >= 2 && recentCount(_completionTimes, WIN10) === 0) return "avoidance";
+    if (_completionTimes.length >= 3 && avgGap && lastGap > avgGap * 2 && lastGap > 8 * 60 * 1000) return "depletion";
+    return "normal";
+  }
+
+  // ── Yerkes-Dodson adaptive response when Russell state changes ─────────
+  function applyRussellAdaptations(rs) {
+    if (rs === "flow") {
+      if (typeof window.setRobotEmotion === "function") window.setRobotEmotion("flow", 0);
+      window._suppressDispatch = true;
+      setTimeout(function() { window._suppressDispatch = false; }, 10 * 60 * 1000);
+    } else if (rs === "disengaged") {
+      if (typeof window.setRobotEmotion === "function") {
+        window.setRobotEmotion("sleepy", 3000);
+        setTimeout(function() { window.setRobotEmotion("curious", 4000); }, 3100);
+      }
+      displayAffectLabel("disengaged");
+    } else if (rs === "stressed") {
+      if (typeof window.setRobotEmotion === "function") window.setRobotEmotion("neutral", 0);
+      window._softMode = true;
+      setTimeout(function() { window._softMode = false; }, 15 * 60 * 1000);
+      displayAffectLabel("stressed");
+    }
+  }
+
+  function recordCompletion() {
+    _completionTimes.push(Date.now());
+    if (_completionTimes.length > 20) _completionTimes.shift();
+    var newState   = infer();
+    var newRussell = getRussellState();
+    if (newState !== _state && newState !== "normal") displayAffectLabel(newState);
+    if (newRussell !== _russellState) applyRussellAdaptations(newRussell);
+    _state        = newState;
+    _russellState = newRussell;
+  }
+
+  function recordAddition() {
+    _additionTimes.push(Date.now());
+    if (_additionTimes.length > 20) _additionTimes.shift();
+    var newState = infer();
+    if (newState !== _state && newState !== "normal") displayAffectLabel(newState);
+    _state        = newState;
+    _russellState = getRussellState();
+  }
+
+  return {
+    recordCompletion: recordCompletion,
+    recordAddition:   recordAddition,
+    getState:         function() { return _state; },
+    getRussellState:  getRussellState,
+    getArousal:       getArousal,
+    getValence:       getValence,
+  };
+})();
+
+window.AffectInference = AffectInference;
+window.getAffectState  = function() { return AffectInference.getState(); };
+
+// ── Affect labeling (Lieberman et al. 2007) ──────────────────────────────
+// Naming an emotional/cognitive state reduces amygdala activation and
+// the feeling's intensity. M-VI narrating the operator's state is not
+// atmospheric — it is regulation. Uses Ollama if available; static fallback.
+var AFFECT_LABELS = {
+  flow:       "Sustained operational tempo confirmed. Maintaining silence.",
+  avoidance:  "Low engagement pattern detected. Recommend initiating primary objective.",
+  depletion:  "Output rate declining. Extended engagement on record.",
+  disengaged: "Minimal activity signal. A brief objective may restore momentum.",
+  stressed:   "Elevated processing load. Current metrics within acceptable range.",
+};
+
+function displayAffectLabel(state) {
+  if (!AppSettings.get().buddyMessages) return;
+  var staticMsg = AFFECT_LABELS[state];
+  if (AppSettings.get().ollamaEnabled && OllamaClient.available) {
+    OllamaClient.generate(
+      "Operator state inferred: " + state + ". One brief tactical status note, M-VI voice, 1 sentence.",
+      4000
+    ).then(function(text) { if (text) _showAffectMessage(text); });
+    return;
+  }
+  if (staticMsg) _showAffectMessage(staticMsg);
+}
+
+function _showAffectMessage(msg) {
+  var el = document.createElement("div");
+  el.textContent = msg;
+  el.className = "motivational-message affect-label";
+  document.body.appendChild(el);
+  if (typeof window.setRobotSpeaking === "function") {
+    window.setRobotSpeaking(true);
+    setTimeout(function() { window.setRobotSpeaking(false); }, 4000);
+  }
+  setTimeout(function() { el.remove(); }, 4500);
+}
+
 // Returns YYYY-MM-DD of Monday of the current week — weekly record key
 function getWeekKey() {
   const now = new Date();
@@ -760,7 +923,10 @@ function pomoToMinutes(estimate) {
 
 // Post-completion Pomodoro check — low-friction chip strip
 // Auto-dismisses after 4 s, logging the estimate as actual if the user ignores it
-function showPomodoroCheck(categoryKey, estimate) {
+// taskTitle: optional — Construal Level Theory near-future concrete framing.
+// Showing the completed task name in the chip strip anchors the time estimate
+// to the specific work just done rather than an abstract category average.
+function showPomodoroCheck(categoryKey, estimate, taskTitle) {
   const existing = document.getElementById("pomo-check-bar");
   if (existing) existing.remove();
 
@@ -771,9 +937,18 @@ function showPomodoroCheck(categoryKey, estimate) {
     { value: 3,   label: "75m+" },
   ];
 
+  // Extract short description from "Prefix: description" format
+  var shortTitle = "";
+  if (taskTitle) {
+    var colonIdx = taskTitle.indexOf(":");
+    var raw = colonIdx >= 0 ? taskTitle.slice(colonIdx + 1) : taskTitle;
+    shortTitle = raw.split(" — ")[0].trim();
+  }
+
   const bar = document.createElement("div");
   bar.id = "pomo-check-bar";
   bar.innerHTML =
+    (shortTitle ? `<span class="pomo-check-task">"${shortTitle}"</span>` : "") +
     `<span class="pomo-check-label">How long?</span>` +
     chips.map((c) =>
       `<button class="pomo-chip${c.value === estimate ? " pomo-chip-est" : ""}" data-value="${c.value}">${c.label}</button>`
@@ -953,6 +1128,9 @@ function createMissionClickHandler(element) {
     // Mark this element as processed
     element.dataset.processed = "true";
 
+    // Behavioral inference — record completion event
+    AffectInference.recordCompletion();
+
     // Extract mission text (everything before the XP/pomo suffix)
     const missionText = element.innerText.split(" — ")[0].trim();
 
@@ -1028,14 +1206,22 @@ function createMissionClickHandler(element) {
 
     // ── Story event roll ──────────────────────────────────────────────────
     // Probability grows per task this session. ~80% chance by task 6.
+    // Dry streak bonus: each completion after the 5th with no dispatch
+    // adds +3% (up to +15%) — prevents reward feeling random-bad.
+    // Flow gate: suppressed when Yerkes-Dodson detects high arousal / positive.
     (function () {
+      if (window._suppressDispatch) return;
+      var dry = parseInt(localStorage.getItem("dispatchDryStreak") || "0") + 1;
+      localStorage.setItem("dispatchDryStreak", String(dry));
+      var dryBonus = dry > 5 ? Math.min(0.15, (dry - 5) * 0.03) : 0;
       var base = 0.08, growth = 0.06;
-      var chance = Math.min(0.45, base + (sessionCompletedCount - 1) * growth);
+      var chance = Math.min(0.55, base + dryBonus + (sessionCompletedCount - 1) * growth);
       if (Math.random() >= chance) return;
       // Cooldown: minimum 90s between events
       var last = parseInt(localStorage.getItem("lastStoryEvent") || "0");
       if (Date.now() - last < 90000) return;
       localStorage.setItem("lastStoryEvent", String(Date.now()));
+      localStorage.setItem("dispatchDryStreak", "0"); // reset dry streak on fire
 
       function saveStoryEvent(ev) {
         try {
@@ -1188,9 +1374,14 @@ function createMissionClickHandler(element) {
       renderStreakBar();
     }
 
-    // Pomodoro calibration chip strip
+    // Broaden-and-Build (Fredrickson): let the positive affect window breathe
+    // ~15s before introducing the cognitive demand of time estimation.
+    // Construal Level: pass task title for near-future concrete framing.
     const pomoCategory = getCategoryKeyFromTitle(taskDetails.title);
-    showPomodoroCheck(pomoCategory, PomodoroEstimator.getEstimate(pomoCategory));
+    const _pomoTitle   = taskDetails.title;
+    setTimeout(function() {
+      showPomodoroCheck(pomoCategory, PomodoroEstimator.getEstimate(pomoCategory), _pomoTitle);
+    }, 15000);
   });
 }
 
@@ -1234,6 +1425,7 @@ function addMission(sanitizedInput) {
     attachMissionEditHandlers(newEl);
 
     missionListEl.appendChild(newEl);
+    AffectInference.recordAddition();
 
     // Play the sound after XP is selected and mission is added
     playAddMissionSound();

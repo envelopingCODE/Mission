@@ -356,6 +356,14 @@ The M-VI mouth animation uses three incommensurable sine waves at irrational fre
 | Task editing (E to edit) | Cognitive load (reduces friction) | Implementation intention (refinement) |
 | Purge Memory Banks | Autonomy (SDT) | Commitment (irreversibility) |
 | Ollama LLM integration | Narrative transportation | SDT (dynamic relatedness) |
+| **AffectInference module** | Affective computing (Picard) | Russell Circumplex, Yerkes-Dodson |
+| **Micro-expression flash (120ms)** | Emotional contagion (Hatfield et al.) | Broaden-and-Build (Fredrickson) |
+| **Affect labeling (M-VI state narration)** | Affect labeling (Lieberman 2007) | Affective computing, narrative |
+| **Russell Circumplex adaptive UI** | Yerkes-Dodson, Russell 1980 | SDT autonomy (no false pressure) |
+| **Broaden-and-Build delay (15s pomo)** | Broaden-and-Build (Fredrickson) | Temporal motivation (let affect complete) |
+| **Construal Level pomo framing** | Construal Level Theory (Trope & Liberman) | Goal-setting (near-future concrete) |
+| **Dispatch dry streak counter** | VR reinforcement (Skinner) | Narrative transportation (prevent random-bad) |
+| **Flow dispatch gate** | Flow theory (Csikszentmihalyi) | Yerkes-Dodson (protect peak arousal) |
 | Standalone React roots | Cognitive load (system reliability) | — |
 | Keyboard shortcuts (S/A/P/E) | Cognitive load (expert navigation) | Habit (motor memory) |
 
@@ -411,7 +419,15 @@ This is the narrative equivalent of progressive disclosure: the lore reveals its
 - Week's Best HUD (earliest ready signal, fixed-position)
 - Daily Wrapped modal (session summary)
 - Operator Condition hearts (narrative barometer)
-- Behavioral inference layer (AffectInference module — flow/avoidance/depletion)
+- AffectInference module (flow / avoidance / depletion / disengaged / stressed)
+- Russell Circumplex positioning (arousal × valence → adaptive UI response)
+- Yerkes-Dodson adaptive response (flow gate, disengagement re-engagement, stress softening)
+- Affect labeling — M-VI narrates inferred state; Ollama-generated if available
+- Micro-expression flash — 120ms excited peak → happy → base on completion
+- Broaden-and-Build delay — Pomodoro chip strip deferred 15s post-completion
+- Construal Level framing — completed task title shown in Pomodoro chip strip
+- Dispatch dry streak counter — probability lifts after 5 consecutive non-dispatch completions
+- Flow dispatch gate — story events suppressed during high-arousal / positive state
 - Task editing (hover + E on desktop, double-tap on mobile)
 - Purge Memory Banks (standalone root, blacklist deletion, lore-aware confirmation)
 - Partner depth system (tier 0/1/2 based on cumulative completions)
@@ -624,6 +640,11 @@ The three M-VI voice surfaces (inline completion messages, dispatch modal lore, 
 - Thaler, R. H., & Sunstein, C. R. (2008). *Nudge.* Yale University Press.
 - Deci, E. L., Koestner, R., & Ryan, R. M. (1999). A meta-analytic review of experiments examining the effects of extrinsic rewards on intrinsic motivation. *Psychological Bulletin, 125*(6), 627–668.
 - Zajonc, R. B. (1965). Social facilitation. *Science, 149*(3681), 269–274.
+- Hatfield, E., Cacioppo, J. T., & Rapson, R. L. (1993). *Emotional Contagion.* Cambridge University Press.
+- Nass, C., & Moon, Y. (2000). Machines and mindlessness: Social responses to computers. *Journal of Social Issues, 56*(1), 81–103.
+- Lieberman, M. D., Eisenberger, N. I., Crockett, M. J., Tom, S. M., Pfeifer, J. H., & Way, B. M. (2007). Putting feelings into words: Affect labeling disrupts amygdala activity in response to affective stimuli. *Psychological Science, 18*(5), 421–428.
+- Trope, Y., & Liberman, N. (2010). Construal-level theory of psychological distance. *Psychological Review, 117*(2), 440–463.
+- Deci, E. L., & Ryan, R. M. (1980). The empirical exploration of intrinsic motivational processes. *Advances in Experimental Social Psychology, 13*, 39–80. [Cognitive Evaluation Theory]
 
 ### HCI & UX
 - Card, S. K., Moran, T. P., & Newell, A. (1983). *The Psychology of Human-Computer Interaction.* Lawrence Erlbaum.

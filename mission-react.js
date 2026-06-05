@@ -691,16 +691,15 @@ const CuteRobotFace = ({
     const prevEmotion = previousEmotionRef.current;
 
     // Handle task completion animations
+    // Micro-expression flash (Hatfield et al., emotional contagion research):
+    // brief 120ms peak expression is more affectively contagious than a
+    // 2-3s sustained hold. Flash excited/heart-eyes → settle into happy → base.
     if (isTaskCompleted) {
-      if (currentLevel >= 2) {
-        setCurrentEmotion("heart-eyes");
-        const timer = setTimeout(() => setCurrentEmotion(baseEmotion), 2000);
-        return () => clearTimeout(timer);
-      } else {
-        setCurrentEmotion("excited");
-        const timer = setTimeout(() => setCurrentEmotion(baseEmotion), 2000);
-        return () => clearTimeout(timer);
-      }
+      var peakEmo = currentLevel >= 2 ? "heart-eyes" : "excited";
+      setCurrentEmotion(peakEmo);
+      var t1 = setTimeout(function() { setCurrentEmotion("happy"); }, 120);
+      var t2 = setTimeout(function() { setCurrentEmotion(baseEmotion); }, 1800);
+      return function() { clearTimeout(t1); clearTimeout(t2); };
     } else {
       setCurrentEmotion(baseEmotion);
     }

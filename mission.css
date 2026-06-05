@@ -6097,6 +6097,20 @@ svg.minimalist-face {
   opacity: 0;
 }
 
+/* Construal Level: completed task name shown above time chips */
+.pomo-check-task {
+  font-family: "Courier New", monospace;
+  font-size: 0.62rem;
+  color: rgba(134, 223, 255, 0.45);
+  letter-spacing: 0.04em;
+  margin-right: 0.5rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 180px;
+  vertical-align: middle;
+}
+
 .pomo-check-label {
   font-family: "Courier New", monospace;
   font-size: 0.7rem;
@@ -6104,6 +6118,16 @@ svg.minimalist-face {
   letter-spacing: 0.1em;
   margin-right: 0.2rem;
   white-space: nowrap;
+}
+
+/* Affect label — M-VI state narration (Lieberman 2007).
+   Slightly dimmer than completion messages to read as diagnostic
+   rather than celebratory. */
+.motivational-message.affect-label {
+  opacity: 0.82;
+  font-size: 0.78em;
+  letter-spacing: 0.04em;
+  color: rgba(134, 223, 255, 0.75);
 }
 
 .pomo-chip {
