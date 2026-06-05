@@ -6066,6 +6066,28 @@ svg.minimalist-face {
   50%       { border-bottom-color: rgba(134, 223, 255, 0.25); }
 }
 
+/* ==================== GOAL GRADIENT ==================== */
+/* Hull (1932) / Kivetz et al. (2006): effort accelerates as the goal nears.
+   At remaining === 1 the session progress indicator pulses to increase salience. */
+.session-progress-near {
+  color: rgba(0, 255, 180, 0.9) !important;
+  animation: sp-near-pulse 1.8s ease-in-out infinite;
+}
+@keyframes sp-near-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.55; }
+}
+
+/* Peak-End Rule ceremony line */
+.ceremony-peak {
+  font-family: "Courier New", monospace;
+  font-size: 0.62rem;
+  color: rgba(134, 223, 255, 0.48);
+  letter-spacing: 0.09em;
+  margin: 0.35rem 0 0.1rem;
+  text-transform: uppercase;
+}
+
 /* ==================== EMPTY STATE ==================== */
 /* Fix 2: visible affordance when the mission list is empty.
    Fix 4: the first-time variant teaches the category prefix system by example. */

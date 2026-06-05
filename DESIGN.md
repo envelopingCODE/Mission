@@ -364,6 +364,10 @@ The M-VI mouth animation uses three incommensurable sine waves at irrational fre
 | **Construal Level pomo framing** | Construal Level Theory (Trope & Liberman) | Goal-setting (near-future concrete) |
 | **Dispatch dry streak counter** | VR reinforcement (Skinner) | Narrative transportation (prevent random-bad) |
 | **Flow dispatch gate** | Flow theory (Csikszentmihalyi) | Yerkes-Dodson (protect peak arousal) |
+| **Peak-End Rule ceremony** | Peak-End Rule (Kahneman 1999) | Self-efficacy (mastery evidence at session close) |
+| **Goal Gradient visual pulse** | Goal Gradient Effect (Hull 1932; Kivetz 2006) | Flow (approaching completion accelerates engagement) |
+| **Auto-sort by XP on load** | Availability Heuristic (Tversky & Kahneman 1973) | Goal-setting (important task = first task) |
+| **Pomo calibration confidence** | HCML transparency (Amershi et al. 2019) | Goal-setting (accurate time-bound targets) |
 | Standalone React roots | Cognitive load (system reliability) | — |
 | Keyboard shortcuts (S/A/P/E) | Cognitive load (expert navigation) | Habit (motor memory) |
 
@@ -431,6 +435,10 @@ This is the narrative equivalent of progressive disclosure: the lore reveals its
 - Construal Level framing — completed task title shown in Pomodoro chip strip
 - Dispatch dry streak counter — probability lifts after 5 consecutive non-dispatch completions
 - Flow dispatch gate — story events suppressed during high-arousal / positive state
+- Peak-End Rule ceremony — highest-XP task named at session close for specific positive memory
+- Goal Gradient pulse — session progress indicator pulses cyan at remaining === 1
+- Auto-sort by XP on load — highest-XP task surfaces to position 1 (Availability Heuristic)
+- Pomodoro calibration confidence — sample count shown alongside estimate (~25m · 4)
 - Task editing (hover + E on desktop, double-tap on mobile)
 - Purge Memory Banks (standalone root, blacklist deletion, lore-aware confirmation)
 - Partner depth system (tier 0/1/2 based on cumulative completions)
@@ -649,6 +657,11 @@ The three M-VI voice surfaces (inline completion messages, dispatch modal lore, 
 - Lieberman, M. D., Eisenberger, N. I., Crockett, M. J., Tom, S. M., Pfeifer, J. H., & Way, B. M. (2007). Putting feelings into words: Affect labeling disrupts amygdala activity in response to affective stimuli. *Psychological Science, 18*(5), 421–428.
 - Trope, Y., & Liberman, N. (2010). Construal-level theory of psychological distance. *Psychological Review, 117*(2), 440–463.
 - Deci, E. L., & Ryan, R. M. (1980). The empirical exploration of intrinsic motivational processes. *Advances in Experimental Social Psychology, 13*, 39–80. [Cognitive Evaluation Theory]
+- Kahneman, D., Fredrickson, B. L., Schreiber, C. A., & Redelmeier, D. A. (1993). When more pain is preferred to less: Adding a better end. *Psychological Science, 4*(6), 401–405.
+- Hull, C. L. (1932). The goal-gradient hypothesis and maze learning. *Psychological Review, 39*(1), 25–43.
+- Kivetz, R., Urminsky, O., & Zheng, Y. (2006). The goal-gradient hypothesis resurrected. *Journal of Marketing Research, 43*(1), 39–58.
+- Amershi, S., et al. (2019). Software engineering for machine learning: A case study. *ICSE-SEIP.* [Microsoft HCML Guidelines]
+- Tversky, A., & Kahneman, D. (1973). Availability: A heuristic for judging frequency and probability. *Cognitive Psychology, 5*(2), 207–232.
 
 ### HCI & UX
 - Card, S. K., Moran, T. P., & Newell, A. (1983). *The Psychology of Human-Computer Interaction.* Lawrence Erlbaum.

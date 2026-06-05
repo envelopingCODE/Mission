@@ -134,6 +134,12 @@ const PomodoroEstimator = {
     }
     this._save(history);
   },
+
+  // Returns how many actual sessions have been recorded for this category.
+  // Used by pomoToMinutes() to show calibration confidence to the operator.
+  getSampleCount(category) {
+    return ((this._load()[category]) || []).length;
+  },
 };
 
 // ========================================
@@ -667,11 +673,17 @@ function getWeekKey() {
 let sessionCompletedCount = 0;
 let sessionXpEarned = 0;
 let sessionCeremonyShown = false;
+// Peak-End Rule (Kahneman 1999): the ceremony references the highest-XP
+// task of the session, making the ending memory more specific and meaningful.
+let sessionPeakTask = null;
+let sessionPeakXp   = 0;
 
 function _saveSessionState() {
   sessionStorage.setItem("sCount",    String(sessionCompletedCount));
   sessionStorage.setItem("sXp",       String(sessionXpEarned));
   sessionStorage.setItem("sCeremony", sessionCeremonyShown ? "1" : "0");
+  sessionStorage.setItem("sPeak",     sessionPeakTask || "");
+  sessionStorage.setItem("sPeakXp",   String(sessionPeakXp));
 }
 
 function updateSessionProgress() {
@@ -695,7 +707,11 @@ function updateSessionProgress() {
     el.textContent = sessionCompletedCount > 0 || remaining > 0
       ? `${sessionCompletedCount} done · ${remaining} left`
       : "";
-    el.className = "";
+    // Goal Gradient Effect (Hull 1932; Kivetz 2006): effort accelerates as
+    // the goal approaches. Visual salience increases at remaining === 1.
+    el.className = remaining === 1 && sessionCompletedCount > 0
+      ? "session-progress-near"
+      : "";
   }
   renderEmptyState();
 }
@@ -758,6 +774,17 @@ function showSessionCeremony(taskCount, xpEarned) {
       ? `Day ${daysActive}. Board cleared.`
       : "Board cleared. A strong session.";
 
+  // Peak-End Rule (Kahneman 1999): end the session on the peak task.
+  // People remember experiences by their peak + their ending, not the average.
+  // Naming the best task makes the session memory more specific and positive.
+  var peakLine = "";
+  if (sessionPeakTask) {
+    var _ci = sessionPeakTask.indexOf(":");
+    var _peakDesc = (_ci >= 0 ? sessionPeakTask.slice(_ci + 1) : sessionPeakTask)
+      .split(" — ")[0].trim();
+    if (_peakDesc) peakLine = '<div class="ceremony-peak">Peak: ' + _peakDesc + '</div>';
+  }
+
   const overlay = document.createElement("div");
   overlay.className = "session-ceremony";
   overlay.innerHTML = `
@@ -765,6 +792,7 @@ function showSessionCeremony(taskCount, xpEarned) {
       <div class="ceremony-count">${taskCount}</div>
       <div class="ceremony-count-label">objective${taskCount !== 1 ? "s" : ""} cleared</div>
       <div class="ceremony-xp">+${xpEarned} XP</div>
+      ${peakLine}
       <div class="ceremony-buddy">${buddyLine}</div>
       <div class="ceremony-hint">tap to continue</div>
     </div>
@@ -1037,10 +1065,17 @@ function displayRandomMessage(category = "general") {
   setTimeout(() => messageElement.remove(), 3500);
 }
 
-// Converts Pomodoro units to a clean minute display (1 pomo = 25 min)
-function pomoToMinutes(estimate) {
-  const mins = Math.round(estimate * 25);
-  return `~${mins}m`;
+// Converts Pomodoro units to a clean minute display (1 pomo = 25 min).
+// sampleCount: if provided and >= MIN_SAMPLES, appends calibration confidence
+// indicator — "~25m · 4" means the estimate is based on 4 recorded sessions.
+// This is the HCML transparency principle (Amershi et al. 2019): AI estimates
+// should surface their confidence level so operators can calibrate trust.
+function pomoToMinutes(estimate, sampleCount) {
+  var mins = Math.round(estimate * 25);
+  if (typeof sampleCount === "number" && sampleCount >= 3) {
+    return "~" + mins + "m \xb7 " + sampleCount;
+  }
+  return "~" + mins + "m";
 }
 
 // Post-completion Pomodoro check — low-friction chip strip
@@ -1193,7 +1228,7 @@ function undoLastCompletion() {
   var pomoSpan = document.createElement("span");
   pomoSpan.className  = "pomo-estimate";
   pomoSpan.title      = "Estimated duration";
-  pomoSpan.textContent = pomoToMinutes(PomodoroEstimator.getEstimate(pomoCategory));
+  pomoSpan.textContent = pomoToMinutes(PomodoroEstimator.getEstimate(pomoCategory), PomodoroEstimator.getSampleCount(pomoCategory));
   newEl.appendChild(prefixSpan);
   newEl.appendChild(descSpan);
   newEl.appendChild(metaText);
@@ -1385,6 +1420,13 @@ function createMissionClickHandler(element) {
 
     // Track task for daily wrap
     trackDailyTask(taskDetails);
+
+    // Peak-End Rule — update session peak if this is the highest-XP task so far
+    if (xp > sessionPeakXp) {
+      sessionPeakXp  = xp;
+      sessionPeakTask = taskDetails.title;
+      _saveSessionState();
+    }
 
     // Post-purge survivor — fires 8s into first task of the new run
     (function () {
@@ -1645,7 +1687,7 @@ function addMission(sanitizedInput) {
   xpSelectorCallback = (xpValue) => {
     const pomoCategory = getCategoryKeyFromTitle(modifiedMission);
     const pomoEstimate = PomodoroEstimator.getEstimate(pomoCategory);
-    const pomoDisplay = pomoToMinutes(pomoEstimate);
+    const pomoDisplay = pomoToMinutes(pomoEstimate, PomodoroEstimator.getSampleCount(pomoCategory));
 
     const newEl = document.createElement("li");
     newEl.innerHTML = `<span class="${prefixClass}">${modifiedMission.split(":")[0]}:</span><span class="mission-desc" contenteditable="false"> ${modifiedMission.split(":")[1] || ""}</span> — ${xpValue} XP<span class="pomo-estimate" title="Estimated duration">${pomoDisplay}</span>`;
@@ -1962,12 +2004,29 @@ const TaskSystem = {
   },
 };
 
+// ── Availability Heuristic — auto-sort by XP on load ─────────────────────
+// Tversky & Kahneman (1973): what is cognitively available feels most important.
+// Surfacing the highest-XP task to position 1 on load makes the most
+// important task the most salient without any operator effort. After load the
+// operator can drag-to-reorder as normal — the sort is a one-time initialisation.
+function sortMissionsByPriority() {
+  var items = Array.from(missionListEl.querySelectorAll(".mission"));
+  if (items.length <= 1) return;
+  items.sort(function(a, b) {
+    return (parseInt(b.dataset.xp) || 0) - (parseInt(a.dataset.xp) || 0);
+  });
+  items.forEach(function(item) { missionListEl.appendChild(item); });
+  saveMissions();
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   // Fix 1: restore session counters from sessionStorage so a mid-session
   // page refresh doesn't reset the "N done · N left" progress display.
-  sessionCompletedCount = parseInt(sessionStorage.getItem("sCount") || "0");
-  sessionXpEarned       = parseInt(sessionStorage.getItem("sXp")    || "0");
+  sessionCompletedCount = parseInt(sessionStorage.getItem("sCount")  || "0");
+  sessionXpEarned       = parseInt(sessionStorage.getItem("sXp")     || "0");
   sessionCeremonyShown  = sessionStorage.getItem("sCeremony") === "1";
+  sessionPeakTask       = sessionStorage.getItem("sPeak") || null;
+  sessionPeakXp         = parseInt(sessionStorage.getItem("sPeakXp") || "0");
 
   AppSettings.applyAll();
   OllamaClient.checkAvailable();
@@ -1976,6 +2035,7 @@ document.addEventListener("DOMContentLoaded", () => {
   loadMissions();
   renderStreakBar();
   updateSessionProgress(); // also calls renderEmptyState()
+  sortMissionsByPriority();
 
   // Fix 4: one-time shortcut hint on first focus of the mission input.
   // Shows a chip strip of all keyboard shortcuts for 6s then self-dismisses.
@@ -2275,7 +2335,7 @@ function loadMissions() {
       const pomoSpan = document.createElement("span");
       pomoSpan.className = "pomo-estimate";
       pomoSpan.title = "Estimated duration";
-      pomoSpan.textContent = pomoToMinutes(loadPomoEstimate);
+      pomoSpan.textContent = pomoToMinutes(loadPomoEstimate, PomodoroEstimator.getSampleCount(loadPomoCategory));
 
       // Append prefix, description, meta text, and pomo badge
       newEl.appendChild(prefixSpan);
