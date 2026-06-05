@@ -1077,6 +1077,111 @@ function scrollToXPMeter() {
 // Keep track of recently notified task IDs to prevent duplicate notifications
 const recentlyNotifiedTasks = new Set();
 
+// ── Undo last task completion ─────────────────────────────────────────────────
+// Ctrl+Z (desktop) or toast button (mobile + desktop).
+// Stores ONE level of undo — replaced on each new completion.
+// Norman action/evaluation gulf: the operator needs immediate reversibility
+// to confidently act. Fat-finger on mobile is the primary failure case.
+
+window._lastCompletion = null;
+window._undoTimer      = null;
+
+function undoLastCompletion() {
+  var snap = window._lastCompletion;
+  if (!snap) return;
+  window._lastCompletion = null;
+  dismissUndoToast();
+
+  // ── Restore XP to pre-completion snapshot ───────────────────────────
+  xpMeterEl.dataset.xp = snap.preXp;
+  localStorage.setItem("currentXp", String(snap.preXp));
+  localStorage.setItem("currentLevel", String(Math.floor(snap.preXp / 100) + 1));
+  updateXpMeter(snap.preXp);
+  checkXP(snap.preXp);
+
+  // ── Remove from daily tasks by taskId ───────────────────────────────
+  var dailyKey = "dailyTasks_" + snap.dailyDate;
+  try {
+    var tasks = JSON.parse(localStorage.getItem(dailyKey) || "[]");
+    localStorage.setItem(dailyKey, JSON.stringify(
+      tasks.filter(function(t) { return t.id !== snap.taskId; })
+    ));
+  } catch (e) {}
+
+  // ── Reverse session counters ─────────────────────────────────────────
+  if (sessionCompletedCount > 0) sessionCompletedCount--;
+  if (sessionXpEarned >= snap.xp) sessionXpEarned -= snap.xp;
+  updateSessionProgress();
+
+  // ── Rebuild the <li> and put it back at the top of the list ─────────
+  var newEl = document.createElement("li");
+  var prefixSpan = document.createElement("span");
+  prefixSpan.className    = snap.prefixClass;
+  prefixSpan.textContent  = snap.prefixText;
+  var descSpan = document.createElement("span");
+  descSpan.className      = "mission-desc";
+  descSpan.contentEditable = "false";
+  descSpan.textContent    = snap.descText;
+  var metaText = document.createTextNode(" — " + snap.xp + " XP");
+  var pomoCategory = getCategoryKeyFromPrefixClass(snap.prefixClass);
+  var pomoSpan = document.createElement("span");
+  pomoSpan.className  = "pomo-estimate";
+  pomoSpan.title      = "Estimated duration";
+  pomoSpan.textContent = pomoToMinutes(PomodoroEstimator.getEstimate(pomoCategory));
+  newEl.appendChild(prefixSpan);
+  newEl.appendChild(descSpan);
+  newEl.appendChild(metaText);
+  newEl.appendChild(pomoSpan);
+  newEl.className   = "mission";
+  newEl.dataset.xp  = snap.xp;
+  newEl.draggable   = true;
+  newEl.addEventListener("dragstart",  handleDragStart);
+  newEl.addEventListener("dragend",    handleDragEnd);
+  newEl.addEventListener("dragover",   handleDragOver);
+  newEl.addEventListener("drop",       handleDrop);
+  newEl.addEventListener("touchstart", handleTouchStart);
+  newEl.addEventListener("touchmove",  handleTouchMove);
+  newEl.addEventListener("touchend",   handleTouchEnd);
+  createMissionClickHandler(newEl);
+  attachMissionEditHandlers(newEl);
+
+  missionListEl.prepend(newEl);
+  setTimeout(function() { newEl.classList.add("active"); }, 10);
+  saveMissions();
+}
+
+function showUndoToast() {
+  var existing = document.getElementById("undo-toast");
+  if (existing) existing.remove();
+  if (window._undoTimer) clearTimeout(window._undoTimer);
+
+  var toast = document.createElement("div");
+  toast.id = "undo-toast";
+  toast.innerHTML =
+    '<span class="undo-toast-label">Op cleared.</span>' +
+    '<button class="undo-toast-btn" type="button">UNDO</button>';
+  document.body.appendChild(toast);
+  requestAnimationFrame(function() { toast.classList.add("undo-toast-visible"); });
+
+  toast.querySelector(".undo-toast-btn").addEventListener("click", function(e) {
+    e.stopPropagation();
+    undoLastCompletion();
+  });
+
+  window._undoTimer = setTimeout(function() {
+    window._lastCompletion = null; // undo window expired
+    dismissUndoToast();
+  }, 8000);
+}
+
+function dismissUndoToast() {
+  if (window._undoTimer) { clearTimeout(window._undoTimer); window._undoTimer = null; }
+  var toast = document.getElementById("undo-toast");
+  if (!toast) return;
+  toast.classList.remove("undo-toast-visible");
+  setTimeout(function() { if (toast.parentNode) toast.remove(); }, 250);
+}
+
 // ── Inline task editing ───────────────────────────────────────────────────────
 // Desktop: hover task → press E.  Mobile: double-tap task.
 // No button — zero DOM clutter.
@@ -1392,9 +1497,23 @@ function createMissionClickHandler(element) {
       }
     }
 
-    // Continue with original functionality
+    // Continue with original functionality.
+    // Snapshot BEFORE addXp so we can restore the exact pre-completion XP value.
+    var _prefixEl  = element.querySelector("span[class^='prefix']") || {};
+    var _descEl    = element.querySelector(".mission-desc") || {};
+    window._lastCompletion = {
+      prefixClass: _prefixEl.className  || "prefix-default",
+      prefixText:  _prefixEl.textContent || "",
+      descText:    _descEl.textContent   || "",
+      xp:          xp,
+      preXp:       parseInt(xpMeterEl.dataset.xp) || 0,
+      taskId:      taskId,
+      dailyDate:   new Date().toISOString().split("T")[0],
+    };
+
     addXp(xp);
     element.remove();
+    showUndoToast();
     saveMissions();
     displayRandomMessage(category);
     playCompletionSound();
@@ -2294,6 +2413,7 @@ function readyButtonClickHandler() {
 
   // Always record today's ready time
   localStorage.setItem(todayReadyKey, currentTime.toString());
+  renderStreakBar(); // update dot immediately — don't wait for separate listener
 
   // Create the signal flare animation
   createSignalFlare();
@@ -5103,6 +5223,16 @@ document.addEventListener("keydown", (e) => {
   const tag = document.activeElement && document.activeElement.tagName;
   if (tag === "INPUT" || tag === "TEXTAREA") return;
   if (document.activeElement && document.activeElement.isContentEditable) return;
+
+  // Ctrl/Cmd+Z — undo last task completion (checked before modifier guard)
+  if ((e.ctrlKey || e.metaKey) && (e.key === "z" || e.key === "Z")) {
+    if (window._lastCompletion) {
+      e.preventDefault();
+      undoLastCompletion();
+    }
+    return;
+  }
+
   // Don't intercept modified keys (Ctrl/Meta/Alt combos) to avoid browser conflicts
   if (e.ctrlKey || e.metaKey || e.altKey) return;
 

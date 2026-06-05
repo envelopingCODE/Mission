@@ -6066,6 +6066,60 @@ svg.minimalist-face {
   50%       { border-bottom-color: rgba(134, 223, 255, 0.25); }
 }
 
+/* ==================== UNDO TOAST ==================== */
+/* Norman reversibility principle: operator must be able to undo any action.
+   Bottom-center, same z-layer as the pomo chip strip, styled as diagnostic
+   (muted) rather than celebratory to distinguish from achievement toasts. */
+#undo-toast {
+  position: fixed;
+  bottom: 1.5rem;
+  left: 50%;
+  transform: translateX(-50%) translateY(80px);
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: rgba(0, 8, 16, 0.93);
+  border: 1px solid rgba(134, 223, 255, 0.18);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  padding: 0.55rem 1rem 0.55rem 1.1rem;
+  border-radius: 5px;
+  font-family: "Courier New", monospace;
+  z-index: 9998;
+  opacity: 0;
+  transition: transform 0.22s ease, opacity 0.22s ease;
+  pointer-events: none;
+}
+#undo-toast.undo-toast-visible {
+  transform: translateX(-50%) translateY(0);
+  opacity: 1;
+  pointer-events: auto;
+}
+.undo-toast-label {
+  font-size: 0.68rem;
+  color: rgba(134, 223, 255, 0.45);
+  letter-spacing: 0.07em;
+  white-space: nowrap;
+}
+.undo-toast-btn {
+  background: none;
+  border: 1px solid rgba(134, 223, 255, 0.35);
+  color: rgba(134, 223, 255, 0.85);
+  font-family: "Courier New", monospace;
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+  padding: 0.22rem 0.65rem;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  white-space: nowrap;
+}
+.undo-toast-btn:hover {
+  background: rgba(134, 223, 255, 0.08);
+  border-color: rgba(134, 223, 255, 0.6);
+  color: #86dfff;
+}
+
 /* ==================== POMODORO CHECK BAR ==================== */
 #pomo-check-bar {
   position: fixed;
