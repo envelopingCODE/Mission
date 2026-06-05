@@ -150,7 +150,7 @@ The Zeigarnik Effect (Zeigarnik, 1927) — the tendency for incomplete tasks to 
 
 ---
 
-### 2.12 Affective Computing & Behavioral Proxy Inference (Picard, 1997; Russell, 1980)
+### 2.12 Affective Computing & Behavioral Proxy Inference (Picard, 1997; Russell, 1980; Smallwood & Schooler, 2006)
 
 Picard's foundational work on affective computing established that computing systems can recognize, interpret, and simulate human affect. The Russell Circumplex Model provides a two-dimensional framework for emotional states: valence (positive/negative) × arousal (high/low).
 
@@ -356,7 +356,7 @@ The M-VI mouth animation uses three incommensurable sine waves at irrational fre
 | Task editing (E to edit) | Cognitive load (reduces friction) | Implementation intention (refinement) |
 | Purge Memory Banks | Autonomy (SDT) | Commitment (irreversibility) |
 | Ollama LLM integration | Narrative transportation | SDT (dynamic relatedness) |
-| **AffectInference module** | Affective computing (Picard) | Russell Circumplex, Yerkes-Dodson |
+| **AffectInference module** | Affective computing (Picard) | Russell Circumplex, Yerkes-Dodson, Smallwood & Schooler |
 | **Micro-expression flash (120ms)** | Emotional contagion (Hatfield et al.) | Broaden-and-Build (Fredrickson) |
 | **Affect labeling (M-VI state narration)** | Affect labeling (Lieberman 2007) | Affective computing, narrative |
 | **Russell Circumplex adaptive UI** | Yerkes-Dodson, Russell 1980 | SDT autonomy (no false pressure) |
@@ -421,6 +421,9 @@ This is the narrative equivalent of progressive disclosure: the lore reveals its
 - Operator Condition hearts (narrative barometer)
 - AffectInference module (flow / avoidance / depletion / disengaged / stressed)
 - Russell Circumplex positioning (arousal × valence → adaptive UI response)
+  - Valence: completion velocity direction (primary) + neural capture rate (secondary)
+  - Operator Condition demoted to tone moderator (getToneModifier) — timescale mismatch
+  - Neural Capture events tracked as intrusive-thought proxy (Smallwood & Schooler, 2006)
 - Yerkes-Dodson adaptive response (flow gate, disengagement re-engagement, stress softening)
 - Affect labeling — M-VI narrates inferred state; Ollama-generated if available
 - Micro-expression flash — 120ms excited peak → happy → base on completion
@@ -620,6 +623,7 @@ The three M-VI voice surfaces (inline completion messages, dispatch modal lore, 
 
 ### Affective Computing & Emotion
 - Picard, R. W. (1997). *Affective Computing.* MIT Press.
+- Smallwood, J., & Schooler, J. W. (2006). The restless mind. *Psychological Bulletin, 132*(6), 946–958.
 - Russell, J. A. (1980). A circumplex model of affect. *Journal of Personality and Social Psychology, 39*(6), 1161–1178.
 - Fredrickson, B. L. (2001). The role of positive emotions in positive psychology. *American Psychologist, 56*(3), 218–226.
 - Breazeal, C. (2003). *Designing Sociable Robots.* MIT Press.

@@ -435,6 +435,7 @@ window.OllamaClient = OllamaClient;
 const AffectInference = (function() {
   var _completionTimes = [];
   var _additionTimes   = [];
+  var _captureTimes    = []; // neural capture events — proxy for intrusive thought rate
   var _state           = "normal";
   var _russellState    = "neutral";
 
@@ -455,11 +456,55 @@ const AffectInference = (function() {
     return gaps;
   }
 
-  // ── Valence from Operator Condition hearts (0.5–5.0) ──────────────────
+  // ── Valence: velocity direction (primary) + capture rate (secondary) ──
+  // Operator Condition hearts were demoted — they track narrative identity
+  // over days/weeks, not hedonic tone at session granularity. See getToneModifier().
+  //
+  // Primary (weight 2): completion velocity direction.
+  //   Accelerating rate → positive; decelerating → negative; steady → neutral.
+  //   Based on Fredrickson's upward spiral: momentum predicts positive affect.
+  //
+  // Secondary (weight 1): neural capture rate.
+  //   High intrusive-thought capture → cognitive spillover → negative affect
+  //   (Smallwood & Schooler, 2006: mind-wandering reliably tracks negative valence).
+  //   Zero captures during active work → focused → slight positive indicator.
   function getValence() {
-    var c = (typeof window.getCondition === "function") ? window.getCondition() : 3;
-    if (c >= 3.5) return "positive";
-    if (c <= 2.5) return "negative";
+    if (_completionTimes.length === 0) return "neutral"; // no session data yet
+
+    var recentRate = recentCount(_completionTimes, WIN10);
+    var priorRate  = recentCount(_completionTimes, WIN30) - recentRate; // 10-30 min ago
+
+    var velocityScore;
+    if (_completionTimes.length < 2) {
+      velocityScore = 0; // not enough data to read direction
+    } else if (recentRate > priorRate) {
+      velocityScore = 2;  // accelerating → positive
+    } else if (recentRate < priorRate && priorRate > 0) {
+      velocityScore = -2; // decelerating → negative
+    } else {
+      velocityScore = 0;  // steady or no prior window
+    }
+
+    var captureCount  = recentCount(_captureTimes, WIN15);
+    var captureScore  = captureCount >= 4 ? -1
+                      : (captureCount === 0 && _completionTimes.length > 0) ? 1
+                      : 0;
+
+    var total = velocityScore + captureScore;
+    if (total >= 2)  return "positive";
+    if (total <= -1) return "negative";
+    return "neutral";
+  }
+
+  // ── Operator Condition as TONE MODERATOR (not circumplex signal) ───────
+  // High condition → warmer message register.
+  // Low condition → more check-in, less celebratory.
+  // Does NOT drive getRussellState() — timescale and construct are mismatched.
+  function getToneModifier() {
+    if (typeof window.getCondition !== "function") return "neutral";
+    var c = window.getCondition();
+    if (c >= 3.5) return "warm";
+    if (c <= 2.5) return "support";
     return "neutral";
   }
 
@@ -540,13 +585,25 @@ const AffectInference = (function() {
     _russellState = getRussellState();
   }
 
+  function recordCapture() {
+    _captureTimes.push(Date.now());
+    if (_captureTimes.length > 30) _captureTimes.shift();
+    // Re-evaluate Russell state — a spike in captures can shift valence
+    // to negative even mid-flow, which should downgrade the arousal×valence position.
+    var newRussell = getRussellState();
+    if (newRussell !== _russellState) applyRussellAdaptations(newRussell);
+    _russellState = newRussell;
+  }
+
   return {
     recordCompletion: recordCompletion,
     recordAddition:   recordAddition,
+    recordCapture:    recordCapture,
     getState:         function() { return _state; },
     getRussellState:  getRussellState,
     getArousal:       getArousal,
     getValence:       getValence,
+    getToneModifier:  getToneModifier,
   };
 })();
 
@@ -3512,6 +3569,9 @@ function saveDistraction() {
     DOM.input.value = "";
     DOM.input.focus();
     playAddNeuralSound();
+
+    // Record capture event for valence inference (high capture rate = negative affect proxy)
+    AffectInference.recordCapture();
 
     // Use incremental update for better performance
     incrementalUIUpdate(distraction);
