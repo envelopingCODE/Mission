@@ -3489,12 +3489,13 @@ const SettingsPanel = () => {
           <circle cx="12" cy="12" r="3"/><path d={GEAR_PATH} />
         </svg>
       </button>
-      <div className="settings-panel settings-panel-open">
+      <div className="settings-panel settings-panel-open settings-view-themes">
         <div className="settings-hdr">
           <button className="st-back" onClick={() => navigateTo("main")}>‹</button>
           <span><span className="st-breadcrumb">Settings ›</span> Themes</span>
         </div>
         <div className="settings-body"><div key={view} className={"settings-view-anim settings-view-" + navDir}>
+          <div className="st-section">
           {SKINS_DEF.map(function(skin) {
             var isUnlocked = skin.unlocked === true || (typeof skin.unlocked === "function" && skin.unlocked());
             var isActive   = activeSkin === skin.id;
@@ -3527,6 +3528,7 @@ const SettingsPanel = () => {
               </div>
             );
           })}
+          </div>
         </div></div>
       </div>
     </div>

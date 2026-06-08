@@ -5182,9 +5182,10 @@ svg.minimalist-face {
 .settings-view-forward { animation-name:settingsViewForward; }
 .settings-view-back    { animation-name:settingsViewBack;    }
 
-/* Achievements sub-screen fills full screen on mobile; main settings stays narrow */
+/* Achievements and Themes sub-screens fill full screen on mobile */
 @media (max-width: 600px) {
-  .settings-panel.settings-view-achievements {
+  .settings-panel.settings-view-achievements,
+  .settings-panel.settings-view-themes {
     width: 100vw;
     border-left: none;
     border-top: 1px solid rgba(134,223,255,0.1);
