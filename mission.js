@@ -319,6 +319,7 @@ const AppSettings = (function () {
     buddyMessages:        true,
     narrativeStyle:       true,  // true = M-VI tactical voice, false = general motivational
     neuralCaptureVisible: true,
+    miniTimerSkin:        true,  // mirror active theme on the minimized timer badge
     ollamaEnabled:        false,
     ollamaModel:          "llama3.2:3b",
     ollamaUrl:            "http://localhost:11434",
@@ -344,6 +345,9 @@ const AppSettings = (function () {
     }
     if (key === "soundEnabled") {
       document.querySelectorAll("audio").forEach(function (a) { a.muted = !value; });
+    }
+    if (key === "miniTimerSkin") {
+      if (typeof window._onMiniSkinChange === "function") window._onMiniSkinChange(value);
     }
   }
   function applyAll() {

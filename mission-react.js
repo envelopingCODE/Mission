@@ -3747,7 +3747,8 @@ const SettingsPanel = () => {
 
           <div className="st-section">
             <div className="st-section-title">Pomodoro</div>
-            <StToggle label="Show timer" checked={cfg.pomodoroVisible} onChange={() => toggle("pomodoroVisible")} />
+            <StToggle label="Show timer"    checked={cfg.pomodoroVisible}  onChange={() => toggle("pomodoroVisible")} />
+            <StToggle label="Theme on badge" checked={cfg.miniTimerSkin !== false} onChange={() => toggle("miniTimerSkin")} desc="Mirror active skin on minimized timer" />
           </div>
 
           <div className="st-section">
@@ -3850,6 +3851,9 @@ const PomodoroTimer = () => {
   const [skin,         setSkin]         = React.useState(
     () => localStorage.getItem("timerSkinActive") || "eclipse"
   );
+  const [miniSkin,     setMiniSkin]     = React.useState(
+    () => window.AppSettings ? window.AppSettings.get().miniTimerSkin !== false : true
+  );
 
   // Listen for skin unlock notification from mission.js
   React.useEffect(() => {
@@ -3857,7 +3861,11 @@ const PomodoroTimer = () => {
       localStorage.setItem("timerSkinActive", s);
       setSkin(s);
     };
-    return () => { delete window._onTimerSkinUnlock; };
+    window._onMiniSkinChange = (v) => setMiniSkin(v !== false);
+    return () => {
+      delete window._onTimerSkinUnlock;
+      delete window._onMiniSkinChange;
+    };
   }, []);
 
   // Expose toggle to the global keyboard handler in mission.js
@@ -3995,7 +4003,8 @@ const PomodoroTimer = () => {
     document.addEventListener("mouseup",   onUp);
   }, [pipSize]);
 
-  const isNeon    = skin === "neon";
+  const isNeon       = skin === "neon";
+  const miniIsNeon   = isNeon && miniSkin;  // setting can suppress theme on badge
   const ringColor = isNeon
     ? (mode === "break" ? "#ff00e5" : "#00d4ff")
     : (mode === "break" ? "#0fdfab"  : "#86dfff");
@@ -4014,7 +4023,7 @@ const PomodoroTimer = () => {
         <div className="pomodoro-mini-ring">
           <svg width="64" height="64" viewBox="0 0 64 64"
                style={{ position: "absolute", inset: 0, overflow: "visible" }}>
-            {isNeon && (
+            {miniIsNeon && (
               <defs>
                 <linearGradient id={miniGradId} x1="32" y1="6" x2="32" y2="58" gradientUnits="userSpaceOnUse">
                   <stop offset="0%"   stopColor="#00d4ff" />
@@ -4026,8 +4035,8 @@ const PomodoroTimer = () => {
             {/* Animated ambient mini corona */}
             <g className="pip-corona-outer">
               <circle cx="32" cy="32" r={MINI_R} fill="none"
-                stroke={isNeon ? `url(#${miniGradId})` : ringColor}
-                strokeWidth="14" strokeOpacity={isNeon ? 0.07 : 0.04} />
+                stroke={miniIsNeon ? `url(#${miniGradId})` : ringColor}
+                strokeWidth="14" strokeOpacity={miniIsNeon ? 0.07 : 0.04} />
             </g>
             {/* Track */}
             <circle cx="32" cy="32" r={MINI_R} fill="none"
@@ -4036,12 +4045,12 @@ const PomodoroTimer = () => {
             <circle cx="32" cy="32" r={MINI_R - 1} fill="rgba(0,0,0,0.45)" />
             {/* Progress arc with glow */}
             <circle ref={miniRingRef} cx="32" cy="32" r={MINI_R} fill="none"
-              stroke={isNeon ? `url(#${miniGradId})` : ringColor}
+              stroke={miniIsNeon ? `url(#${miniGradId})` : ringColor}
               strokeWidth="1.8"
               strokeDasharray={MINI_C} strokeDashoffset={MINI_C}
               strokeLinecap="round" transform="rotate(-90 32 32)"
               style={{
-                filter: isNeon
+                filter: miniIsNeon
                   ? "drop-shadow(0 0 2px #00d4ff) drop-shadow(0 0 4px rgba(139,0,255,0.7))"
                   : mode === "break"
                     ? "drop-shadow(0 0 2px rgba(15,223,171,1)) drop-shadow(0 0 5px rgba(15,223,171,0.65))"
@@ -4050,7 +4059,7 @@ const PomodoroTimer = () => {
               }}
             />
           </svg>
-          <span ref={miniTimeRef} className={"pomodoro-mini-time" + (isNeon ? " pip-time-neon" : "")}>
+          <span ref={miniTimeRef} className={"pomodoro-mini-time" + (miniIsNeon ? " pip-time-neon" : "")}>
             {fmt(timeLeftRef.current)}
           </span>
         </div>
