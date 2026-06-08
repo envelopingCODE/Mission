@@ -368,6 +368,8 @@ The M-VI mouth animation uses three incommensurable sine waves at irrational fre
 | **Goal Gradient visual pulse** | Goal Gradient Effect (Hull 1932; Kivetz 2006) | Flow (approaching completion accelerates engagement) |
 | **Auto-sort by XP on load** | Availability Heuristic (Tversky & Kahneman 1973) | Goal-setting (important task = first task) |
 | **Pomo calibration confidence** | HCML transparency (Amershi et al. 2019) | Goal-setting (accurate time-bound targets) |
+| **Neural Capture theme detection** | Recognition over Recall (Nielsen 1994) | Goal-setting (standing objective from recurring concern) |
+| **Time-slot task tagging [AM/PM/EVE]** | Implementation Intention (Gollwitzer & Sheeran 2006) | Availability Heuristic (off-schedule tasks dimmed) |
 | Standalone React roots | Cognitive load (system reliability) | — |
 | Keyboard shortcuts (S/A/P/E) | Cognitive load (expert navigation) | Habit (motor memory) |
 
@@ -439,6 +441,8 @@ This is the narrative equivalent of progressive disclosure: the lore reveals its
 - Goal Gradient pulse — session progress indicator pulses cyan at remaining === 1
 - Auto-sort by XP on load — highest-XP task surfaces to position 1 (Availability Heuristic)
 - Pomodoro calibration confidence — sample count shown alongside estimate (~25m · 4)
+- Neural Capture theme detection — recurring keywords surfaced as "create objective" prompts (Recognition over Recall)
+- Time-slot tagging — tasks tagged [AM], [PM], or [EVE] dim when off-schedule (Implementation Intention Scheduling)
 - Task editing (hover + E on desktop, double-tap on mobile)
 - Purge Memory Banks (standalone root, blacklist deletion, lore-aware confirmation)
 - Partner depth system (tier 0/1/2 based on cumulative completions)
@@ -662,6 +666,8 @@ The three M-VI voice surfaces (inline completion messages, dispatch modal lore, 
 - Kivetz, R., Urminsky, O., & Zheng, Y. (2006). The goal-gradient hypothesis resurrected. *Journal of Marketing Research, 43*(1), 39–58.
 - Amershi, S., et al. (2019). Software engineering for machine learning: A case study. *ICSE-SEIP.* [Microsoft HCML Guidelines]
 - Tversky, A., & Kahneman, D. (1973). Availability: A heuristic for judging frequency and probability. *Cognitive Psychology, 5*(2), 207–232.
+- Nielsen, J. (1994). *Usability Engineering.* Morgan Kaufmann. [Recognition vs. Recall heuristic #6]
+- Gollwitzer, P. M., & Sheeran, P. (2006). Implementation intentions and goal achievement: A meta-analysis of effects and processes. *Advances in Experimental Social Psychology, 38*, 69–119.
 
 ### HCI & UX
 - Card, S. K., Moran, T. P., & Newell, A. (1983). *The Psychology of Human-Computer Interaction.* Lawrence Erlbaum.

@@ -1694,6 +1694,9 @@ function addMission(sanitizedInput) {
     newEl.className = "mission";
     newEl.dataset.xp = xpValue;
 
+    // Implementation Intention — attach time-slot badge if task is tagged [AM/PM/EVE]
+    attachTimeSlotBadge(newEl, modifiedMission);
+
     // Add drag attributes
     newEl.draggable = true;
     newEl.addEventListener("dragstart", handleDragStart);
@@ -1720,6 +1723,7 @@ function addMission(sanitizedInput) {
     setTimeout(() => {
       newEl.classList.add("active");
       saveMissions();
+      applyTimeSlotVisibility();
     }, 10);
   };
 
@@ -2004,6 +2008,113 @@ const TaskSystem = {
   },
 };
 
+// ── Recognition over Recall — Neural Capture theme detection ─────────────
+// Nielsen (1994): recognition requires less cognitive work than recall.
+// After each capture, scan the last 20 entries for recurring keywords.
+// When a word appears 3+ times the operator is likely circling a recurring
+// concern — M-VI surfaces a one-time prompt to convert it into a standing
+// objective, removing the recall burden of realising the pattern exists.
+var _CAPTURE_STOPWORDS = new Set([
+  "a","an","the","and","or","but","for","in","on","at","to","of","with",
+  "is","it","its","was","are","be","been","being","have","has","had",
+  "do","does","did","will","would","could","should","may","might","can",
+  "not","no","so","this","that","these","those","there","their","they",
+  "i","me","my","we","our","you","your","he","she","him","her","his",
+  "up","out","about","from","by","as","into","through","over","then",
+  "than","just","like","more","some","if","when","how","what","which",
+  "who","get","got","need","want","going","thing","things","one","also",
+]);
+
+function detectCaptureThemes() {
+  if (!window._themeSuggested) window._themeSuggested = new Set();
+  var captures = getDistractions().slice(0, 20);
+  if (captures.length < 3) return;
+
+  var freq = {};
+  captures.forEach(function(c) {
+    c.text.toLowerCase().replace(/[^a-z\s]/g, " ").split(/\s+/).forEach(function(w) {
+      if (w.length >= 4 && !_CAPTURE_STOPWORDS.has(w)) freq[w] = (freq[w] || 0) + 1;
+    });
+  });
+
+  var topWord = Object.keys(freq)
+    .filter(function(w) { return freq[w] >= 3 && !window._themeSuggested.has(w); })
+    .sort(function(a, b) { return freq[b] - freq[a]; })[0];
+
+  if (!topWord) return;
+  window._themeSuggested.add(topWord);
+
+  var bubble = document.createElement("div");
+  bubble.className = "buddy-suggestion buddy-suggestion-theme";
+  bubble.innerHTML = "Recurring theme: <strong>" + topWord + "</strong> — " +
+    "<span class=\"theme-create-link\">create objective</span>";
+  document.body.appendChild(bubble);
+
+  bubble.querySelector(".theme-create-link").addEventListener("click", function() {
+    bubble.classList.remove("buddy-suggestion-visible");
+    setTimeout(function() { bubble.remove(); }, 300);
+    if (inputEl) {
+      var cap = topWord.charAt(0).toUpperCase() + topWord.slice(1);
+      inputEl.value = cap;
+      inputEl.focus();
+      inputEl.setSelectionRange(cap.length, cap.length);
+    }
+  });
+
+  requestAnimationFrame(function() { bubble.classList.add("buddy-suggestion-visible"); });
+  setTimeout(function() {
+    bubble.classList.remove("buddy-suggestion-visible");
+    setTimeout(function() { bubble.remove(); }, 300);
+  }, 7000);
+}
+
+// ── Implementation Intention Scheduling — time-slot tagging ──────────────
+// Gollwitzer & Sheeran (2006): "when X, then Y" formats produce 200-300%
+// higher completion rates. Operators tag tasks with [AM], [PM], or [EVE].
+// Off-schedule tasks are dimmed rather than hidden — visible but de-prioritised.
+function getTimeSlot() {
+  var h = new Date().getHours();
+  if (h >= 5  && h < 12) return "AM";
+  if (h >= 12 && h < 17) return "PM";
+  if (h >= 17 && h < 23) return "EVE";
+  return null; // night — no dimming
+}
+
+function parseTaskTimeSlot(text) {
+  var m = text.match(/\[(AM|PM|EVE)\]/i);
+  return m ? m[1].toUpperCase() : null;
+}
+
+function attachTimeSlotBadge(el, text) {
+  var slot = parseTaskTimeSlot(text);
+  if (!slot) return;
+  el.dataset.timeSlot = slot;
+  var badge = document.createElement("span");
+  badge.className = "time-slot-badge time-slot-" + slot;
+  badge.textContent = slot;
+  el.appendChild(badge);
+}
+
+function applyTimeSlotVisibility() {
+  var current = getTimeSlot();
+  document.querySelectorAll(".mission[data-time-slot]").forEach(function(el) {
+    if (!current || el.dataset.timeSlot === current) {
+      el.classList.remove("mission-off-schedule");
+    } else {
+      el.classList.add("mission-off-schedule");
+    }
+  });
+}
+
+function scheduleTimeSlotRefresh() {
+  var now = new Date();
+  var msToNextHour = (60 - now.getMinutes()) * 60000 - now.getSeconds() * 1000;
+  setTimeout(function() {
+    applyTimeSlotVisibility();
+    scheduleTimeSlotRefresh();
+  }, msToNextHour);
+}
+
 // ── Availability Heuristic — auto-sort by XP on load ─────────────────────
 // Tversky & Kahneman (1973): what is cognitively available feels most important.
 // Surfacing the highest-XP task to position 1 on load makes the most
@@ -2036,6 +2147,8 @@ document.addEventListener("DOMContentLoaded", () => {
   renderStreakBar();
   updateSessionProgress(); // also calls renderEmptyState()
   sortMissionsByPriority();
+  applyTimeSlotVisibility();
+  scheduleTimeSlotRefresh();
 
   // Fix 4: one-time shortcut hint on first focus of the mission input.
   // Shows a chip strip of all keyboard shortcuts for 6s then self-dismisses.
@@ -2344,6 +2457,9 @@ function loadMissions() {
       newEl.appendChild(pomoSpan);
       newEl.className = "mission";
       newEl.dataset.xp = mission.xp;
+
+      // Implementation Intention — attach time-slot badge if task is tagged [AM/PM/EVE]
+      attachTimeSlotBadge(newEl, mission.text);
 
       // Add drag functionality
       newEl.draggable = true;
@@ -3857,6 +3973,9 @@ function saveDistraction() {
 
     // Use incremental update for better performance
     incrementalUIUpdate(distraction);
+
+    // Recognition over Recall — detect recurring themes in recent captures
+    detectCaptureThemes();
 
     return true;
   }
