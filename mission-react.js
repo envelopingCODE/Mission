@@ -2620,6 +2620,20 @@ const initializeReactComponents = () => {
     }
   }
 
+  // Recovery helper — called by S/A keydown handlers when the gear is missing
+  // (e.g. after a React render error unmounts the component without reload).
+  window.remountSettingsPanel = function() {
+    var mount = document.getElementById("settings-mount");
+    if (!mount) return;
+    try {
+      if (window.settingsRoot) { try { window.settingsRoot.unmount(); } catch(_) {} }
+      window.settingsRoot = ReactDOM.createRoot(mount);
+      window.settingsRoot.render(<SettingsPanel />);
+    } catch (e) {
+      console.error("SettingsPanel remount error:", e);
+    }
+  };
+
   // Mount Pomodoro timer
   const pomodoroMount = document.getElementById("pomodoro-mount");
   if (pomodoroMount && !window.pomodoroRoot) {
@@ -3481,6 +3495,29 @@ const SettingsPanel = () => {
   const DLBL  = { idle: "Not tested", checking: "Checking…", ok: "Connected", fail: "Unreachable" };
   const SHORTCUTS = [["c","Capture"],["r","Ready signal"],["t","Timer"],["s","Settings"],["a","Achievements"],["Esc","Dismiss"]];
 
+  // ── Demo effects — MUST be here, before any early returns ────────────────
+  // React requires all hooks to be called unconditionally on every render.
+  // Placing useEffect after an early return violates the Rules of Hooks and
+  // causes React to throw + unmount the component when that branch is taken.
+  var DEMO_EMOTIONS = ["neutral","happy","excited","alert","composing","flow","curious","perplexed","playful","sleepy","glitched"];
+  React.useEffect(function() {
+    if (view !== "demo" || !autoCycle) return;
+    var idx = 0;
+    var iv = setInterval(function() {
+      idx = (idx + 1) % DEMO_EMOTIONS.length;
+      var em = DEMO_EMOTIONS[idx];
+      setDemoActive(em);
+      if (typeof window.setRobotEmotion === "function") window.setRobotEmotion(em, 0);
+    }, 2600);
+    return function() { clearInterval(iv); };
+  }, [view, autoCycle]);
+
+  React.useEffect(function() {
+    return function() {
+      if (typeof window.setRobotEmotion === "function") window.setRobotEmotion("neutral", 0);
+    };
+  }, [view]);
+
   // ── Themes screen (early return — must be before main return) ──────────
   if (view === "themes" && open) return (
     <div>
@@ -3533,27 +3570,6 @@ const SettingsPanel = () => {
       </div>
     </div>
   );
-
-  // ── Demo effects at top level (hooks cannot be inside conditionals) ──────
-  var DEMO_EMOTIONS = ["neutral","happy","excited","alert","composing","flow","curious","perplexed","playful","sleepy","glitched"];
-  React.useEffect(function() {
-    if (view !== "demo" || !autoCycle) return;
-    var idx = 0;
-    var iv = setInterval(function() {
-      idx = (idx + 1) % DEMO_EMOTIONS.length;
-      var em = DEMO_EMOTIONS[idx];
-      setDemoActive(em);
-      if (typeof window.setRobotEmotion === "function") window.setRobotEmotion(em, 0);
-    }, 2600);
-    return function() { clearInterval(iv); };
-  }, [view, autoCycle]);
-
-  React.useEffect(function() {
-    return function() {
-      // Reset buddy to neutral when leaving demo screen
-      if (typeof window.setRobotEmotion === "function") window.setRobotEmotion("neutral", 0);
-    };
-  }, [view]);
 
   // ── M-VI Demo screen (early return) ──────────────────────────────────
   if (view === "demo" && open) {

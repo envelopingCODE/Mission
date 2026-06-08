@@ -5519,8 +5519,16 @@ document.addEventListener("keydown", (e) => {
 
   if (e.key === "c" || e.key === "C") {
     e.preventDefault();
-    const captureInput = document.getElementById("distractionInput");
-    if (captureInput) captureInput.focus();
+    // Expand the panel if collapsed, scroll it into view, then focus the input
+    var captureContainer = document.getElementById("distraction-capture-container");
+    if (captureContainer && !captureContainer.classList.contains("expanded")) {
+      captureContainer.classList.add("expanded");
+    }
+    var captureInput = document.getElementById("distractionInput");
+    if (captureInput) {
+      captureInput.scrollIntoView({ behavior: "smooth", block: "center" });
+      captureInput.focus();
+    }
   }
 
   if (e.key === "r" || e.key === "R") {
@@ -5534,14 +5542,38 @@ document.addEventListener("keydown", (e) => {
     if (typeof window.togglePomodoroTimer === "function") window.togglePomodoroTimer();
   }
 
+  // S and A open the settings panel. If the React root has silently unmounted
+  // (render error, etc.) the gear button disappears and the window functions are
+  // deleted. Detect this by checking whether the gear is still in the DOM —
+  // if not, remount and then open after one tick.
+  function _openSettings(view) {
+    var gearPresent = document.querySelector(".settings-gear");
+    if (!gearPresent && typeof window.remountSettingsPanel === "function") {
+      window.remountSettingsPanel();
+      setTimeout(function() {
+        if (view === "achievements" && typeof window.toggleSettingsView === "function") {
+          window.toggleSettingsView("achievements");
+        } else if (typeof window.toggleSettingsPanel === "function") {
+          window.toggleSettingsPanel();
+        }
+      }, 60);
+      return;
+    }
+    if (view === "achievements" && typeof window.toggleSettingsView === "function") {
+      window.toggleSettingsView("achievements");
+    } else if (typeof window.toggleSettingsPanel === "function") {
+      window.toggleSettingsPanel();
+    }
+  }
+
   if (e.key === "a" || e.key === "A") {
     e.preventDefault();
-    if (typeof window.toggleSettingsView === "function") window.toggleSettingsView("achievements");
+    _openSettings("achievements");
   }
 
   if (e.key === "s" || e.key === "S") {
     e.preventDefault();
-    if (typeof window.toggleSettingsPanel === "function") window.toggleSettingsPanel();
+    _openSettings("main");
   }
 
   if (e.key === "Escape") {
