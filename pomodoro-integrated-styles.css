@@ -80,6 +80,11 @@
   text-shadow: 0 0 8px rgba(134, 223, 255, 0.5);
   letter-spacing: 0.05em;
 }
+/* Neon skin: gradient text replaces solid color; remove text-shadow
+   because -webkit-text-fill-color: transparent breaks it. */
+.pomodoro-mini-time.pip-time-neon {
+  text-shadow: none;
+}
 
 /* ========== MAXIMIZED VIEW ========== */
 .pomodoro-maximized {

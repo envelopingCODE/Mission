@@ -4002,6 +4002,7 @@ const PomodoroTimer = () => {
 
   // ── Minimized badge ───────────────────────────────────────────────────
   if (!expanded) {
+    const miniGradId = "mini-neon-grad";
     return (
       <div
         className="pomodoro-minimized"
@@ -4013,10 +4014,20 @@ const PomodoroTimer = () => {
         <div className="pomodoro-mini-ring">
           <svg width="64" height="64" viewBox="0 0 64 64"
                style={{ position: "absolute", inset: 0, overflow: "visible" }}>
+            {isNeon && (
+              <defs>
+                <linearGradient id={miniGradId} x1="32" y1="6" x2="32" y2="58" gradientUnits="userSpaceOnUse">
+                  <stop offset="0%"   stopColor="#00d4ff" />
+                  <stop offset="48%"  stopColor="#8b00ff" />
+                  <stop offset="100%" stopColor="#ff00e5" />
+                </linearGradient>
+              </defs>
+            )}
             {/* Animated ambient mini corona */}
             <g className="pip-corona-outer">
               <circle cx="32" cy="32" r={MINI_R} fill="none"
-                stroke={ringColor} strokeWidth="14" strokeOpacity="0.04" />
+                stroke={isNeon ? `url(#${miniGradId})` : ringColor}
+                strokeWidth="14" strokeOpacity={isNeon ? 0.07 : 0.04} />
             </g>
             {/* Track */}
             <circle cx="32" cy="32" r={MINI_R} fill="none"
@@ -4025,18 +4036,21 @@ const PomodoroTimer = () => {
             <circle cx="32" cy="32" r={MINI_R - 1} fill="rgba(0,0,0,0.45)" />
             {/* Progress arc with glow */}
             <circle ref={miniRingRef} cx="32" cy="32" r={MINI_R} fill="none"
-              stroke={ringColor} strokeWidth="1.8"
+              stroke={isNeon ? `url(#${miniGradId})` : ringColor}
+              strokeWidth="1.8"
               strokeDasharray={MINI_C} strokeDashoffset={MINI_C}
               strokeLinecap="round" transform="rotate(-90 32 32)"
               style={{
-                filter: mode === "break"
-                  ? "drop-shadow(0 0 2px rgba(15,223,171,1)) drop-shadow(0 0 5px rgba(15,223,171,0.65))"
-                  : "drop-shadow(0 0 2px rgba(134,223,255,1)) drop-shadow(0 0 5px rgba(134,223,255,0.65))",
+                filter: isNeon
+                  ? "drop-shadow(0 0 2px #00d4ff) drop-shadow(0 0 4px rgba(139,0,255,0.7))"
+                  : mode === "break"
+                    ? "drop-shadow(0 0 2px rgba(15,223,171,1)) drop-shadow(0 0 5px rgba(15,223,171,0.65))"
+                    : "drop-shadow(0 0 2px rgba(134,223,255,1)) drop-shadow(0 0 5px rgba(134,223,255,0.65))",
                 transition: "stroke 0.5s ease, filter 0.5s ease",
               }}
             />
           </svg>
-          <span ref={miniTimeRef} className="pomodoro-mini-time">
+          <span ref={miniTimeRef} className={"pomodoro-mini-time" + (isNeon ? " pip-time-neon" : "")}>
             {fmt(timeLeftRef.current)}
           </span>
         </div>
