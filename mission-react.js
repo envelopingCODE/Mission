@@ -3493,7 +3493,7 @@ const SettingsPanel = () => {
 
   const DOT   = { idle: "rgba(134,223,255,0.2)", checking: "rgba(244,197,66,0.8)", ok: "#0fdfab", fail: "#ff6b6b" };
   const DLBL  = { idle: "Not tested", checking: "Checking…", ok: "Connected", fail: "Unreachable" };
-  const SHORTCUTS = [["c","Capture"],["r","Ready signal"],["t","Timer"],["m","Pomodoro/Project mode"],["s","Settings"],["a","Achievements"],["Esc","Dismiss"]];
+  const SHORTCUTS = [["c","Capture"],["r","Ready signal"],["t","Timer"],["m","Mode"],["s","Settings"],["a","Achievements"],["Esc","Dismiss"]];
 
   // ── Demo effects — MUST be here, before any early returns ────────────────
   // React requires all hooks to be called unconditionally on every render.
@@ -3749,7 +3749,7 @@ const SettingsPanel = () => {
             <div className="st-section-title">Pomodoro</div>
             <StToggle label="Show timer"    checked={cfg.pomodoroVisible}  onChange={() => toggle("pomodoroVisible")} />
             <StToggle label="Theme on badge" checked={cfg.miniTimerSkin !== false} onChange={() => toggle("miniTimerSkin")} desc="Mirror active skin on minimized timer" />
-            <StToggle label="XP for project time" checked={cfg.projectTimeXP === true} onChange={() => toggle("projectTimeXP")} desc="10 XP per 25 min tracked in Project mode" />
+            <StToggle label="XP for project time" checked={cfg.projectTimeXP === true} onChange={() => toggle("projectTimeXP")} desc="10 XP per 25 min — awarded when you finish an OPS session" />
           </div>
 
           <div className="st-section">
@@ -3899,8 +3899,9 @@ const PomodoroTimer = () => {
   const [timerType,    setTimerType]    = React.useState(
     () => localStorage.getItem("timerType") || "pomodoro"
   );
-  const [breakPickerOpen, setBreakPickerOpen] = React.useState(false);
-  const [activeBreakGroup, setActiveBreakGroup] = React.useState(null); // "Lunch" | "Coffee" — drives the big icon while on a project-mode break
+  const [breakPickerOpen,   setBreakPickerOpen]   = React.useState(false);
+  const [activeBreakGroup,  setActiveBreakGroup]  = React.useState(null);
+  const [sessionComplete,   setSessionComplete]   = React.useState(null); // { elapsed, increments, xp } while the finish-session celebration plays
   const [sessionCount, setSessionCount] = React.useState(0);
   const [expanded,     setExpanded]     = React.useState(false);
   const [position,     setPosition]     = React.useState(null);
@@ -3940,8 +3941,14 @@ const PomodoroTimer = () => {
   // Project mode: open-ended elapsed seconds (counts up, never auto-resets)
   // and a high-water mark of how much has already been "cashed in" for XP,
   // so the same stretch of time is never double-paid.
-  const projectElapsedRef  = React.useRef(0);
+  // Persists elapsed seconds to localStorage so a browser refresh
+  // mid-session doesn't wipe the tracked time.
+  const projectElapsedRef  = React.useRef(
+    parseInt(localStorage.getItem("projectElapsed") || "0", 10)
+  );
   const projectXpBankedRef = React.useRef(0);
+  // Ref for the animated XP counter inside the celebration overlay.
+  const xpCounterRef = React.useRef(null);
 
   // DOM refs for direct per-second writes
   const pipTimeRef  = React.useRef(null);
@@ -4061,14 +4068,8 @@ const PomodoroTimer = () => {
         if (mode === "work") {
           // Open-ended stopwatch — never auto-transitions on its own.
           projectElapsedRef.current++;
+          localStorage.setItem("projectElapsed", projectElapsedRef.current);
           syncDisplay();
-          if (window.AppSettings && window.AppSettings.get().projectTimeXP) {
-            if (projectElapsedRef.current - projectXpBankedRef.current >= PROJECT_XP_INCREMENT_SECONDS) {
-              projectXpBankedRef.current += PROJECT_XP_INCREMENT_SECONDS;
-              if (typeof window.addXp === "function") window.addXp(PROJECT_XP_AWARD);
-              if (typeof window.pulseXpMeter === "function") window.pulseXpMeter();
-            }
-          }
           return;
         }
         // On a structured break — fixed-length countdown, same mechanics
@@ -4131,6 +4132,7 @@ const PomodoroTimer = () => {
     if (timerType === "project" && mode === "work") {
       projectElapsedRef.current  = 0;
       projectXpBankedRef.current = 0;
+      localStorage.removeItem("projectElapsed");
     } else {
       // mode === "break" resets to whatever length this break actually is —
       // previously hardcoded to SHORT_BREAK, which wrongly reset long
@@ -4197,6 +4199,103 @@ const PomodoroTimer = () => {
     setMode("break");
     setIsRunning(true);
     syncDisplay();
+  }, [syncDisplay]);
+
+  // Plays a short crisp ascending tick for each XP increment during the
+  // slot-machine counter — distinct from the warm finale (levelUpSound).
+  function playXpTickSound(step) {
+    try {
+      var Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) return;
+      var ctx = new Ctx();
+      var osc = ctx.createOscillator();
+      var gain = ctx.createGain();
+      // Ascending pitches: D4(293) E4(329) G4(392) A4(440) B4(494) D5(587)
+      var pitches = [293, 329, 392, 440, 494, 587];
+      osc.type = "square";
+      osc.frequency.value = pitches[Math.min(step, pitches.length - 1)];
+      osc.connect(gain).connect(ctx.destination);
+      var now = ctx.currentTime;
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.linearRampToValueAtTime(0.06, now + 0.01);
+      gain.gain.linearRampToValueAtTime(0.0001, now + 0.055);
+      osc.start(now);
+      osc.stop(now + 0.06);
+    } catch (e) {}
+  }
+
+  // One big reward at session end instead of silent background accrual —
+  // gives the user a deliberate endpoint gesture and a satisfying payout
+  // moment where they can see exactly what the session earned them.
+  const finishProjectSession = React.useCallback(() => {
+    if (projectElapsedRef.current === 0) return;
+    setIsRunning(false);
+
+    var elapsed    = projectElapsedRef.current;
+    var increments = Math.floor(elapsed / PROJECT_XP_INCREMENT_SECONDS);
+    var xp         = increments * PROJECT_XP_AWARD;
+    var soundOn    = !window.AppSettings || window.AppSettings.get().soundEnabled;
+    var xpEnabled  = window.AppSettings && window.AppSettings.get().projectTimeXP;
+
+    if (xpEnabled && xp > 0 && typeof window.addXp === "function") {
+      window.addXp(xp);
+    }
+
+    // Ring sweep flash: dashoffset → 0 briefly then back to full (handled
+    // by setting the pip ring refs directly so the CSS transition carries it).
+    if (pipRingRef.current) {
+      pipRingRef.current.style.strokeDashoffset = "0";
+      pipGlowRef.current && (pipGlowRef.current.style.strokeDashoffset = "0");
+      setTimeout(function () {
+        if (pipRingRef.current) {
+          pipRingRef.current.style.strokeDashoffset = String(PIP_C);
+          if (pipGlowRef.current) pipGlowRef.current.style.strokeDashoffset = String(PIP_C);
+        }
+      }, 400);
+    }
+
+    // Slot-machine counter: animate XP display from 0 → increments ticking
+    // up one step at a time, each with a sound tick and a scale-pop.
+    var tickInterval = null;
+    var tickStep = 0;
+    if (xpEnabled && increments > 0) {
+      tickInterval = setInterval(function () {
+        tickStep++;
+        if (soundOn) playXpTickSound(tickStep - 1);
+        if (xpCounterRef.current) {
+          xpCounterRef.current.textContent = tickStep + "×";
+          xpCounterRef.current.classList.remove("pip-xp-tick");
+          void xpCounterRef.current.offsetWidth; // force reflow to restart animation
+          xpCounterRef.current.classList.add("pip-xp-tick");
+        }
+        if (tickStep >= increments) {
+          clearInterval(tickInterval);
+          // Landing sound — levelUpSound at lower volume so it's warm not startling
+          if (soundOn) {
+            var lvl = document.getElementById("levelUpSound");
+            if (lvl) {
+              var origVol = lvl.volume;
+              lvl.volume = 0.38;
+              lvl.currentTime = 0;
+              lvl.play().catch(function () {});
+              setTimeout(function () { lvl.volume = origVol; }, 2000);
+            }
+          }
+        }
+      }, Math.max(180, Math.min(400, 1400 / Math.max(increments, 1))));
+    }
+
+    setSessionComplete({ elapsed, increments, xp: xpEnabled ? xp : 0 });
+
+    // Auto-dismiss after 2.2s; any click also dismisses (see JSX overlay).
+    setTimeout(function () {
+      clearInterval(tickInterval);
+      setSessionComplete(null);
+      projectElapsedRef.current  = 0;
+      projectXpBankedRef.current = 0;
+      localStorage.removeItem("projectElapsed");
+      syncDisplay();
+    }, 2200);
   }, [syncDisplay]);
 
   const dragRef = React.useRef(null);
@@ -4332,7 +4431,7 @@ const PomodoroTimer = () => {
             className={"pip-mode-tab" + (timerType === "project" ? " pip-mode-tab-active" : "")}
             onClick={() => switchTimerType("project")}
           >
-            Project
+            OPS
           </button>
         </div>
         <button className="pip-close" onClick={() => setExpanded(false)}
@@ -4415,7 +4514,7 @@ const PomodoroTimer = () => {
               {fmt(timeLeftRef.current)}
             </div>
             <div className="pip-label">
-              {mode === "work" ? (timerType === "project" ? "TRACKING" : "WORK") : "BREAK"}
+              {mode === "work" ? (timerType === "project" ? "LIVE OPS" : "WORK") : "BREAK"}
             </div>
           </div>
         </div>
@@ -4430,7 +4529,7 @@ const PomodoroTimer = () => {
         </div>
         {mode === "break" && (
           <button className="pip-skip-break" onClick={skipBreak}>
-            {timerType === "project" ? "End break early →" : "Skip break →"}
+            {timerType === "project" ? "End break →" : "Skip break →"}
           </button>
         )}
 
@@ -4459,10 +4558,31 @@ const PomodoroTimer = () => {
           </div>
         )}
 
-        {timerType === "project" && mode === "work" && !breakPickerOpen && (
-          <button className="pip-take-break" onClick={() => setBreakPickerOpen(true)}>
-            Take a break
-          </button>
+        {timerType === "project" && mode === "work" && !breakPickerOpen && !sessionComplete && (
+          <div className="pip-ops-actions">
+            <button className="pip-take-break" onClick={() => setBreakPickerOpen(true)}>
+              Take a break
+            </button>
+            {projectElapsedRef.current > 0 && (
+              <button className="pip-finish-session" onClick={finishProjectSession}>
+                Finish OPS →
+              </button>
+            )}
+          </div>
+        )}
+
+        {sessionComplete && (
+          <div className="pip-session-complete" onClick={() => setSessionComplete(null)}>
+            <div className="pip-sc-time">{fmt(sessionComplete.elapsed)}</div>
+            {sessionComplete.xp > 0 ? (
+              <div className="pip-sc-xp">
+                <span ref={xpCounterRef} className="pip-sc-multiplier">0×</span>
+                <span className="pip-sc-label"> 25m = +{sessionComplete.xp} XP</span>
+              </div>
+            ) : (
+              <div className="pip-sc-label">OPS COMPLETE</div>
+            )}
+          </div>
         )}
 
         {timerType === "project" && mode === "work" && breakPickerOpen && (

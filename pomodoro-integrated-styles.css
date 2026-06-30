@@ -602,9 +602,18 @@
    reason: it's an occasional exit, not a primary action, and shouldn't
    visually compete with reset/play-pause. Only mounted in Project mode
    while tracking (see mission-react.js). */
+/* Action row: "Take a break" + "Finish OPS →" side by side */
+.pip-ops-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  margin-top: 0.3rem;
+  animation: pipSkipFadeIn 0.25s ease;
+}
+
 .pip-take-break {
   display: block;
-  margin: 0.55rem auto 0;
   padding: 0.2rem 0.5rem;
   background: none;
   border: none;
@@ -614,7 +623,81 @@
   color: rgba(134, 223, 255, 0.55);
   cursor: pointer;
   transition: color 0.2s ease, opacity 0.2s ease;
-  animation: pipSkipFadeIn 0.25s ease;
+}
+
+.pip-finish-session {
+  display: block;
+  padding: 0.2rem 0.5rem;
+  background: none;
+  border: none;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: rgba(15, 223, 171, 0.7);
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.pip-finish-session:hover {
+  color: rgba(15, 223, 171, 1);
+}
+
+/* Finish-session celebration overlay — replaces the normal pip-content for
+   ~2.2s; click anywhere on it to dismiss early. */
+.pip-session-complete {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  cursor: pointer;
+  animation: pipScEnter 0.25s ease;
+}
+
+@keyframes pipScEnter {
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+.pip-sc-time {
+  font-family: "Courier New", monospace;
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: rgba(15, 223, 171, 0.9);
+  letter-spacing: 0.06em;
+}
+
+.pip-sc-xp {
+  display: flex;
+  align-items: baseline;
+  gap: 0.15rem;
+}
+
+.pip-sc-multiplier {
+  font-family: "Courier New", monospace;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #ffd766;
+  letter-spacing: 0.02em;
+  display: inline-block;
+  transition: transform 0.1s ease;
+}
+
+/* Scale-pop on each tick — class toggled via JS to restart animation */
+.pip-sc-multiplier.pip-xp-tick {
+  animation: pipXpTick 0.12s ease;
+}
+
+@keyframes pipXpTick {
+  0%   { transform: scale(1.5); color: #fff; }
+  100% { transform: scale(1);   color: #ffd766; }
+}
+
+.pip-sc-label {
+  font-family: "Courier New", monospace;
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  color: rgba(134, 223, 255, 0.6);
+  text-transform: uppercase;
 }
 
 .pip-take-break:hover {
