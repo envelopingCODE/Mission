@@ -320,6 +320,7 @@ const AppSettings = (function () {
     narrativeStyle:       true,  // true = M-VI tactical voice, false = general motivational
     neuralCaptureVisible: true,
     miniTimerSkin:        true,  // mirror active theme on the minimized timer badge
+    projectTimeXP:        false, // award XP for tracked project time (off by default — changes the XP economy)
     ollamaEnabled:        false,
     ollamaModel:          "llama3.2:3b",
     ollamaUrl:            "http://localhost:11434",
@@ -646,15 +647,35 @@ function displayAffectLabel(state) {
 }
 
 function _showAffectMessage(msg) {
-  var el = document.createElement("div");
-  el.textContent = msg;
-  el.className = "motivational-message affect-label";
-  document.body.appendChild(el);
-  if (typeof window.setRobotSpeaking === "function") {
-    window.setRobotSpeaking(true);
-    setTimeout(function() { window.setRobotSpeaking(false); }, 4000);
+  if (typeof window.NotifyQueue === "undefined") {
+    var fb = document.createElement("div");
+    fb.textContent = msg;
+    fb.className = "motivational-message affect-label";
+    document.body.appendChild(fb);
+    setTimeout(function() { fb.remove(); }, 4500);
+    return;
   }
-  setTimeout(function() { el.remove(); }, 4500);
+  // Shares the top-center slot with the motivational message — both are
+  // "M-VI speaks" moments and must never literally overlap on screen.
+  window.NotifyQueue.enqueue({
+    slot: "top-center",
+    priority: 1, // soft/informational, not a reward signal
+    duration: 4500,
+    show: function () {
+      var el = document.createElement("div");
+      el.textContent = msg;
+      el.className = "motivational-message affect-label";
+      document.body.appendChild(el);
+      if (typeof window.setRobotSpeaking === "function") {
+        window.setRobotSpeaking(true);
+        setTimeout(function() { window.setRobotSpeaking(false); }, 4000);
+      }
+      return el;
+    },
+    hide: function (el) {
+      if (el && el.parentNode) el.remove();
+    },
+  });
 }
 
 // Returns YYYY-MM-DD of Monday of the current week — weekly record key
@@ -1056,17 +1077,87 @@ function displayRandomMessage(category = "general") {
     message = veteranCues[Math.floor(Math.random() * veteranCues.length)] + " " + message;
   }
 
-  const messageElement = document.createElement("div");
-  messageElement.textContent = message;
-  messageElement.classList.add("motivational-message");
-  document.body.appendChild(messageElement);
-
-  // Mouth sync — animate while message is visible
-  if (typeof window.setRobotSpeaking === "function") {
-    window.setRobotSpeaking(true);
-    setTimeout(function () { window.setRobotSpeaking(false); }, 3500);
+  if (typeof window.NotifyQueue === "undefined") {
+    var fb = document.createElement("div");
+    fb.textContent = message;
+    fb.classList.add("motivational-message");
+    document.body.appendChild(fb);
+    setTimeout(() => fb.remove(), 3500);
+    return;
   }
-  setTimeout(() => messageElement.remove(), 3500);
+
+  // Routed through NotifyQueue (top-center, priority 1) so this never
+  // visually collides with a buddy suggestion firing in the same moment —
+  // see notification-queue.js for why that used to happen.
+  window.NotifyQueue.enqueue({
+    slot: "top-center",
+    priority: 1,
+    duration: 3500,
+    show: function () {
+      const messageElement = document.createElement("div");
+      messageElement.textContent = message;
+      messageElement.classList.add("motivational-message");
+      document.body.appendChild(messageElement);
+      if (typeof window.setRobotSpeaking === "function") {
+        window.setRobotSpeaking(true);
+        setTimeout(function () { window.setRobotSpeaking(false); }, 3500);
+      }
+      return messageElement;
+    },
+    hide: function (el) {
+      if (el && el.parentNode) el.remove();
+    },
+  });
+}
+
+// Shared buddy-suggestion bubble — every ambient tip/celebration/warning
+// routes through here instead of duplicating create+append+animate inline
+// (six call sites used to repeat this verbatim). Goes through NotifyQueue
+// so it never stacks on top of another buddy bubble or the motivational
+// message. content is plain text unless opts.html is set; opts.onMount
+// gets the live element for cases that need to attach a click handler
+// (e.g. the theme-suggestion bubble's "create objective" link).
+function showBuddySuggestion(content, opts) {
+  opts = opts || {};
+  var duration = opts.duration || 4000;
+  var extraClass = opts.extraClass ? " " + opts.extraClass : "";
+
+  function build() {
+    var bubble = document.createElement("div");
+    bubble.className = "buddy-suggestion" + extraClass;
+    if (opts.html) bubble.innerHTML = content;
+    else bubble.textContent = content;
+    document.body.appendChild(bubble);
+    if (typeof opts.onMount === "function") opts.onMount(bubble);
+    return bubble;
+  }
+
+  if (typeof window.NotifyQueue === "undefined") {
+    var fb = build();
+    requestAnimationFrame(function () { fb.classList.add("buddy-suggestion-visible"); });
+    setTimeout(function () {
+      fb.classList.remove("buddy-suggestion-visible");
+      setTimeout(function () { fb.remove(); }, 300);
+    }, duration);
+    return;
+  }
+
+  window.NotifyQueue.enqueue({
+    slot: "top-center",
+    priority: typeof opts.priority === "number" ? opts.priority : 0,
+    duration: duration,
+    skipIfBusy: !!opts.skipIfBusy,
+    show: function () {
+      var bubble = build();
+      requestAnimationFrame(function () { bubble.classList.add("buddy-suggestion-visible"); });
+      return bubble;
+    },
+    hide: function (bubble) {
+      if (!bubble) return;
+      bubble.classList.remove("buddy-suggestion-visible");
+      setTimeout(function () { bubble.remove(); }, 300);
+    },
+  });
 }
 
 // Converts Pomodoro units to a clean minute display (1 pomo = 25 min).
@@ -1466,15 +1557,10 @@ function createMissionClickHandler(element) {
         setTimeout(function () {
           if (typeof window.showDispatch === "function") window.showDispatch("neon_proto");
         }, 2200);
-        var nb = document.createElement("div");
-        nb.className = "buddy-suggestion";
-        nb.textContent = "10 objectives cleared. Neon ring protocol unlocked.";
-        document.body.appendChild(nb);
-        requestAnimationFrame(function () { nb.classList.add("buddy-suggestion-visible"); });
-        setTimeout(function () {
-          nb.classList.remove("buddy-suggestion-visible");
-          setTimeout(function () { nb.remove(); }, 300);
-        }, 5000);
+        showBuddySuggestion("10 objectives cleared. Neon ring protocol unlocked.", {
+          duration: 5000,
+          priority: 2, // milestone unlock — reward tier
+        });
       }
     }
 
@@ -1651,15 +1737,10 @@ function createMissionClickHandler(element) {
       if (newProgress >= 2) {
         // Repair complete — mark the missed day as earned
         localStorage.setItem("streakRepairComplete_" + repair.missedDate, "1");
-        const bubble = document.createElement("div");
-        bubble.className = "buddy-suggestion";
-        bubble.textContent = "Streak restored.";
-        document.body.appendChild(bubble);
-        requestAnimationFrame(() => bubble.classList.add("buddy-suggestion-visible"));
-        setTimeout(() => {
-          bubble.classList.remove("buddy-suggestion-visible");
-          setTimeout(() => bubble.remove(), 300);
-        }, 3500);
+        showBuddySuggestion("Streak restored.", {
+          duration: 3500,
+          priority: 2, // recovery moment — reward tier
+        });
       }
       renderStreakBar();
     }
@@ -2048,28 +2129,28 @@ function detectCaptureThemes() {
   if (!topWord) return;
   window._themeSuggested.add(topWord);
 
-  var bubble = document.createElement("div");
-  bubble.className = "buddy-suggestion buddy-suggestion-theme";
-  bubble.innerHTML = "Recurring theme: <strong>" + topWord + "</strong> — " +
-    "<span class=\"theme-create-link\">create objective</span>";
-  document.body.appendChild(bubble);
-
-  bubble.querySelector(".theme-create-link").addEventListener("click", function() {
-    bubble.classList.remove("buddy-suggestion-visible");
-    setTimeout(function() { bubble.remove(); }, 300);
-    if (inputEl) {
-      var cap = topWord.charAt(0).toUpperCase() + topWord.slice(1);
-      inputEl.value = cap;
-      inputEl.focus();
-      inputEl.setSelectionRange(cap.length, cap.length);
+  showBuddySuggestion(
+    "Recurring theme: <strong>" + topWord + "</strong> — " +
+      "<span class=\"theme-create-link\">create objective</span>",
+    {
+      html: true,
+      extraClass: "buddy-suggestion-theme",
+      duration: 7000,
+      priority: 1, // actionable insight — has a real click target, worth queuing
+      onMount: function (bubble) {
+        bubble.querySelector(".theme-create-link").addEventListener("click", function () {
+          bubble.classList.remove("buddy-suggestion-visible");
+          setTimeout(function () { bubble.remove(); }, 300);
+          if (inputEl) {
+            var cap = topWord.charAt(0).toUpperCase() + topWord.slice(1);
+            inputEl.value = cap;
+            inputEl.focus();
+            inputEl.setSelectionRange(cap.length, cap.length);
+          }
+        });
+      },
     }
-  });
-
-  requestAnimationFrame(function() { bubble.classList.add("buddy-suggestion-visible"); });
-  setTimeout(function() {
-    bubble.classList.remove("buddy-suggestion-visible");
-    setTimeout(function() { bubble.remove(); }, 300);
-  }, 7000);
+  );
 }
 
 // ── Implementation Intention Scheduling — time-slot tagging ──────────────
@@ -2529,15 +2610,33 @@ function updateHighScoreDisplay(highScore) {
 }
 
 function displayCongratulatoryMessage() {
-  const messageElement = document.createElement("div");
-  messageElement.textContent = "New High Score! 🎉";
-  messageElement.classList.add("congratulatory-message");
+  if (typeof window.NotifyQueue === "undefined") {
+    var fb = document.createElement("div");
+    fb.textContent = "New High Score! 🎉";
+    fb.classList.add("congratulatory-message", "congratulatory-message-visible");
+    document.body.appendChild(fb);
+    setTimeout(() => fb.remove(), 3000);
+    return;
+  }
 
-  document.body.appendChild(messageElement);
-
-  setTimeout(() => {
-    messageElement.remove(); // Remove the message after 3 seconds
-  }, 3000);
+  window.NotifyQueue.enqueue({
+    slot: "top-center",
+    priority: 2, // milestone — reward tier, shares the slot with streak/unlock bubbles
+    duration: 3000,
+    show: function () {
+      const el = document.createElement("div");
+      el.textContent = "New High Score! 🎉";
+      el.classList.add("congratulatory-message");
+      document.body.appendChild(el);
+      requestAnimationFrame(() => el.classList.add("congratulatory-message-visible"));
+      return el;
+    },
+    hide: function (el) {
+      if (!el) return;
+      el.classList.remove("congratulatory-message-visible");
+      setTimeout(() => el.remove(), 300);
+    },
+  });
 }
 
 function checkXP(totalXp) {
@@ -2936,15 +3035,11 @@ if (readyButtonEl) {
     var { streak } = getStreakData();
     OllamaClient.generateBriefing(pending.concat(todayTasks), streak).then(function (brief) {
       if (!brief || !AppSettings.get().buddyMessages) return;
-      var bubble = document.createElement("div");
-      bubble.className = "buddy-suggestion";
-      bubble.textContent = brief;
-      document.body.appendChild(bubble);
-      requestAnimationFrame(function () { bubble.classList.add("buddy-suggestion-visible"); });
-      setTimeout(function () {
-        bubble.classList.remove("buddy-suggestion-visible");
-        setTimeout(function () { bubble.remove(); }, 300);
-      }, 7000);
+      showBuddySuggestion(brief, {
+        duration: 7000,
+        priority: 0,
+        skipIfBusy: true, // resolves async — by the time it lands it may already be stale
+      });
     });
   });
 
@@ -2975,15 +3070,10 @@ function checkCategoryNeglect() {
     setTimeout(() => {
       // Look away before delivering bad news
       if (typeof window.robotLookAway === "function") window.robotLookAway();
-      const bubble = document.createElement("div");
-      bubble.className = "buddy-suggestion";
-      bubble.textContent = `${name} objectives: ${days} days dark.`;
-      document.body.appendChild(bubble);
-      requestAnimationFrame(() => bubble.classList.add("buddy-suggestion-visible"));
-      setTimeout(() => {
-        bubble.classList.remove("buddy-suggestion-visible");
-        setTimeout(() => bubble.remove(), 300);
-      }, 5000);
+      showBuddySuggestion(`${name} objectives: ${days} days dark.`, {
+        duration: 5000,
+        priority: 1, // actionable insight — correctional, not urgent
+      });
     }, i * 1800);
   });
 }
@@ -3000,15 +3090,11 @@ function suggestQuickWin() {
   const taskText = easiest.textContent.split("—")[0].trim();
   const xp = easiest.dataset.xp;
 
-  const bubble = document.createElement("div");
-  bubble.className = "buddy-suggestion";
-  bubble.textContent = `Quick win: "${taskText}" — ${xp} XP. Knock it out first?`;
-  document.body.appendChild(bubble);
-  requestAnimationFrame(() => bubble.classList.add("buddy-suggestion-visible"));
-  setTimeout(() => {
-    bubble.classList.remove("buddy-suggestion-visible");
-    setTimeout(() => bubble.remove(), 300);
-  }, 4500);
+  showBuddySuggestion(`Quick win: "${taskText}" — ${xp} XP. Knock it out first?`, {
+    duration: 4500,
+    priority: 0,
+    skipIfBusy: true, // session-start relevance decays fast — stale is worse than absent
+  });
 }
 
 // Run the check again when DOM is fully loaded (in case readyButtonEl wasn't available earlier)
@@ -3045,6 +3131,18 @@ function clearTextField() {
   missionButtonEl.disabled = true; // Disable the mission button
 }
 
+// Background XP (project-time accrual) has no other feedback — no sound,
+// no toast, nothing. A single quiet pulse on the meter itself closes that
+// loop without adding another notification to a system already tuned to
+// avoid over-alerting. Not used for task-completion XP, which already gets
+// a sound + motivational message and doesn't need a second acknowledgment.
+function pulseXpMeter() {
+  if (!xpMeterEl) return;
+  xpMeterEl.classList.add("xp-pulse");
+  setTimeout(function () { xpMeterEl.classList.remove("xp-pulse"); }, 650);
+}
+window.pulseXpMeter = pulseXpMeter;
+
 function addXp(xp) {
   let currentXp = parseInt(xpMeterEl.dataset.xp) || 0;
   currentXp += xp;
@@ -3069,6 +3167,7 @@ function addXp(xp) {
 
   checkXP(currentXp);
 }
+window.addXp = addXp; // exposed for cross-file calls (e.g. project-mode time-based XP in mission-react.js)
 
 function updateXpMeter(currentXp) {
   const maxXP = 100; // Set the maximum XP for the meter
@@ -5429,24 +5528,47 @@ function resetDayAndXP() {
 
 // #5 Show reset confirmation
 function showResetConfirmation() {
-  const messageEl = document.createElement("div");
-  messageEl.className = "daily-reset-message";
-  messageEl.innerHTML = `
-    <div class="reset-message-content">
-      <div class="reset-icon">↻</div>
-      <div class="reset-text">
-        <strong>New day initialized</strong>
-        <p>Level reset to 1. Ready for fresh missions.</p>
+  function build() {
+    const messageEl = document.createElement("div");
+    messageEl.className = "daily-reset-message";
+    messageEl.innerHTML = `
+      <div class="reset-message-content">
+        <div class="reset-icon">↻</div>
+        <div class="reset-text">
+          <strong>New day initialized</strong>
+          <p>Level reset to 1. Ready for fresh missions.</p>
+        </div>
       </div>
-    </div>
-  `;
+    `;
+    document.body.appendChild(messageEl);
+    return messageEl;
+  }
 
-  document.body.appendChild(messageEl);
-  setTimeout(() => messageEl.classList.add("show"), 10);
-  setTimeout(() => {
-    messageEl.classList.remove("show");
-    setTimeout(() => messageEl.remove(), 300);
-  }, 3000);
+  if (typeof window.NotifyQueue === "undefined") {
+    const fb = build();
+    setTimeout(() => fb.classList.add("show"), 10);
+    setTimeout(() => {
+      fb.classList.remove("show");
+      setTimeout(() => fb.remove(), 300);
+    }, 3000);
+    return;
+  }
+
+  window.NotifyQueue.enqueue({
+    slot: "top-center",
+    priority: 1, // fires once at load, before any other narrative message exists
+    duration: 3000,
+    show: function () {
+      const el = build();
+      setTimeout(() => el.classList.add("show"), 10);
+      return el;
+    },
+    hide: function (el) {
+      if (!el) return;
+      el.classList.remove("show");
+      setTimeout(() => el.remove(), 300);
+    },
+  });
 }
 
 // #6 Initialize Daily Wrap Button
@@ -5544,6 +5666,11 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "t" || e.key === "T") {
     e.preventDefault();
     if (typeof window.togglePomodoroTimer === "function") window.togglePomodoroTimer();
+  }
+
+  if (e.key === "m" || e.key === "M") {
+    e.preventDefault();
+    if (typeof window.toggleTimerType === "function") window.toggleTimerType();
   }
 
   // S and A open the settings panel. If the React root has silently unmounted

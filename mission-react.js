@@ -3493,7 +3493,7 @@ const SettingsPanel = () => {
 
   const DOT   = { idle: "rgba(134,223,255,0.2)", checking: "rgba(244,197,66,0.8)", ok: "#0fdfab", fail: "#ff6b6b" };
   const DLBL  = { idle: "Not tested", checking: "Checking…", ok: "Connected", fail: "Unreachable" };
-  const SHORTCUTS = [["c","Capture"],["r","Ready signal"],["t","Timer"],["s","Settings"],["a","Achievements"],["Esc","Dismiss"]];
+  const SHORTCUTS = [["c","Capture"],["r","Ready signal"],["t","Timer"],["m","Pomodoro/Project mode"],["s","Settings"],["a","Achievements"],["Esc","Dismiss"]];
 
   // ── Demo effects — MUST be here, before any early returns ────────────────
   // React requires all hooks to be called unconditionally on every render.
@@ -3749,6 +3749,7 @@ const SettingsPanel = () => {
             <div className="st-section-title">Pomodoro</div>
             <StToggle label="Show timer"    checked={cfg.pomodoroVisible}  onChange={() => toggle("pomodoroVisible")} />
             <StToggle label="Theme on badge" checked={cfg.miniTimerSkin !== false} onChange={() => toggle("miniTimerSkin")} desc="Mirror active skin on minimized timer" />
+            <StToggle label="XP for project time" checked={cfg.projectTimeXP === true} onChange={() => toggle("projectTimeXP")} desc="10 XP per 25 min tracked in Project mode" />
           </div>
 
           <div className="st-section">
@@ -3833,6 +3834,41 @@ const SettingsPanel = () => {
 // Per-second display updates go directly to DOM nodes via useLayoutEffect,
 // which fires synchronously after React commits but before the browser
 // paints, preventing any stale-value flash and eliminating the reflow.
+// Break iconography — thin-stroke line art matching the timer ring's own
+// rendering language (currentColor + drop-shadow glow), not filled cartoon
+// icons. Coffee gets drifting steam; lunch is a minimal fork/knife mark.
+// Used both small (picker group labels) and large (active-break display).
+function BreakIcon({ kind, size, animate }) {
+  size = size || 13;
+  // animate defaults true (picker icons always animate); the active-break
+  // icon passes isRunning so steam/glow genuinely pause with the timer
+  // instead of drifting on regardless — a paused clock with a still-steaming
+  // cup reads as broken, not charming.
+  const paused = animate === false;
+  const cls = "pip-break-icon" + (size > 20 ? " pip-break-icon-lg" : "") + (paused ? " pip-break-icon-paused" : "");
+  if (kind === "lunch") {
+    return (
+      <svg className={cls} width={size} height={size} viewBox="0 0 24 24" fill="none"
+           stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M6 2v5M8.5 2v5M11 2v5" />
+        <path d="M6 7c0 1.5 1 2.3 2.5 2.3S11 8.5 11 7" />
+        <line x1="8.5" y1="9.3" x2="8.5" y2="22" />
+        <path d="M16.5 2c-1.7 0-3 2-3 5s1 5 2.2 5.4V22" />
+      </svg>
+    );
+  }
+  return (
+    <svg className={cls} width={size} height={size} viewBox="0 0 24 24" fill="none"
+         stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 9h13v5a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4V9z" />
+      <path d="M17 10.5h1.3a2 2 0 0 1 0 4H17" />
+      <line x1="4" y1="9" x2="17" y2="9" />
+      <path className="pip-steam pip-steam-1" d="M8.5 6.5c0-1 1-1 1-2s-1-1-1-2" />
+      <path className="pip-steam pip-steam-2" d="M12 6.5c0-1 1-1 1-2s-1-1-1-2" />
+    </svg>
+  );
+}
+
 const PomodoroTimer = () => {
   const WORK_TIME        = 25 * 60;
   const SHORT_BREAK      =  5 * 60;
@@ -3841,9 +3877,30 @@ const PomodoroTimer = () => {
   const MINI_R = 26, MINI_C = 2 * Math.PI * 26;
   const PIP_R  = 74, PIP_C  = 2 * Math.PI * 74;
 
+  // Project mode — open-ended stopwatch for live/team work not bound to the
+  // 25-min Pomodoro cycle. Structured breaks (lunch/coffee) are still fixed-
+  // length countdowns; only the "tracking" state is unbounded.
+  // Bare durations, not "Coffee 15m" — three full-text chips side by side
+  // overflowed the 228px-wide widget. The group label is the row heading
+  // instead, so each chip stays short enough to always fit, even resized down.
+  const PROJECT_BREAKS = [
+    { group: "Lunch",  label: "60m", seconds: 60 * 60 },
+    { group: "Lunch",  label: "30m", seconds: 30 * 60 },
+    { group: "Coffee", label: "15m", seconds: 15 * 60 },
+    { group: "Coffee", label: "10m", seconds: 10 * 60 },
+    { group: "Coffee", label: "5m",  seconds:  5 * 60 },
+  ];
+  const PROJECT_XP_INCREMENT_SECONDS = WORK_TIME; // one Pomodoro-equivalent unit
+  const PROJECT_XP_AWARD             = 10;
+
   // Structural state — triggers re-render on meaningful changes only
   const [isRunning,    setIsRunning]    = React.useState(false);
   const [mode,         setMode]         = React.useState("work");
+  const [timerType,    setTimerType]    = React.useState(
+    () => localStorage.getItem("timerType") || "pomodoro"
+  );
+  const [breakPickerOpen, setBreakPickerOpen] = React.useState(false);
+  const [activeBreakGroup, setActiveBreakGroup] = React.useState(null); // "Lunch" | "Coffee" — drives the big icon while on a project-mode break
   const [sessionCount, setSessionCount] = React.useState(0);
   const [expanded,     setExpanded]     = React.useState(false);
   const [position,     setPosition]     = React.useState(null);
@@ -3874,9 +3931,17 @@ const PomodoroTimer = () => {
     return () => { delete window.togglePomodoroTimer; };
   }, []);
 
+  React.useEffect(() => { localStorage.setItem("timerType", timerType); }, [timerType]);
+
   // Time as mutable ref — no re-render per tick
   const timeLeftRef  = React.useRef(WORK_TIME);
   const totalTimeRef = React.useRef(WORK_TIME);
+
+  // Project mode: open-ended elapsed seconds (counts up, never auto-resets)
+  // and a high-water mark of how much has already been "cashed in" for XP,
+  // so the same stretch of time is never double-paid.
+  const projectElapsedRef  = React.useRef(0);
+  const projectXpBankedRef = React.useRef(0);
 
   // DOM refs for direct per-second writes
   const pipTimeRef  = React.useRef(null);
@@ -3888,10 +3953,15 @@ const PomodoroTimer = () => {
   const fmt = (s) =>
     String(Math.floor(s / 60)).padStart(2, "0") + ":" + String(s % 60).padStart(2, "0");
 
-  // Direct DOM update — synchronous, no rAF
+  // Direct DOM update — synchronous, no rAF.
+  // Project-mode tracking is an open-ended stopwatch (no "total" to deplete
+  // against), so the ring stays fully lit rather than draining — depletion
+  // reads as urgency, which is exactly the wrong signal for a clock that's
+  // just quietly logging time in the background of a meeting.
   const syncDisplay = React.useCallback(() => {
-    const tl = timeLeftRef.current;
-    const p  = 1 - tl / totalTimeRef.current;
+    const isProjectTracking = timerType === "project" && mode === "work";
+    const tl = isProjectTracking ? projectElapsedRef.current : timeLeftRef.current;
+    const p  = isProjectTracking ? 1 : 1 - tl / totalTimeRef.current;
     const f  = fmt(tl);
     if (pipTimeRef.current)  pipTimeRef.current.textContent = f;
     if (miniTimeRef.current) miniTimeRef.current.textContent = f;
@@ -3900,16 +3970,123 @@ const PomodoroTimer = () => {
     if (pipGlowRef.current)  pipGlowRef.current.setAttribute("stroke-dashoffset", pipOffset);
     if (miniRingRef.current)
       miniRingRef.current.setAttribute("stroke-dashoffset", String(MINI_C * (1 - p)));
-  }, []);
+  }, [timerType, mode]);
 
   // Runs synchronously after every React commit, before browser paint.
   // Keeps DOM in sync when expand/collapse or mode switch re-mounts nodes.
   React.useLayoutEffect(() => { syncDisplay(); });
 
+  // Lazily requested the first time a project-mode break actually starts —
+  // not on page load. Asking for permission before the user has done
+  // anything that needs it is the single most common notification-permission
+  // anti-pattern; this only fires at the moment it's functionally relevant.
+  function ensureNotificationPermission() {
+    if (typeof Notification === "undefined") return;
+    if (Notification.permission === "default") {
+      Notification.requestPermission().catch(function () {});
+    }
+  }
+
+  // Break-over alarm: a gentle, escalating in-tab chime (three soft tones,
+  // each slightly more present than the last — never one jarring blast,
+  // since the user may be mid-sentence in a meeting) plus an OS-level
+  // notification when permitted, since "call the user back to the desktop"
+  // implies they've physically left and an in-tab cue alone won't reach them.
+  function playSynthesizedAlarmChime() {
+    try {
+      var Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) return;
+      var ctx = new Ctx();
+      [0, 700, 1500].forEach(function (delay, i) {
+        setTimeout(function () {
+          var osc = ctx.createOscillator();
+          var gain = ctx.createGain();
+          osc.type = "sine";
+          osc.frequency.value = 660;
+          osc.connect(gain).connect(ctx.destination);
+          var vol = 0.05 + i * 0.045; // gentle escalation, never loud
+          var now = ctx.currentTime;
+          gain.gain.setValueAtTime(0.0001, now);
+          gain.gain.linearRampToValueAtTime(vol, now + 0.06);
+          gain.gain.linearRampToValueAtTime(0.0001, now + 0.55);
+          osc.start(now);
+          osc.stop(now + 0.6);
+        }, delay);
+      });
+    } catch (e) {}
+  }
+
+  function fireBreakAlarm() {
+    var soundOn = !window.AppSettings || window.AppSettings.get().soundEnabled;
+
+    if (soundOn) {
+      // Prefer a user-dropped alarm.mp3 (see index.html) over the built-in
+      // synthesized chime; falls back automatically if the file is missing,
+      // fails to decode, or the browser blocks playback for any reason.
+      var customAudio = document.getElementById("alarmSound");
+      var fellBack = false;
+      var fallback = function () {
+        if (fellBack) return;
+        fellBack = true;
+        playSynthesizedAlarmChime();
+      };
+      if (customAudio) {
+        customAudio.addEventListener("error", fallback, { once: true });
+        customAudio.currentTime = 0;
+        var playPromise = customAudio.play();
+        if (playPromise && typeof playPromise.catch === "function") {
+          playPromise.catch(fallback);
+        }
+      } else {
+        fallback();
+      }
+    }
+
+    if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+      try {
+        new Notification("Break's over", {
+          body: "Time to head back — your project timer is waiting.",
+          silent: false,
+        });
+      } catch (e) {}
+    }
+  }
+
   // Interval — never calls setState per tick
   React.useEffect(() => {
     if (!isRunning) return;
     const id = setInterval(() => {
+      // ── Project mode ──────────────────────────────────────────────────
+      if (timerType === "project") {
+        if (mode === "work") {
+          // Open-ended stopwatch — never auto-transitions on its own.
+          projectElapsedRef.current++;
+          syncDisplay();
+          if (window.AppSettings && window.AppSettings.get().projectTimeXP) {
+            if (projectElapsedRef.current - projectXpBankedRef.current >= PROJECT_XP_INCREMENT_SECONDS) {
+              projectXpBankedRef.current += PROJECT_XP_INCREMENT_SECONDS;
+              if (typeof window.addXp === "function") window.addXp(PROJECT_XP_AWARD);
+              if (typeof window.pulseXpMeter === "function") window.pulseXpMeter();
+            }
+          }
+          return;
+        }
+        // On a structured break — fixed-length countdown, same mechanics
+        // as a Pomodoro break, just triggered manually instead of earned.
+        if (timeLeftRef.current > 1) {
+          timeLeftRef.current--;
+          syncDisplay();
+          return;
+        }
+        clearInterval(id);
+        fireBreakAlarm();
+        setMode("work");
+        setIsRunning(false);
+        setActiveBreakGroup(null);
+        return;
+      }
+
+      // ── Pomodoro mode (unchanged) ────────────────────────────────────
       if (timeLeftRef.current > 1) {
         timeLeftRef.current--;
         syncDisplay();
@@ -3947,15 +4124,80 @@ const PomodoroTimer = () => {
       setIsRunning(false);
     }, 1000);
     return () => clearInterval(id);
-  }, [isRunning, mode, syncDisplay]);
+  }, [isRunning, mode, timerType, sessionCount, syncDisplay]);
 
   const reset = React.useCallback(() => {
     setIsRunning(false);
-    const t = mode === "work" ? WORK_TIME : SHORT_BREAK;
-    timeLeftRef.current  = t;
-    totalTimeRef.current = t;
+    if (timerType === "project" && mode === "work") {
+      projectElapsedRef.current  = 0;
+      projectXpBankedRef.current = 0;
+    } else {
+      // mode === "break" resets to whatever length this break actually is —
+      // previously hardcoded to SHORT_BREAK, which wrongly reset long
+      // breaks back down to 5 min. totalTimeRef already holds the real length.
+      const t = mode === "work" ? WORK_TIME : totalTimeRef.current;
+      timeLeftRef.current  = t;
+      totalTimeRef.current = t;
+    }
     syncDisplay();
-  }, [mode, syncDisplay]);
+  }, [mode, timerType, syncDisplay]);
+
+  // Lets a user in flow end a break early. Mirrors the natural break->work
+  // transition (pauses, hands back control) rather than auto-starting —
+  // skipping a break shouldn't also remove the deliberate "start work" click.
+  // Works for both modes: Pomodoro needs a fresh WORK_TIME countdown;
+  // project mode just resumes the stopwatch from wherever it left off.
+  const skipBreak = React.useCallback(() => {
+    if (mode !== "break") return;
+    setIsRunning(false);
+    if (timerType === "pomodoro") {
+      timeLeftRef.current  = WORK_TIME;
+      totalTimeRef.current = WORK_TIME;
+    }
+    setMode("work");
+    setActiveBreakGroup(null);
+    syncDisplay();
+  }, [mode, timerType, syncDisplay]);
+
+  // Mode switch — pauses for safety since countdown vs stopwatch semantics
+  // differ enough that carrying a running interval across the switch would
+  // produce a confusing in-between display state.
+  const switchTimerType = React.useCallback((newType) => {
+    setIsRunning(false);
+    setBreakPickerOpen(false);
+    setActiveBreakGroup(null);
+    setTimerType(newType);
+    setMode("work");
+    if (newType === "pomodoro") {
+      timeLeftRef.current  = WORK_TIME;
+      totalTimeRef.current = WORK_TIME;
+    }
+    // Project mode's projectElapsedRef is deliberately left untouched —
+    // switching away and back shouldn't lose time already tracked this session.
+    syncDisplay();
+  }, [syncDisplay]);
+
+  // 'm' keyboard shortcut just flips between the two — exposed once, kept
+  // current via the timerType dependency so it never closes over a stale mode.
+  React.useEffect(() => {
+    window.toggleTimerType = () => switchTimerType(timerType === "pomodoro" ? "project" : "pomodoro");
+    return () => { delete window.toggleTimerType; };
+  }, [timerType, switchTimerType]);
+
+  // Starting a break is itself the explicit action — unlike a Pomodoro break
+  // (which arrives passively when the countdown elapses), the user just
+  // clicked a specific duration, so it starts running immediately rather
+  // than waiting for a separate play press.
+  const startProjectBreak = React.useCallback((seconds, group) => {
+    setBreakPickerOpen(false);
+    setActiveBreakGroup(group || null);
+    ensureNotificationPermission();
+    timeLeftRef.current  = seconds;
+    totalTimeRef.current = seconds;
+    setMode("break");
+    setIsRunning(true);
+    syncDisplay();
+  }, [syncDisplay]);
 
   const dragRef = React.useRef(null);
   const onDragStart = React.useCallback((e) => {
@@ -4079,6 +4321,20 @@ const PomodoroTimer = () => {
   return (
     <div className="pomodoro-pip" style={pipStyle}>
       <div className="pip-header" onMouseDown={onDragStart} style={{ cursor: "grab" }}>
+        <div className="pip-mode-tabs" title="Switch mode — shortcut: M">
+          <button
+            className={"pip-mode-tab" + (timerType === "pomodoro" ? " pip-mode-tab-active" : "")}
+            onClick={() => switchTimerType("pomodoro")}
+          >
+            Pomo
+          </button>
+          <button
+            className={"pip-mode-tab" + (timerType === "project" ? " pip-mode-tab-active" : "")}
+            onClick={() => switchTimerType("project")}
+          >
+            Project
+          </button>
+        </div>
         <button className="pip-close" onClick={() => setExpanded(false)}
                 title="Minimise" style={{ cursor: "pointer" }}>−</button>
       </div>
@@ -4152,10 +4408,15 @@ const PomodoroTimer = () => {
             />
           </svg>
           <div className="pip-time-display">
+            {timerType === "project" && mode === "break" && activeBreakGroup && (
+              <BreakIcon kind={activeBreakGroup === "Lunch" ? "lunch" : "coffee"} size={30} animate={isRunning} />
+            )}
             <div ref={pipTimeRef} className={"pip-time" + (isNeon ? " pip-time-neon" : "")}>
               {fmt(timeLeftRef.current)}
             </div>
-            <div className="pip-label">{mode === "work" ? "WORK" : "BREAK"}</div>
+            <div className="pip-label">
+              {mode === "work" ? (timerType === "project" ? "TRACKING" : "WORK") : "BREAK"}
+            </div>
           </div>
         </div>
         <div className="pip-controls">
@@ -4167,28 +4428,67 @@ const PomodoroTimer = () => {
             {isRunning ? "⏸" : "▶"}
           </button>
         </div>
-        <div className="pip-cycle-row">
-          <div className="pip-cycle-dots">
-            {Array.from({ length: CYCLE_LENGTH }).map((_, i) => {
-              const posInCycle = sessionCount % CYCLE_LENGTH;
-              // All 4 lit when we're exactly at a cycle boundary (just finished 4th)
-              const atBoundary = sessionCount > 0 && posInCycle === 0;
-              const lit = atBoundary || i < posInCycle;
-              const isLong = atBoundary && i === CYCLE_LENGTH - 1;
-              return (
-                <span
-                  key={i}
-                  className={"pip-cycle-pip" + (lit ? " pip-cycle-pip-lit" : "") + (isLong ? " pip-cycle-pip-long" : "")}
-                />
-              );
-            })}
+        {mode === "break" && (
+          <button className="pip-skip-break" onClick={skipBreak}>
+            {timerType === "project" ? "End break early →" : "Skip break →"}
+          </button>
+        )}
+
+        {timerType === "pomodoro" && (
+          <div className="pip-cycle-row">
+            <div className="pip-cycle-dots">
+              {Array.from({ length: CYCLE_LENGTH }).map((_, i) => {
+                const posInCycle = sessionCount % CYCLE_LENGTH;
+                // All 4 lit when we're exactly at a cycle boundary (just finished 4th)
+                const atBoundary = sessionCount > 0 && posInCycle === 0;
+                const lit = atBoundary || i < posInCycle;
+                const isLong = atBoundary && i === CYCLE_LENGTH - 1;
+                return (
+                  <span
+                    key={i}
+                    className={"pip-cycle-pip" + (lit ? " pip-cycle-pip-lit" : "") + (isLong ? " pip-cycle-pip-long" : "")}
+                  />
+                );
+              })}
+            </div>
+            <span className="pip-session-label">
+              {sessionCount > 0
+                ? `${Math.floor(sessionCount / CYCLE_LENGTH)}×  ${sessionCount % CYCLE_LENGTH === 0 ? "long break" : `${sessionCount % CYCLE_LENGTH}/${CYCLE_LENGTH}`}`
+                : "focus"}
+            </span>
           </div>
-          <span className="pip-session-label">
-            {sessionCount > 0
-              ? `${Math.floor(sessionCount / CYCLE_LENGTH)}×  ${sessionCount % CYCLE_LENGTH === 0 ? "long break" : `${sessionCount % CYCLE_LENGTH}/${CYCLE_LENGTH}`}`
-              : "focus"}
-          </span>
-        </div>
+        )}
+
+        {timerType === "project" && mode === "work" && !breakPickerOpen && (
+          <button className="pip-take-break" onClick={() => setBreakPickerOpen(true)}>
+            Take a break
+          </button>
+        )}
+
+        {timerType === "project" && mode === "work" && breakPickerOpen && (
+          <div className="pip-break-picker">
+            {["Lunch", "Coffee"].map((g) => (
+              <div className="pip-break-picker-group" key={g}>
+                <span className="pip-break-group-label">{g === "Coffee" ? <BreakIcon kind="coffee" /> : <BreakIcon kind="lunch" />}{g}</span>
+                <div className="pip-break-picker-row">
+                  {PROJECT_BREAKS.filter((b) => b.group === g).map((b) => (
+                    <button
+                      key={g + b.label}
+                      className="pip-break-chip"
+                      title={g + " — " + b.label}
+                      onClick={() => startProjectBreak(b.seconds, b.group)}
+                    >
+                      {b.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+            <button className="pip-break-picker-cancel" onClick={() => setBreakPickerOpen(false)}>
+              Cancel
+            </button>
+          </div>
+        )}
       </div>
       <div className="pip-resize-grip" onMouseDown={onResizeStart} />
     </div>

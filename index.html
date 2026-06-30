@@ -154,6 +154,13 @@
         preload="auto"
       ></audio>
       <audio id="swipeSound" src="swipe-132084.mp3" preload="auto"></audio>
+      <!-- Project-mode break alarm. Drop a file named alarm.mp3 in this
+           project's root folder to use a custom sound — no code changes
+           needed. If absent (or it fails to load), the app falls back to a
+           synthesized chime automatically. preload="none" so a missing file
+           doesn't fire a console error on every page load, only when a
+           break actually ends. -->
+      <audio id="alarmSound" src="alarm.mp3" preload="none"></audio>
 
       <div
         id="motivationalQuoteWidescreen"
@@ -195,6 +202,7 @@
       </div>
     </div>
 
+    <script src="notification-queue.js"></script>
     <script src="mission.js"></script>
     <script type="text/babel" src="xp-selector-react.js"></script>
     <script type="text/babel" src="mission-react.js"></script>

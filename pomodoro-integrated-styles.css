@@ -351,9 +351,51 @@
 
 .pip-header {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
+  align-items: center;
   padding: 6px 10px;
   border-bottom: 1px solid rgba(134, 223, 255, 0.15);
+}
+
+/* Mode switch — lives in the header so it costs zero extra vertical space.
+   Kept deliberately low-contrast at rest; the active tab's gradient is the
+   only strong signal, per the "minimal, transparent, discrete" brief. */
+.pip-mode-tabs {
+  display: flex;
+  gap: 2px;
+  background: rgba(134, 223, 255, 0.04);
+  border: 1px solid rgba(134, 223, 255, 0.1);
+  border-radius: 999px;
+  padding: 2px;
+}
+
+.pip-mode-tab {
+  background: transparent;
+  border: none;
+  border-radius: 999px;
+  color: rgba(134, 223, 255, 0.4);
+  font-family: "Courier New", monospace;
+  font-size: 0.58rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  cursor: pointer;
+  transition: color 0.25s ease, background 0.25s ease, box-shadow 0.25s ease;
+}
+
+.pip-mode-tab:hover {
+  color: rgba(134, 223, 255, 0.75);
+}
+
+.pip-mode-tab-active {
+  background: linear-gradient(90deg, rgba(134, 223, 255, 0.22), rgba(15, 223, 171, 0.22));
+  color: #fff;
+  box-shadow: 0 0 8px rgba(134, 223, 255, 0.12);
+}
+
+.pip-mode-tab-active:hover {
+  color: #fff;
 }
 
 .pip-close {
@@ -413,6 +455,75 @@
   line-height: 1;
 }
 
+/* Break iconography — augments the BREAK label, never replaces it. Icons
+   are recognized fast only once learned; text reads correctly on first
+   sight. Keeping both lets each serve a different glance distance. */
+.pip-break-icon {
+  color: rgba(134, 223, 255, 0.85);
+  filter: drop-shadow(0 0 3px rgba(134, 223, 255, 0.5));
+  flex: none;
+  vertical-align: middle;
+}
+
+/* Small variant: inline beside the picker's "Lunch"/"Coffee" group label */
+.pip-break-group-label .pip-break-icon {
+  margin-right: 0.3rem;
+}
+
+/* Large variant: sits above the time digits during an active project break.
+   Pulses on the same slow cadence as the ring's own corona glow elsewhere
+   in this widget, so it reads as one breathing object, not a sticker. */
+.pip-break-icon-lg {
+  display: block;
+  margin: 0 auto 0.35rem;
+  color: rgba(15, 223, 171, 0.9);
+  filter: drop-shadow(0 0 4px rgba(15, 223, 171, 0.55)) drop-shadow(0 0 11px rgba(15, 223, 171, 0.25));
+  animation: pipIconPulse 3s ease-in-out infinite;
+}
+
+/* A paused timer with a still-steaming cup reads as broken, not charming —
+   freeze the icon's own animation (and any steam children) in lockstep
+   with isRunning, same as the countdown digits themselves pause. */
+.pip-break-icon-paused {
+  animation-play-state: paused;
+  opacity: 0.7;
+}
+
+.pip-break-icon-paused .pip-steam {
+  animation-play-state: paused;
+}
+
+@keyframes pipIconPulse {
+  0%, 100% { opacity: 0.85; transform: scale(1); }
+  50%      { opacity: 1;    transform: scale(1.04); }
+}
+
+/* Steam — drifts up and fades, looping; the second tendril lags slightly
+   so they don't move in lockstep (real steam doesn't either). */
+.pip-steam {
+  transform-origin: bottom center;
+  opacity: 0;
+  animation: pipSteamDrift 2.6s ease-in-out infinite;
+}
+
+.pip-steam-2 {
+  animation-delay: 0.7s;
+}
+
+@keyframes pipSteamDrift {
+  0%   { transform: translateY(0) scaleY(1);    opacity: 0; }
+  30%  { opacity: 0.75; }
+  100% { transform: translateY(-3px) scaleY(1.18); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pip-break-icon-lg,
+  .pip-steam {
+    animation: none;
+    opacity: 0.85;
+  }
+}
+
 .pip-label {
   font-family: "Courier New", monospace;
   font-size: 0.58rem;
@@ -447,6 +558,154 @@
   background: rgba(134, 223, 255, 0.1);
   box-shadow: 0 0 10px rgba(134, 223, 255, 0.3);
   transform: scale(1.05);
+}
+
+.pip-btn:active {
+  transform: scale(0.95);
+  background: rgba(134, 223, 255, 0.2);
+  box-shadow: 0 0 6px rgba(134, 223, 255, 0.45);
+}
+
+/* Skip-break: a quiet exit, not a third action button. Only mounted while
+   mode === "break" (see mission-react.js), so it costs zero visual weight
+   during work mode — text-link weight on purpose, never competing with
+   the reset/play-pause icon pair above it. */
+.pip-skip-break {
+  display: block;
+  margin: 0.55rem auto 0;
+  padding: 0.2rem 0.5rem;
+  background: none;
+  border: none;
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: rgba(15, 223, 171, 0.65);
+  cursor: pointer;
+  transition: color 0.2s ease, opacity 0.2s ease;
+  animation: pipSkipFadeIn 0.25s ease;
+}
+
+.pip-skip-break:hover {
+  color: rgba(15, 223, 171, 0.95);
+}
+
+.pip-skip-break:active {
+  opacity: 0.6;
+}
+
+@keyframes pipSkipFadeIn {
+  from { opacity: 0; transform: translateY(-2px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* "Take a break" — same quiet text-link weight as skip-break, for the same
+   reason: it's an occasional exit, not a primary action, and shouldn't
+   visually compete with reset/play-pause. Only mounted in Project mode
+   while tracking (see mission-react.js). */
+.pip-take-break {
+  display: block;
+  margin: 0.55rem auto 0;
+  padding: 0.2rem 0.5rem;
+  background: none;
+  border: none;
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: rgba(134, 223, 255, 0.55);
+  cursor: pointer;
+  transition: color 0.2s ease, opacity 0.2s ease;
+  animation: pipSkipFadeIn 0.25s ease;
+}
+
+.pip-take-break:hover {
+  color: rgba(134, 223, 255, 0.9);
+}
+
+.pip-take-break:active {
+  opacity: 0.6;
+}
+
+/* Break-duration picker — replaces the take-a-break link in place, so the
+   widget's overall height doesn't jump. Six compact chips rather than a
+   dropdown, since there are only five options and a dropdown would cost
+   an extra click for no real benefit at this scale. */
+.pip-break-picker {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  animation: pipSkipFadeIn 0.2s ease;
+}
+
+.pip-break-picker-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  width: 100%;
+}
+
+.pip-break-group-label {
+  display: flex;
+  align-items: center;
+  font-family: "Courier New", monospace;
+  font-size: 0.6rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(134, 223, 255, 0.5);
+}
+
+.pip-break-picker-row {
+  display: flex;
+  flex-wrap: wrap;          /* safety net — never overflow regardless of widget width */
+  justify-content: center;
+  gap: 0.3rem;
+  max-width: 100%;
+}
+
+.pip-break-chip {
+  background: rgba(134, 223, 255, 0.06);
+  border: 1px solid rgba(134, 223, 255, 0.25);
+  border-radius: 6px;
+  color: rgba(134, 223, 255, 0.8);
+  font-family: "Courier New", monospace;
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  padding: 0.3rem 0.55rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  flex: none;
+}
+
+.pip-break-chip:hover {
+  background: rgba(134, 223, 255, 0.16);
+  border-color: rgba(134, 223, 255, 0.5);
+  color: #fff;
+}
+
+.pip-break-chip:active {
+  transform: scale(0.95);
+}
+
+.pip-break-picker-cancel {
+  background: none;
+  border: none;
+  color: rgba(134, 223, 255, 0.35);
+  font-size: 0.62rem;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  padding: 0.1rem 0.4rem;
+  transition: color 0.2s ease;
+}
+
+.pip-break-picker-cancel:hover {
+  color: rgba(134, 223, 255, 0.7);
 }
 
 /* Cycle dots + session label row */
