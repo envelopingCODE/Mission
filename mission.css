@@ -451,7 +451,6 @@ input[type="text"] {
   border: 1.2px solid #000000;
   width: 300px;
   padding: 0 8px 0 8px;
-  box-shadow: 0 0 16px rgba(0, 123, 255, 0.5);
   transition: box-shadow 0.3s;
 }
 
@@ -2169,7 +2168,6 @@ svg.minimalist-face {
 #addMission:focus {
   border-color: rgba(134, 223, 255, 0.8);
   background: rgba(0, 0, 0, 0.8);
-  box-shadow: 0 0 16px rgba(134, 223, 255, 0.2);
   height: 30px;
   border-radius: 10px;
   width: 300px;
@@ -2226,7 +2224,6 @@ svg.minimalist-face {
 #addMission:focus {
   border-color: rgba(134, 223, 255, 0.8);
   background: rgba(0, 0, 0, 0.8);
-  box-shadow: 0 0 16px rgba(134, 223, 255, 0.2);
   height: 30px;
   border-radius: 10px;
   width: 300px;
@@ -2264,7 +2261,10 @@ svg.minimalist-face {
 /* Gentle focus states */
 #addMission:focus {
   border-color: rgba(134, 223, 255, 0.356);
-  box-shadow: 0 0 10px rgba(134, 223, 255, 0.959);
+  /* box-shadow removed — the .input-wrapper copilot-glow (bloom + orbiting
+     comet) now supplies the focus indicator and was being painted over by
+     this static halo, since the input paints above the wrapper's
+     z-index:-1 glow layers in the shared stacking context. */
 }
 
 /* Subtle hover feedback */
@@ -6487,9 +6487,3 @@ svg.minimalist-face {
   100% { --orbit-angle: 360deg; }
 }
 
-@media (max-width: 600px) {
-  .input-wrapper::before,
-  .input-wrapper::after {
-    display: none;
-  }
-}
