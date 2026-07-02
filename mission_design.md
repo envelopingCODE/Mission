@@ -56,7 +56,7 @@ Nicholson's RECIPE framework separates gamification that supports meaning from g
 | RECIPE element | Implementation |
 |---|---|
 | Reflection | Session-complete overlay shows exact elapsed time and XP earned |
-| Exposition | XP rule is stated plainly: 10 XP per 25-minute increment, awarded at session end |
+| Exposition | XP rule is stated plainly: 15 XP per 25-minute increment, awarded at session end |
 | Choice | Mode tabs, break picker, skip-break — operator controls every decision point |
 | Information | Ring fill gives real-time interval progress; OPS elapsed counter gives continuous awareness |
 | Play | Slot-machine animation and ascending audio ticks are playful, never compulsory |
@@ -214,7 +214,7 @@ Pomodoro and OPS coexist on a two-tab toggle because neither is universally corr
 
 The slot-machine counter and ascending audio could fire automatically on a timer. Requiring an explicit "Finish OPS →" trigger instead is deliberate: automatic reward on an arbitrary interval would train operators to stop at arbitrary intervals. The finish gesture creates a ritual boundary — the operator acknowledges the session is over, sees how long they worked, then receives the reward. This mirrors the closing-ritual function described in structured-work literature (Allen, 2001): the ritual tells the brain the task context can close.
 
-The reward calculation (increments × 10 XP) is fully predictable and disclosed — no variable-reward uncertainty drives the animation. The "slot machine" framing is aesthetic (a counter ticking up is satisfying to watch), not mechanical; variable reward schedules are manipulative because uncertainty drives compulsive engagement, and this reward has none.
+The reward calculation (increments × 15 XP) is fully predictable and disclosed — no variable-reward uncertainty drives the animation. The "slot machine" framing is aesthetic (a counter ticking up is satisfying to watch), not mechanical; variable reward schedules are manipulative because uncertainty drives compulsive engagement, and this reward has none.
 
 ### Synthesized Audio: No External Dependencies
 
@@ -237,7 +237,7 @@ The timer is React (Babel-compiled in-browser); the task engine and notification
 1. **XP tracks real work, not engagement** — awards tie to task completion and OPS elapsed time, never to app opens, logins, or streak maintenance
 2. **XP is legible** — the operator always knows why they received what they did
 3. **XP is never lost** — no loss-aversion mechanics; a missed streak day resets the counter, nothing more
-4. **Increments are honest** — 10 XP per 25-minute OPS block; task-completion XP scales with task weight; no artificial scarcity or inflation
+4. **Increments are honest** — 15 XP per 25-minute OPS block; task-completion XP scales with task weight; no artificial scarcity or inflation
 
 ### The Session-Complete Ritual
 

@@ -3428,6 +3428,10 @@ const StToggle = ({ label, desc, checked, onChange }) => (
   </div>
 );
 
+// XP awarded per completed 25-min OPS unit. Single source of truth shared by
+// the timer (payout) and the settings sim, so the two can't drift.
+const PROJECT_XP_AWARD = 15;
+
 const SettingsPanel = () => {
   const [open,         setOpen]         = React.useState(false);
   const [view,         setView]         = React.useState("main"); // "main"|"themes"|"achievements"
@@ -3716,7 +3720,7 @@ const SettingsPanel = () => {
     );
   }
 
-  // Sim payline preview — mirrors the real payout math (25m unit, 10 XP each)
+  // Sim payline preview — mirrors the real payout math (25m unit, PROJECT_XP_AWARD each)
   // so the window discloses exactly what the run will award before it fires.
   const simMinutes = parseFloat(debugMinutes);
   const simUnits   = simMinutes > 0 ? Math.floor(simMinutes / 25) : 0;
@@ -3755,7 +3759,7 @@ const SettingsPanel = () => {
             <div className="st-section-title">Pomodoro</div>
             <StToggle label="Show timer"    checked={cfg.pomodoroVisible}  onChange={() => toggle("pomodoroVisible")} />
             <StToggle label="Theme on badge" checked={cfg.miniTimerSkin !== false} onChange={() => toggle("miniTimerSkin")} desc="Mirror active skin on minimized timer" />
-            <StToggle label="XP for project time" checked={cfg.projectTimeXP === true} onChange={() => toggle("projectTimeXP")} desc="10 XP per 25 min — awarded when you finish an OPS session" />
+            <StToggle label="XP for project time" checked={cfg.projectTimeXP === true} onChange={() => toggle("projectTimeXP")} desc={`${PROJECT_XP_AWARD} XP per 25 min — awarded when you finish an OPS session`} />
           </div>
 
           <div className="st-section">
@@ -3839,7 +3843,7 @@ const SettingsPanel = () => {
             <div className="st-sim-row">
               <div className={"st-sim-payline" + (simUnits === 0 ? " st-sim-payline-zero" : "")} key={simUnits}>
                 <span className="st-sim-mult">{simUnits}×</span>
-                <span className="st-sim-payout">25m = +{simUnits * 10} XP</span>
+                <span className="st-sim-payout">25m = +{simUnits * PROJECT_XP_AWARD} XP</span>
               </div>
               <button className="st-btn" disabled={!(simMinutes > 0)} onClick={() => {
                 if (typeof window.debugSimulateOpsFinish === "function") window.debugSimulateOpsFinish(simMinutes);
@@ -3935,7 +3939,7 @@ const PomodoroTimer = () => {
     { group: "Coffee", label: "5m",  seconds:  5 * 60 },
   ];
   const PROJECT_XP_INCREMENT_SECONDS = WORK_TIME; // one Pomodoro-equivalent unit
-  const PROJECT_XP_AWARD             = 10;
+  // PROJECT_XP_AWARD is module-scoped (shared with the settings sim).
 
   // XP payout reel — faces sit on a horizontal-axis cylinder (an iOS wheel-
   // picker drum); the drum spins up through 0×…N× as the count lands. ANGLE is
@@ -4128,6 +4132,28 @@ const PomodoroTimer = () => {
     }
   }
 
+  // Brief celebratory corona burst — reuses the payout glow + ring corona to
+  // mark a win (finishing a Pomodoro work block) without the XP reel. Ramps
+  // up, holds, then fades over ~durationMs. Only visible on the expanded PIP;
+  // added imperatively on the pip root, which survives React re-renders since
+  // the className prop itself never changes.
+  const winCoronaTimersRef = React.useRef([]);
+  function flashWinCorona(durationMs) {
+    var root = pipRootRef.current;
+    if (!root) return;
+    winCoronaTimersRef.current.forEach(clearTimeout);
+    winCoronaTimersRef.current = [];
+    var push = function (fn, t) { winCoronaTimersRef.current.push(setTimeout(fn, t)); };
+    root.classList.add("pip-sc-glow");
+    root.style.setProperty("--sc-intensity", "0.7");
+    push(function () { root.style.setProperty("--sc-intensity", "0.5");  }, 600);
+    push(function () { root.style.setProperty("--sc-intensity", "0.28"); }, Math.max(700, durationMs - 1600));
+    push(function () {
+      root.style.setProperty("--sc-intensity", "0");
+      root.classList.remove("pip-sc-glow");
+    }, durationMs);
+  }
+
   // Interval — never calls setState per tick
   React.useEffect(() => {
     if (!isRunning) return;
@@ -4180,6 +4206,7 @@ const PomodoroTimer = () => {
           });
         }
         setMode("break");
+        flashWinCorona(10000); // celebrate the completed work block into the break
         // Check if user deferred the first-run briefing to their next break
         if (localStorage.getItem("pendingBriefing") === "true") {
           localStorage.removeItem("pendingBriefing");
