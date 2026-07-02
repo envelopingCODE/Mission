@@ -764,6 +764,13 @@
   100% { opacity: 0; transform: translate(-50%, -26px) scale(1.15); }
 }
 
+/* Multiplier drum (overlay, position 2) — the smaller wheel that still ticks
+   ×1…×N to encourage more 25-min units, beside the elapsed time. */
+.pip-sc-mult { display: flex; align-items: center; gap: 0.32rem; }
+.pip-xp-reel-sm { width: 2.1em; height: 26px; perspective: 200px; }
+.pip-xp-reel-sm .pip-xp-drum { transform: translateZ(-67px) rotateX(0deg); }
+.pip-xp-reel-sm .pip-xp-face > span { font-size: 1.15rem; text-shadow: 0 0 7px rgba(15, 223, 171, 0.5); }
+
 /* Stronger white bloom on each face as it lands — the dopamine hit. Runs on an
    inner span so it never clobbers the face's own 3D placement transform. */
 .pip-xp-face.pip-xp-flash > span { animation: pipXpReelFlash 0.34s cubic-bezier(0.22, 1, 0.36, 1); }

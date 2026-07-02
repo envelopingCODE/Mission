@@ -3918,7 +3918,7 @@ const PomodoroTimer = () => {
   const SHORT_BREAK      =  5 * 60;
   const LONG_BREAK       = 15 * 60;
   const CYCLE_LENGTH     = 4;           // Pomodoros before a long break
-  const MINI_R = 26, MINI_C = 2 * Math.PI * 26;
+  const MINI_R = 30, MINI_C = 2 * Math.PI * 30; // ring hugs the badge edge (no dark gap)
   const PIP_R  = 74, PIP_C  = 2 * Math.PI * 74;
 
   // Project mode — open-ended stopwatch for live/team work not bound to the
@@ -3945,7 +3945,8 @@ const PomodoroTimer = () => {
   // curving away recede and shrink. Faces coincide only 360/ANGLE steps apart
   // (18 units ≈ 7.5h) — beyond any single focus session this app would endorse.
   const XP_REEL_ANGLE  = 22;
-  const XP_REEL_RADIUS = 108;
+  const XP_REEL_RADIUS = 108; // big XP-total drum in the ring
+  const XP_MULT_RADIUS = 67;  // smaller multiplier drum in the overlay
 
   // Structural state — triggers re-render on meaningful changes only
   const [isRunning,    setIsRunning]    = React.useState(false);
@@ -4012,10 +4013,11 @@ const PomodoroTimer = () => {
   // directly on it). scCtrlRef holds the active run's coordinated teardown so
   // an early click-dismiss cancels every pending tick and banks time exactly
   // once — never leaving an orphaned timer to wipe a fresh session later.
-  const xpDrumRef    = React.useRef(null);
-  const xpFlyRef     = React.useRef(null);
-  const pipRootRef   = React.useRef(null);
-  const scCtrlRef    = React.useRef(null);
+  const xpDrumRef     = React.useRef(null); // XP-total drum (ring)
+  const xpMultDrumRef = React.useRef(null); // multiplier drum (overlay)
+  const xpFlyRef      = React.useRef(null);
+  const pipRootRef    = React.useRef(null);
+  const scCtrlRef     = React.useRef(null);
 
   // DOM refs for direct per-second writes
   const pipTimeRef  = React.useRef(null);
@@ -4387,15 +4389,15 @@ const PomodoroTimer = () => {
     var setIntensity = function (v) {
       if (pipRootRef.current) pipRootRef.current.style.setProperty("--sc-intensity", v.toFixed(3));
     };
-    var rollTo = function (step, dur, ease) {
-      if (!xpDrumRef.current) return;
-      xpDrumRef.current.style.transitionDuration = dur + "ms";
-      xpDrumRef.current.style.transitionTimingFunction = ease;
-      xpDrumRef.current.style.transform =
-        "translateZ(-" + XP_REEL_RADIUS + "px) rotateX(" + (step * XP_REEL_ANGLE) + "deg)";
+    var rollDrum = function (drum, radius, step, dur, ease) {
+      if (!drum) return;
+      drum.style.transitionDuration = dur + "ms";
+      drum.style.transitionTimingFunction = ease;
+      drum.style.transform =
+        "translateZ(-" + radius + "px) rotateX(" + (step * XP_REEL_ANGLE) + "deg)";
     };
-    var flashFace = function (step) {
-      var face = xpDrumRef.current && xpDrumRef.current.children[step];
+    var flashDrumFace = function (drum, step) {
+      var face = drum && drum.children[step];
       if (!face) return;
       face.classList.remove("pip-xp-flash");
       void face.offsetWidth; // reflow: restart the bloom
@@ -4414,15 +4416,20 @@ const PomodoroTimer = () => {
       var prog   = increments > 1 ? (i - 1) / (increments - 1) : 0;
       var hopDur = isLast ? 260 : Math.round(200 + (95 - 200) * prog);
       (function (step, startAt, dur, last) {
-        // Start the hop
+        // Start the hop — both drums roll together: the XP total (ring) and
+        // the multiplier (overlay), so the multiplier still animates while the
+        // points count into the total.
         push(function () {
-          rollTo(step, dur, last ? "cubic-bezier(0.22, 1, 0.36, 1)" : "linear");
+          var ease = last ? "cubic-bezier(0.22, 1, 0.36, 1)" : "linear";
+          rollDrum(xpDrumRef.current,     XP_REEL_RADIUS, step, dur, ease);
+          rollDrum(xpMultDrumRef.current, XP_MULT_RADIUS, step, dur, ease);
           setIntensity(0.18 + 0.82 * (step / increments));
         }, startAt);
-        // Land the hop — face flashes white, a +10 mote flies into the total,
-        // the tick clicks in sync.
+        // Land the hop — both faces flash white, a +10 mote flies into the
+        // total, the tick clicks in sync.
         push(function () {
-          flashFace(step);
+          flashDrumFace(xpDrumRef.current, step);
+          flashDrumFace(xpMultDrumRef.current, step);
           if (xpFlyRef.current) {
             xpFlyRef.current.classList.remove("pip-xp-fly-go");
             void xpFlyRef.current.offsetWidth; // reflow: restart the mote
@@ -4565,7 +4572,7 @@ const PomodoroTimer = () => {
             <g className="pip-corona-outer">
               <circle cx="32" cy="32" r={MINI_R} fill="none"
                 stroke={miniIsNeon ? `url(#${miniGradId})` : ringColor}
-                strokeWidth="14" strokeOpacity={miniIsNeon ? 0.07 : 0.04} />
+                strokeWidth="10" strokeOpacity={miniIsNeon ? 0.1 : 0.06} />
             </g>
             {/* Track */}
             <circle cx="32" cy="32" r={MINI_R} fill="none"
@@ -4811,7 +4818,20 @@ const PomodoroTimer = () => {
             onClick={() => { if (scCtrlRef.current) scCtrlRef.current.finalize(); }}>
             <div className="pip-sc-time">{fmt(sessionComplete.elapsed)}</div>
             {sessionComplete.xp > 0 ? (
-              <div className="pip-sc-label">{sessionComplete.increments}× · 25 min</div>
+              <div className="pip-sc-mult">
+                <div className="pip-xp-reel pip-xp-reel-sm">
+                  <div className="pip-xp-drum" ref={xpMultDrumRef}
+                    style={{ transform: `translateZ(-${XP_MULT_RADIUS}px) rotateX(0deg)` }}>
+                    {Array.from({ length: sessionComplete.increments + 1 }).map((_, v) => (
+                      <div key={v} className="pip-xp-face"
+                        style={{ transform: `rotateX(${-v * XP_REEL_ANGLE}deg) translateZ(${XP_MULT_RADIUS}px)` }}>
+                        <span>{v}×</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <span className="pip-sc-label">25 min</span>
+              </div>
             ) : (
               <div className="pip-sc-banked">
                 <div className="pip-sc-label">TIME LOGGED</div>
