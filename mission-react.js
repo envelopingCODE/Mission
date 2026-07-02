@@ -3440,6 +3440,7 @@ const SettingsPanel = () => {
   const [navDir,       setNavDir]       = React.useState("forward"); // "forward"|"back"
   const [autoCycle,    setAutoCycle]    = React.useState(false);
   const [demoActive,   setDemoActive]   = React.useState(null);
+  const [debugMinutes, setDebugMinutes] = React.useState("25");
 
   // Directional navigation helper
   function navigateTo(v) {
@@ -3801,6 +3802,28 @@ const SettingsPanel = () => {
               <span className="st-hearts">{renderHearts(
                 typeof window.getCondition === "function" ? window.getCondition() : 3
               )}</span>
+            </div>
+          </div>
+
+          {/* Debug — fast-forward the OPS tracker to test the finish-session
+              XP animation without waiting out a real session. */}
+          <div className="st-section">
+            <div className="st-section-title">Debug</div>
+            <div className="st-row st-row-input">
+              <span className="st-label">Minutes</span>
+              <input className="st-input" type="number" min="1" step="1"
+                value={debugMinutes}
+                onChange={(e) => setDebugMinutes(e.target.value)}
+                placeholder="25" />
+            </div>
+            <div className="st-row st-row-action">
+              <span className="st-desc">Simulates an OPS session of this length and fires the finish flow</span>
+              <button className="st-btn" onClick={() => {
+                const m = parseFloat(debugMinutes);
+                if (!m || m <= 0) return;
+                if (typeof window.debugSimulateOpsFinish === "function") window.debugSimulateOpsFinish(m);
+                setOpen(false);
+              }}>Simulate</button>
             </div>
           </div>
 
@@ -4306,6 +4329,41 @@ const PomodoroTimer = () => {
       syncDisplay();
     }, 2200);
   }, [syncDisplay]);
+
+  // Debug hook — lets the Settings debug panel fast-forward the OPS tracker
+  // by an arbitrary number of minutes and fire the finish-session flow, so
+  // the slot-machine XP animation can be tested without running a real
+  // session. debugSimulateSeconds is a hand-off: the global setter batches
+  // all the mode/expand state in one commit, then the effect below runs
+  // finishProjectSession() only once that commit has mounted the project/
+  // work JSX (and its refs) — mirrors a real "Finish OPS →" click exactly.
+  const [debugSimulateSeconds, setDebugSimulateSeconds] = React.useState(null);
+
+  React.useEffect(() => {
+    window.debugSimulateOpsFinish = (minutes) => {
+      const seconds = Math.round(Number(minutes) * 60);
+      if (!seconds || seconds <= 0) return;
+      setIsRunning(false);
+      setBreakPickerOpen(false);
+      setActiveBreakGroup(null);
+      setSessionComplete(null);
+      setTimerType("project");
+      setMode("work");
+      setExpanded(true);
+      projectElapsedRef.current = seconds;
+      localStorage.setItem("projectElapsed", seconds);
+      setHasProjectTime(true);
+      setDebugSimulateSeconds(seconds);
+    };
+    return () => { delete window.debugSimulateOpsFinish; };
+  }, []);
+
+  React.useEffect(() => {
+    if (debugSimulateSeconds == null) return;
+    syncDisplay();
+    finishProjectSession();
+    setDebugSimulateSeconds(null);
+  }, [debugSimulateSeconds]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const dragRef = React.useRef(null);
   const onDragStart = React.useCallback((e) => {
