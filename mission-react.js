@@ -3716,6 +3716,11 @@ const SettingsPanel = () => {
     );
   }
 
+  // Sim payline preview — mirrors the real payout math (25m unit, 10 XP each)
+  // so the window discloses exactly what the run will award before it fires.
+  const simMinutes = parseFloat(debugMinutes);
+  const simUnits   = simMinutes > 0 ? Math.floor(simMinutes / 25) : 0;
+
   return (
     <div>
       <button
@@ -3805,25 +3810,41 @@ const SettingsPanel = () => {
             </div>
           </div>
 
-          {/* Debug — fast-forward the OPS tracker to test the finish-session
-              XP animation without waiting out a real session. */}
+          {/* Diagnostics — replays the OPS payout sequence at any length.
+              The payline window previews the exact award (gold multiplier +
+              cyan label, same glyphs as the real overlay) and re-pops via a
+              keyed remount whenever the 25m-unit count changes, so typing
+              toward a threshold gives the reel-settle feedback before the
+              run is ever fired. Reward math stays fully disclosed. */}
           <div className="st-section">
-            <div className="st-section-title">Debug</div>
+            <div className="st-section-title"><span>Diagnostics</span><span className="st-badge">SIM</span></div>
+            <div className="st-desc st-sim-desc">Runs the OPS payout sequence without a live session</div>
+            <div className="st-sim-presets">
+              {[25, 50, 100].map((m) => (
+                <button key={m}
+                  className={"st-sim-chip" + (simMinutes === m ? " st-sim-chip-active" : "")}
+                  onClick={() => setDebugMinutes(String(m))}>
+                  {m}m
+                </button>
+              ))}
+            </div>
             <div className="st-row st-row-input">
-              <span className="st-label">Minutes</span>
+              <span className="st-label">Length</span>
               <input className="st-input" type="number" min="1" step="1"
                 value={debugMinutes}
                 onChange={(e) => setDebugMinutes(e.target.value)}
                 placeholder="25" />
+              <span className="st-sim-unit">min</span>
             </div>
-            <div className="st-row st-row-action">
-              <span className="st-desc">Simulates an OPS session of this length and fires the finish flow</span>
-              <button className="st-btn" onClick={() => {
-                const m = parseFloat(debugMinutes);
-                if (!m || m <= 0) return;
-                if (typeof window.debugSimulateOpsFinish === "function") window.debugSimulateOpsFinish(m);
+            <div className="st-sim-row">
+              <div className={"st-sim-payline" + (simUnits === 0 ? " st-sim-payline-zero" : "")} key={simUnits}>
+                <span className="st-sim-mult">{simUnits}×</span>
+                <span className="st-sim-payout">25m = +{simUnits * 10} XP</span>
+              </div>
+              <button className="st-btn" disabled={!(simMinutes > 0)} onClick={() => {
+                if (typeof window.debugSimulateOpsFinish === "function") window.debugSimulateOpsFinish(simMinutes);
                 setOpen(false);
-              }}>Simulate</button>
+              }}>Run ▸</button>
             </div>
           </div>
 
