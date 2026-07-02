@@ -3811,7 +3811,7 @@ const SettingsPanel = () => {
           </div>
 
           {/* Diagnostics — replays the OPS payout sequence at any length.
-              The payline window previews the exact award (gold multiplier +
+              The payline window previews the exact award (teal multiplier +
               cyan label, same glyphs as the real overlay) and re-pops via a
               keyed remount whenever the 25m-unit count changes, so typing
               toward a threshold gives the reel-settle feedback before the

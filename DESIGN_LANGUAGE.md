@@ -22,8 +22,7 @@ opacity, not from new colors. Never introduce a new hue without checking this ta
 | Token | Value | Role |
 |---|---|---|
 | HUD cyan | `#86dfff` / `rgba(134,223,255,α)` | Primary chrome: borders, labels, interactive elements, timer ring (work) |
-| Reward teal | `rgba(15,223,171,α)` / `#0fdfab` | XP, payouts, session-complete, break ring — anything *earned* |
-| Payout gold | `#ffd766` | The XP multiplier digit only. Rare by design — gold appears at the moment of payoff and nowhere else |
+| Reward teal | `rgba(15,223,171,α)` / `#0fdfab` | XP, payouts, the multiplier digit, session-complete, break ring — anything *earned*. The multiplier flashes white mid-tick and settles teal |
 | Warning red | `rgba(255,80,60,α)` | Destructive actions only (purge). Never for emphasis |
 | Terminal green | `rgba(15,210,75,α)` | Purge-terminal text, tiny status tags. Old-phosphor accent |
 | Neon skin | `#00d4ff → #8b00ff → #ff00e5` (vertical gradient) | Unlockable timer skin only. Never leaks into base UI |
@@ -100,8 +99,8 @@ Reuse these before inventing anything:
 - **Chips**: `.st-sim-chip` / `.demo-emotion-btn` / `.pip-break-chip` — equal-width monospace
   quick-picks, active state = brighter fill + border. This is the house segmented control.
 - **Payout window**: `.st-sim-payline` — recessed dark glass quoting the real reward overlay
-  verbatim (gold multiplier + uppercase cyan label). Any reward *preview* must use the same
-  glyphs and colors as the reward itself.
+  verbatim (reward-teal multiplier + uppercase cyan label). Any reward *preview* must use the
+  same glyphs and colors as the reward itself.
 - **Destructive**: `purge-trigger` pattern — transparent fill, red border, radius 2px. Red is
   never used at rest anywhere else.
 
@@ -151,4 +150,4 @@ reward math is always disclosed before it pays; copy never guilts, hedges, or ex
 4. Motion: one settle curve, ≤0.28s, communicates state. Rewards pop, chrome doesn't.
 5. Sound (if any): synthesized, quiet, gated on `soundEnabled`.
 6. Copy in M-VI register; trunk test; reward math disclosed.
-7. Glow only on live/earned things. Red only on destructive things. Gold only on payouts.
+7. Glow only on live/earned things. Red only on destructive things. Teal only on earned things.

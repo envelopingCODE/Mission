@@ -142,3 +142,9 @@
 | — | UXD Protocol | HCI reasoning before novel UI; no persona names in code comments |
 | — | Copy Protocol | Trunk test · hierarchy · correct register |
 | — | Meta-Law | Named hierarchy resolution; surface conflicts, never paper over |
+
+## Key Documents
+
+- [DESIGN_LANGUAGE.md](DESIGN_LANGUAGE.md) — visual/audio/copy spec (color tokens, alpha ladder, motion, component recipes, buddy genealogy). Read before writing any new UI.
+- [DESIGN.md](DESIGN.md) — behavioral theory, architecture, lore, voice system.
+- [mission_design.md](mission_design.md) — instructional design & UX rationale.
