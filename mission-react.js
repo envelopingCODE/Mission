@@ -3787,6 +3787,19 @@ const SettingsPanel = () => {
               </div>
             </div>
 
+            {/* OPS unit bank — queues an OPS session 3s before a unit mark so
+                the collapse-to-pip flourish fires. */}
+            <div className="st-section">
+              <div className="st-section-title"><span>OPS unit bank</span><span className="st-badge">SIM</span></div>
+              <div className="st-desc st-sim-desc">Queues an OPS session 3s before a 25-min mark to demo the ring collapse</div>
+              <div className="st-sim-row">
+                <button className="st-btn" onClick={() => {
+                  if (typeof window.debugQueueOpsUnit === "function") window.debugQueueOpsUnit(3);
+                  setOpen(false);
+                }}>Bank unit ▸</button>
+              </div>
+            </div>
+
           </div></div>
         </div>
       </div>
@@ -4002,6 +4015,13 @@ const PomodoroTimer = () => {
   const [hasProjectTime, setHasProjectTime] = React.useState(
     () => parseInt(localStorage.getItem("projectElapsed") || "0", 10) > 0
   );
+  // Units (25-min blocks) banked so far this OPS session — shown as pips under
+  // the ring; the ring itself fills toward the *next* unit and collapses into a
+  // fresh pip each time one completes. Updated only at unit boundaries (~25min),
+  // so the re-render cost is negligible.
+  const [bankedUnits, setBankedUnits] = React.useState(
+    () => Math.floor(parseInt(localStorage.getItem("projectElapsed") || "0", 10) / (25 * 60))
+  );
   const [sessionCount, setSessionCount] = React.useState(0);
   const [expanded,     setExpanded]     = React.useState(false);
   const [position,     setPosition]     = React.useState(null);
@@ -4059,9 +4079,12 @@ const PomodoroTimer = () => {
   const scCtrlRef     = React.useRef(null);
 
   // DOM refs for direct per-second writes
-  const pipTimeRef  = React.useRef(null);
-  const pipRingRef  = React.useRef(null);
-  const pipGlowRef  = React.useRef(null); // blurred halo arc — follows same dashoffset
+  const pipTimeRef     = React.useRef(null);
+  const pipRingRef     = React.useRef(null);
+  const pipGlowRef     = React.useRef(null); // blurred halo arc — follows same dashoffset
+  const pipRingWrapRef = React.useRef(null); // .pip-timer-ring (anticipation-glow class)
+  const pipBankFlashRef = React.useRef(null); // overlay ring for the collapse-to-pip flourish
+  const bankTimersRef  = React.useRef([]);
   const miniTimeRef = React.useRef(null);
   const miniRingRef = React.useRef(null);
 
@@ -4076,8 +4099,14 @@ const PomodoroTimer = () => {
   const syncDisplay = React.useCallback(() => {
     const isProjectTracking = timerType === "project" && mode === "work";
     const tl = isProjectTracking ? projectElapsedRef.current : timeLeftRef.current;
-    const p  = isProjectTracking ? 1 : 1 - tl / totalTimeRef.current;
-    const f  = fmt(tl);
+    // Project ring now fills toward the *next* 25-min unit (counts up, wraps
+    // each unit) instead of sitting permanently full — accretion reads as
+    // growth, not the urgency a depleting countdown would imply.
+    const UNIT = PROJECT_XP_INCREMENT_SECONDS;
+    const p = isProjectTracking
+      ? (projectElapsedRef.current % UNIT) / UNIT
+      : 1 - tl / totalTimeRef.current;
+    const f  = fmt(tl); // centre always shows total elapsed, never the unit slice
     if (pipTimeRef.current)  pipTimeRef.current.textContent = f;
     if (miniTimeRef.current) miniTimeRef.current.textContent = f;
     const pipOffset = String(PIP_C * (1 - p));
@@ -4085,11 +4114,41 @@ const PomodoroTimer = () => {
     if (pipGlowRef.current)  pipGlowRef.current.setAttribute("stroke-dashoffset", pipOffset);
     if (miniRingRef.current)
       miniRingRef.current.setAttribute("stroke-dashoffset", String(MINI_C * (1 - p)));
+    // Anticipation: intensify the ring's halo in the final ~20s before a unit
+    // banks, making the goal gradient felt rather than just seen.
+    if (pipRingWrapRef.current) {
+      const approaching = isProjectTracking && (UNIT - (projectElapsedRef.current % UNIT)) <= 20
+                          && projectElapsedRef.current % UNIT !== 0;
+      pipRingWrapRef.current.classList.toggle("pip-ops-approach", approaching);
+    }
   }, [timerType, mode]);
 
   // Runs synchronously after every React commit, before browser paint.
   // Keeps DOM in sync when expand/collapse or mode switch re-mounts nodes.
   React.useLayoutEffect(() => { syncDisplay(); });
+
+  // Collapse-to-pip flourish — fired when the OPS ring completes a 25-min unit.
+  // A bright overlay ring blooms at full then collapses down toward the pip row
+  // (masking the real ring snapping back to empty underneath), while a fresh
+  // banked pip pops in. Silent unless sound is on; under reduced-motion the pip
+  // just updates with no animation.
+  function bankUnit() {
+    var units = Math.floor(projectElapsedRef.current / PROJECT_XP_INCREMENT_SECONDS);
+    setBankedUnits(units);
+    var soundOn = !window.AppSettings || window.AppSettings.get().soundEnabled;
+    if (soundOn) playXpTickSound(Math.min(units - 1, 4), false);
+    var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    var flash = pipBankFlashRef.current;
+    if (reduce || !flash) return;
+    bankTimersRef.current.forEach(clearTimeout);
+    bankTimersRef.current = [];
+    flash.classList.remove("pip-bank-go");
+    void flash.offsetWidth; // reflow: restart the collapse animation
+    flash.classList.add("pip-bank-go");
+    bankTimersRef.current.push(setTimeout(function () {
+      if (pipBankFlashRef.current) pipBankFlashRef.current.classList.remove("pip-bank-go");
+    }, 720));
+  }
 
   // Lazily requested the first time a project-mode break actually starts —
   // not on page load. Asking for permission before the user has done
@@ -4201,6 +4260,8 @@ const PomodoroTimer = () => {
           localStorage.setItem("projectElapsed", projectElapsedRef.current);
           syncDisplay();
           setHasProjectTime(true); // no-op re-render once already true — see declaration
+          // A 25-min unit just banked — fire the collapse-to-pip flourish.
+          if (projectElapsedRef.current % PROJECT_XP_INCREMENT_SECONDS === 0) bankUnit();
           return;
         }
         // On a structured break — fixed-length countdown, same mechanics
@@ -4266,6 +4327,7 @@ const PomodoroTimer = () => {
       projectXpBankedRef.current = 0;
       localStorage.removeItem("projectElapsed");
       setHasProjectTime(false);
+      setBankedUnits(0);
     } else {
       // mode === "break" resets to whatever length this break actually is —
       // previously hardcoded to SHORT_BREAK, which wrongly reset long
@@ -4412,6 +4474,7 @@ const PomodoroTimer = () => {
       if (remainder > 0) localStorage.setItem("projectElapsed", remainder);
       else               localStorage.removeItem("projectElapsed");
       setHasProjectTime(remainder > 0);
+      setBankedUnits(Math.floor(remainder / PROJECT_XP_INCREMENT_SECONDS));
       syncDisplay();
     };
     scCtrlRef.current = { finalize: finalize };
@@ -4572,7 +4635,25 @@ const PomodoroTimer = () => {
       setIsRunning(true);
       syncDisplay();
     };
-    return () => { delete window.debugQueuePomodoro; };
+    // Queues a running OPS session a few seconds before a unit boundary so the
+    // collapse-to-pip flourish fires almost immediately.
+    window.debugQueueOpsUnit = (secondsLeft) => {
+      var s = Math.max(1, Math.round(Number(secondsLeft) || 3));
+      var el = PROJECT_XP_INCREMENT_SECONDS - s;
+      setBreakPickerOpen(false);
+      setActiveBreakGroup(null);
+      setSessionComplete(null);
+      setTimerType("project");
+      setMode("work");
+      setExpanded(true);
+      projectElapsedRef.current = el;
+      localStorage.setItem("projectElapsed", el);
+      setHasProjectTime(true);
+      setBankedUnits(Math.floor(el / PROJECT_XP_INCREMENT_SECONDS));
+      setIsRunning(true);
+      syncDisplay();
+    };
+    return () => { delete window.debugQueuePomodoro; delete window.debugQueueOpsUnit; };
   }, [syncDisplay]);
 
   const dragRef = React.useRef(null);
@@ -4715,7 +4796,7 @@ const PomodoroTimer = () => {
                 title="Minimise" style={{ cursor: "pointer" }}>−</button>
       </div>
       <div className="pomodoro-pip-content">
-        <div className="pip-timer-ring">
+        <div className="pip-timer-ring" ref={pipRingWrapRef}>
           <svg width="196" height="196" viewBox="0 0 196 196"
                style={{ overflow: "visible" }}>
 
@@ -4807,6 +4888,13 @@ const PomodoroTimer = () => {
                 transition: "stroke 0.5s ease, filter 0.5s ease",
               }}
             />
+
+            {/* Collapse-to-pip overlay — a full bright ring that blooms then
+                collapses down toward the pip row when a unit banks. Hidden
+                (opacity 0) until bankUnit() adds .pip-bank-go. */}
+            <circle ref={pipBankFlashRef} className="pip-bank-flash"
+              cx="98" cy="98" r={PIP_R} fill="none"
+              stroke="url(#pip-corona-grad)" strokeWidth="4" strokeLinecap="round" />
           </svg>
           <div className="pip-time-display">
             {sessionComplete && sessionComplete.xp > 0 ? (
@@ -4842,6 +4930,14 @@ const PomodoroTimer = () => {
             )}
           </div>
         </div>
+        {timerType === "project" && mode === "work" && !sessionComplete && (
+          <div className="pip-ops-units" aria-label={bankedUnits + " units banked this session"}>
+            {Array.from({ length: Math.min(bankedUnits, 8) }).map((_, i) => (
+              <span key={i} className="pip-ops-unit" />
+            ))}
+            {bankedUnits > 8 && <span className="pip-ops-unit-more">{bankedUnits}</span>}
+          </div>
+        )}
         <div className="pip-controls">
           <button className="pip-btn" onClick={reset} title="Reset">↺</button>
           <button className="pip-btn"
