@@ -3944,8 +3944,8 @@ const PomodoroTimer = () => {
   // so the front face lands at Z=0 (no perspective ballooning) while the ones
   // curving away recede and shrink. Faces coincide only 360/ANGLE steps apart
   // (18 units ≈ 7.5h) — beyond any single focus session this app would endorse.
-  const XP_REEL_ANGLE  = 20;
-  const XP_REEL_RADIUS = 96;
+  const XP_REEL_ANGLE  = 22;
+  const XP_REEL_RADIUS = 108;
 
   // Structural state — triggers re-render on meaningful changes only
   const [isRunning,    setIsRunning]    = React.useState(false);
@@ -4013,7 +4013,8 @@ const PomodoroTimer = () => {
   // an early click-dismiss cancels every pending tick and banks time exactly
   // once — never leaving an orphaned timer to wipe a fresh session later.
   const xpDrumRef    = React.useRef(null);
-  const scOverlayRef = React.useRef(null);
+  const xpFlyRef     = React.useRef(null);
+  const pipRootRef   = React.useRef(null);
   const scCtrlRef    = React.useRef(null);
 
   // DOM refs for direct per-second writes
@@ -4337,6 +4338,10 @@ const PomodoroTimer = () => {
       if (done) return;
       done = true;
       timers.forEach(clearTimeout);
+      if (pipRootRef.current) {
+        pipRootRef.current.classList.remove("pip-sc-glow");
+        pipRootRef.current.style.setProperty("--sc-intensity", "0");
+      }
       setSessionComplete(null);
       projectElapsedRef.current  = remainder;
       projectXpBankedRef.current = 0;
@@ -4362,7 +4367,12 @@ const PomodoroTimer = () => {
 
     if (!payout) {
       // Sub-unit close — no reel; a calm, dignified readout of banked progress
-      // with a single soft affirming note. Never a loss frame.
+      // with a single soft affirming note and a low steady widget glow. Never
+      // a loss frame.
+      if (pipRootRef.current) {
+        pipRootRef.current.classList.add("pip-sc-glow");
+        pipRootRef.current.style.setProperty("--sc-intensity", "0.16");
+      }
       if (soundOn) push(function () { playXpTickSound(0, false); }, 180);
       push(finalize, 2400);
       return;
@@ -4375,7 +4385,7 @@ const PomodoroTimer = () => {
     // ramp with the count. A hop "lands" (flash + click) at start + duration.
     var ANTICIPATION = 300;
     var setIntensity = function (v) {
-      if (scOverlayRef.current) scOverlayRef.current.style.setProperty("--sc-intensity", v.toFixed(3));
+      if (pipRootRef.current) pipRootRef.current.style.setProperty("--sc-intensity", v.toFixed(3));
     };
     var rollTo = function (step, dur, ease) {
       if (!xpDrumRef.current) return;
@@ -4391,10 +4401,10 @@ const PomodoroTimer = () => {
       void face.offsetWidth; // reflow: restart the bloom
       face.classList.add("pip-xp-flash");
     };
-    // Charge the panel during the anticipation beat — comet + low glow, 0× at
-    // the front — so the reel arrives into a primed frame, not a cold one.
+    // Charge the widget during the anticipation beat — glow + corona begin,
+    // 0 XP at the front — so the reel arrives into a primed frame, not cold.
     push(function () {
-      if (scOverlayRef.current) scOverlayRef.current.classList.add("pip-sc-counting");
+      if (pipRootRef.current) pipRootRef.current.classList.add("pip-sc-glow");
       setIntensity(0.18);
     }, 30);
 
@@ -4409,12 +4419,17 @@ const PomodoroTimer = () => {
           rollTo(step, dur, last ? "cubic-bezier(0.22, 1, 0.36, 1)" : "linear");
           setIntensity(0.18 + 0.82 * (step / increments));
         }, startAt);
-        // Land the hop — face flashes white, tick clicks in sync
+        // Land the hop — face flashes white, a +10 mote flies into the total,
+        // the tick clicks in sync.
         push(function () {
           flashFace(step);
+          if (xpFlyRef.current) {
+            xpFlyRef.current.classList.remove("pip-xp-fly-go");
+            void xpFlyRef.current.offsetWidth; // reflow: restart the mote
+            xpFlyRef.current.classList.add("pip-xp-fly-go");
+          }
           if (soundOn) playXpTickSound(step - 1, last);
           if (last) {
-            if (scOverlayRef.current) scOverlayRef.current.classList.remove("pip-sc-counting");
             setIntensity(0.42); // settle to a calm resting glow
             if (soundOn) {
               var lvl = document.getElementById("levelUpSound");
@@ -4591,7 +4606,7 @@ const PomodoroTimer = () => {
   );
 
   return (
-    <div className="pomodoro-pip" style={pipStyle}>
+    <div ref={pipRootRef} className="pomodoro-pip" style={pipStyle}>
       <div className="pip-header" onMouseDown={onDragStart} style={{ cursor: "grab" }}>
         <div className="pip-mode-tabs" title="Switch mode — shortcut: M">
           <button
@@ -4615,6 +4630,25 @@ const PomodoroTimer = () => {
           <svg width="196" height="196" viewBox="0 0 196 196"
                style={{ overflow: "visible" }}>
 
+            <defs>
+              <linearGradient id="pip-corona-grad" x1="98" y1="16" x2="98" y2="180" gradientUnits="userSpaceOnUse">
+                <stop offset="0%"   stopColor="#00d4ff" />
+                <stop offset="52%"  stopColor="#0fdfab" />
+                <stop offset="100%" stopColor="#48ff9e" />
+              </linearGradient>
+              {/* Uneven, living corona edge — fractal turbulence displaces the
+                  ring stroke into irregular flares and shimmers over time. */}
+              <filter id="pip-corona-flare" x="-70%" y="-70%" width="240%" height="240%">
+                <feTurbulence type="fractalNoise" baseFrequency="0.016 0.03" numOctaves="2" seed="7" result="n">
+                  <animate attributeName="baseFrequency" dur="7s"
+                    values="0.016 0.03;0.03 0.021;0.02 0.038;0.016 0.03" repeatCount="indefinite" />
+                </feTurbulence>
+                <feDisplacementMap in="SourceGraphic" in2="n" scale="28"
+                  xChannelSelector="R" yChannelSelector="G" />
+                <feGaussianBlur stdDeviation="2.4" />
+              </filter>
+            </defs>
+
             {isNeon && (
               <defs>
                 <linearGradient id="pip-neon-grad" x1="98" y1="24" x2="98" y2="172" gradientUnits="userSpaceOnUse">
@@ -4637,6 +4671,12 @@ const PomodoroTimer = () => {
             ].map((s, i) => (
               <circle key={i} cx={s.cx} cy={s.cy} r={s.r} fill={s.fill} opacity={s.op} className="pip-sparkle" />
             ))}
+
+            {/* Payout corona — intense uneven blue→teal→green flare, hidden
+                until the finish-session animation (see .pip-payout-corona). */}
+            <circle className="pip-payout-corona" cx="98" cy="98" r={PIP_R}
+              fill="none" stroke="url(#pip-corona-grad)" strokeWidth="24"
+              filter="url(#pip-corona-flare)" />
 
             <g className="pip-corona-outer">
               <circle cx="98" cy="98" r={PIP_R} fill="none"
@@ -4680,15 +4720,37 @@ const PomodoroTimer = () => {
             />
           </svg>
           <div className="pip-time-display">
-            {timerType === "project" && mode === "break" && activeBreakGroup && (
-              <BreakIcon kind={activeBreakGroup === "Lunch" ? "lunch" : "coffee"} size={30} animate={isRunning} />
+            {sessionComplete && sessionComplete.xp > 0 ? (
+              // Position 1 during payout: the XP total counts up on the drum,
+              // where the elapsed time used to be (the time drops to the overlay).
+              <div className="pip-xp-total-wrap">
+                <div className="pip-xp-reel">
+                  <div className="pip-xp-drum" ref={xpDrumRef}
+                    style={{ transform: `translateZ(-${XP_REEL_RADIUS}px) rotateX(0deg)` }}>
+                    {Array.from({ length: sessionComplete.increments + 1 }).map((_, v) => (
+                      <div key={v} className="pip-xp-face"
+                        style={{ transform: `rotateX(${-v * XP_REEL_ANGLE}deg) translateZ(${XP_REEL_RADIUS}px)` }}>
+                        <span>{v * PROJECT_XP_AWARD}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="pip-label">XP EARNED</div>
+                <span ref={xpFlyRef} className="pip-xp-fly">+{PROJECT_XP_AWARD}</span>
+              </div>
+            ) : (
+              <React.Fragment>
+                {timerType === "project" && mode === "break" && activeBreakGroup && (
+                  <BreakIcon kind={activeBreakGroup === "Lunch" ? "lunch" : "coffee"} size={30} animate={isRunning} />
+                )}
+                <div ref={pipTimeRef} className={"pip-time" + (isNeon ? " pip-time-neon" : "")}>
+                  {fmt(timeLeftRef.current)}
+                </div>
+                <div className="pip-label">
+                  {mode === "work" ? (timerType === "project" ? "LIVE OPS" : "WORK") : "BREAK"}
+                </div>
+              </React.Fragment>
             )}
-            <div ref={pipTimeRef} className={"pip-time" + (isNeon ? " pip-time-neon" : "")}>
-              {fmt(timeLeftRef.current)}
-            </div>
-            <div className="pip-label">
-              {mode === "work" ? (timerType === "project" ? "LIVE OPS" : "WORK") : "BREAK"}
-            </div>
           </div>
         </div>
         <div className="pip-controls">
@@ -4745,25 +4807,11 @@ const PomodoroTimer = () => {
         )}
 
         {sessionComplete && (
-          <div ref={scOverlayRef}
-            className={"pip-session-complete" + (sessionComplete.xp > 0 ? "" : " pip-sc-quiet")}
+          <div className="pip-session-complete"
             onClick={() => { if (scCtrlRef.current) scCtrlRef.current.finalize(); }}>
             <div className="pip-sc-time">{fmt(sessionComplete.elapsed)}</div>
             {sessionComplete.xp > 0 ? (
-              <div className="pip-sc-xp">
-                <div className="pip-xp-reel">
-                  <div className="pip-xp-drum" ref={xpDrumRef}
-                    style={{ transform: `translateZ(-${XP_REEL_RADIUS}px) rotateX(0deg)` }}>
-                    {Array.from({ length: sessionComplete.increments + 1 }).map((_, v) => (
-                      <div key={v} className="pip-xp-face"
-                        style={{ transform: `rotateX(${-v * XP_REEL_ANGLE}deg) translateZ(${XP_REEL_RADIUS}px)` }}>
-                        <span>{v}×</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                <span className="pip-sc-label"> 25m = +{sessionComplete.xp} XP</span>
-              </div>
+              <div className="pip-sc-label">{sessionComplete.increments}× · 25 min</div>
             ) : (
               <div className="pip-sc-banked">
                 <div className="pip-sc-label">TIME LOGGED</div>

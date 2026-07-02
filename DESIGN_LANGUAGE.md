@@ -72,18 +72,18 @@ Surfaces are dark glass (see Glass token) with a 1px border at low alpha. Recess
 - **Reward pops**: scale from ~1.1–1.6 down to 1 with a brief white bloom that settles to
   teal (`pipXpReelFlash`, `simPaylineSettle`). Rewards pop; chrome never does.
 - **XP reel**: the OPS payout counts up on an iOS wheel-picker drum — faces on a
-  horizontal-axis cylinder (`rotateX` + `translateZ`), the drum spinning through `0×…N×`
+  horizontal-axis cylinder (`rotateX` + `translateZ`), the drum spinning through its values
   with accelerating hops and an eased final landing, each face flashing white as it lands
-  (`.pip-xp-reel` / `.pip-xp-drum` / `.pip-xp-face`). Plain 3D transforms — the robust core
-  the comet layers on top of.
-- **Intensity ramp**: a sustained reward (the OPS payout roll-up) drives a single
-  `--sc-intensity` custom property (0→1) from JS per beat; CSS `calc()` maps it onto
-  border/glow strength and a `transition` smooths between beats, so the panel visibly
-  charges as the count climbs, then eases to a calm resting glow on landing. This is the
-  house pattern for "escalate then settle" — one property, disclosed math, no variable reward.
-- **Comet**: a `conic-gradient` traced onto a border via `mask`/`mask-composite`, its angle
-  animated through an `@property <angle>`, giving a bright head that races the border during
-  a payout. Modern-CSS ornament — always degrade gracefully to the plain glow beneath it.
+  (`.pip-xp-reel` / `.pip-xp-drum` / `.pip-xp-face`). On finish the XP total takes the ring
+  center (where the time was) and the elapsed time drops to the overlay below it.
+- **Intensity ramp**: a sustained reward drives a single `--sc-intensity` custom property
+  (0→1, `inherits: true`) set on the pip root from JS per beat; CSS `calc()` maps it onto the
+  whole widget's border/glow strength and onto the ring corona, and a `transition` smooths
+  between beats — the timer visibly charges as the count climbs, then eases to a calm resting
+  glow on landing. House pattern for "escalate then settle": one property, disclosed math.
+- **Payout corona**: the ring's ambient corona flares into an intense, uneven blue→teal→green
+  band during a payout — shape and shimmer from an SVG `feTurbulence`+`feDisplacementMap`
+  filter, opacity/scale from the inherited `--sc-intensity`. Hidden entirely outside payout.
 - Animation is *feedback*, not decoration. If it doesn't communicate state, cut it.
   A paused timer must also pause its ambient effects (steam, glow) — a still clock with
   moving parts reads as broken.
@@ -111,11 +111,10 @@ Reuse these before inventing anything:
 - **Button**: `.st-btn` — quiet cyan bordered chip. Disabled = 0.35 opacity.
 - **Chips**: `.st-sim-chip` / `.demo-emotion-btn` / `.pip-break-chip` — equal-width monospace
   quick-picks, active state = brighter fill + border. This is the house segmented control.
-- **Payout overlay**: `.pip-session-complete` — the live OPS reward. A readout panel whose
-  border-glow intensity and comet sweep ramp with the roll-up (§5 Intensity ramp / Comet /
-  XP reel), the multiplier counting up on a 3D wheel-picker drum that flashes white per face,
-  disclosed `25m = +XP` label held on-screen the whole time. Sub-unit sessions use the
-  `.pip-sc-quiet` variant — soft steady glow, banked time framed as forward progress, never a loss.
+- **Payout**: on finish the whole widget glows and the ring corona flares (§5 Intensity ramp /
+  Payout corona); the XP total counts up on a wheel-picker drum in the ring center while the
+  elapsed time drops to `.pip-session-complete` below with an animated multiplier drum.
+  Sub-unit sessions frame banked time as forward progress (`.pip-sc-banked`), never a loss.
 - **Payout window**: `.st-sim-payline` — the *preview* twin of the above: recessed dark glass
   quoting the overlay verbatim (reward-teal multiplier + uppercase cyan label). Any reward
   preview must use the same glyphs and colors as the reward itself.

@@ -349,6 +349,17 @@
   box-shadow: 0 8px 32px rgba(134, 223, 255, 0.3);
 }
 
+/* Payout glow — the whole widget glows teal, ramping with the count during the
+   finish-session animation (intensity lives on the pip root as --sc-intensity
+   and inherits down to the ring corona). */
+.pomodoro-pip.pip-sc-glow {
+  border-color: rgba(15, 223, 171, calc(0.3 + 0.55 * var(--sc-intensity)));
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.5),
+    0 0 calc(10px + 48px * var(--sc-intensity)) rgba(15, 223, 171, calc(0.12 + 0.42 * var(--sc-intensity)));
+  transition: box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
 .pip-header {
   display: flex;
   justify-content: space-between;
@@ -652,106 +663,65 @@
   color: rgba(15, 223, 171, 1);
 }
 
-/* Finish-session payout — the pip-content becomes a readout panel: border-glow
-   intensity and a comet sweep both ramp with the count (JS sets --sc-intensity
-   per tick; the transition smooths between ticks), the number flashes white on
-   each pop, then the panel settles to a calm steady glow on landing. Same
-   reward-teal instrument as the sim payline. The modern-CSS ornaments (masked
-   conic comet, @property) degrade to the plain glow where unsupported. */
-@property --sc-intensity { syntax: "<number>"; initial-value: 0; inherits: false; }
-@property --sc-angle     { syntax: "<angle>";  initial-value: 0deg; inherits: false; }
+/* Finish-session payout — no box. The reward is plain glowing content beneath
+   the ring; the *whole widget* glows and the ring's corona flares while the
+   reel counts (see .pomodoro-pip.pip-sc-glow and .pip-payout-corona).
+   --sc-intensity (0→1, set on the pip root per hop and transition-smoothed)
+   drives every reactive surface, so it inherits down to the SVG corona. */
+@property --sc-intensity { syntax: "<number>"; initial-value: 0; inherits: true; }
 
+/* Position 2 — the reward content descends into place below the ring, so the
+   elapsed time reads as having "moved down" out of the ring center (which now
+   shows the XP total). */
 .pip-session-complete {
-  --sc-intensity: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  cursor: pointer;
+  animation: pipScEnter 0.36s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes pipScEnter {
+  from { opacity: 0; transform: translateY(-28px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.pip-sc-time {
+  font-family: "Courier New", monospace;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: rgba(15, 223, 171, 0.9);
+  letter-spacing: 0.06em;
+}
+
+/* Position 1 during payout — the XP total on a pronounced iOS wheel-picker
+   drum, sitting in the ring center where the time used to be. Faces sit on a
+   horizontal-axis cylinder (rotateX + translateZ); the drum spins up through
+   0…total, each face flashing white as it lands. A +10 mote flies up into it
+   per hop. Standard 3D transforms — no exotic features. Drum spin is set
+   inline per-hop from JS. */
+.pip-xp-total-wrap {
   position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.4rem;
-  padding: 0.7rem 1.05rem;
-  border-radius: 12px;
-  cursor: pointer;
-  background: rgba(0, 0, 0, calc(0.32 + 0.24 * var(--sc-intensity)));
-  border: 1px solid rgba(15, 223, 171, calc(0.14 + 0.34 * var(--sc-intensity)));
-  box-shadow:
-    0 0 calc(7px + 34px * var(--sc-intensity)) rgba(15, 223, 171, calc(0.10 + 0.34 * var(--sc-intensity))),
-    inset 0 0 calc(4px + 16px * var(--sc-intensity)) rgba(15, 223, 171, calc(0.05 + 0.16 * var(--sc-intensity)));
-  transition: box-shadow 0.18s ease, border-color 0.18s ease, background 0.18s ease;
-  animation: pipScEnter 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+  gap: 0.05rem;
 }
-
-/* Comet — a conic gradient traced onto the border via mask; the bright head
-   (white tip, teal tail) races around while the reel counts, then fades on
-   landing as the counting class is dropped. */
-.pip-session-complete::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  padding: 1.5px;
-  background: conic-gradient(from var(--sc-angle),
-    transparent 0deg, transparent 288deg,
-    rgba(15, 223, 171, 0.55) 330deg,
-    rgba(140, 255, 225, 0.95) 353deg,
-    #ffffff 360deg);
-  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-          mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor;
-          mask-composite: exclude;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.3s ease;
-}
-.pip-session-complete.pip-sc-counting::before {
-  opacity: calc(0.35 + 0.65 * var(--sc-intensity));
-  animation: pipScComet 1.05s linear infinite;
-}
-@keyframes pipScComet { to { --sc-angle: 360deg; } }
-
-@keyframes pipScEnter {
-  from { opacity: 0; transform: scale(0.96); }
-  to   { opacity: 1; transform: scale(1); }
-}
-
-/* Quiet variant — sub-unit close: no comet, a soft steady glow so banked time
-   reads as dignified progress rather than a dead "you got nothing" panel. */
-.pip-session-complete.pip-sc-quiet { --sc-intensity: 0.14; }
-
-.pip-sc-time {
-  font-family: "Courier New", monospace;
-  font-size: 1.3rem;
-  font-weight: 700;
-  color: rgba(15, 223, 171, 0.92);
-  letter-spacing: 0.06em;
-  text-shadow: 0 0 calc(6px * var(--sc-intensity)) rgba(15, 223, 171, 0.5);
-}
-
-.pip-sc-xp {
-  display: flex;
-  align-items: center;
-  gap: 0.2rem;
-}
-
-/* XP reel — an iOS wheel-picker drum: faces sit on a horizontal-axis cylinder
-   (rotateX + translateZ) and the drum spins up through 0×…N×, each face
-   flashing white as it lands at the front. A top/bottom gradient mask fades
-   the faces curving away, selling the wheel. Standard 3D transforms — no
-   exotic features — so this is the robust core even where the comet can't
-   render. Drum transform (spin) is set inline per-hop from JS. */
 .pip-xp-reel {
   position: relative;
-  width: 2.7em;
-  height: 34px;
-  perspective: 240px;
+  width: 3em;
+  height: 44px;
+  perspective: 340px;
   overflow: hidden;
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 32%, #000 68%, transparent 100%);
-          mask-image: linear-gradient(to bottom, transparent 0%, #000 32%, #000 68%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 34%, #000 66%, transparent 100%);
+          mask-image: linear-gradient(to bottom, transparent 0%, #000 34%, #000 66%, transparent 100%);
 }
 .pip-xp-drum {
   position: absolute;
   inset: 0;
   transform-style: preserve-3d;
-  transform: translateZ(-96px) rotateX(0deg);
+  transform: translateZ(-108px) rotateX(0deg);
   transition: transform 0.2s linear;
 }
 .pip-xp-face {
@@ -766,11 +736,32 @@
 .pip-xp-face > span {
   display: inline-block;
   font-family: "Courier New", monospace;
-  font-size: 1.5rem;
+  font-size: 1.95rem;
   font-weight: 700;
   color: #0fdfab;
-  text-shadow: 0 0 9px rgba(15, 223, 171, 0.5);
-  letter-spacing: 0.02em;
+  text-shadow: 0 0 10px rgba(15, 223, 171, 0.55);
+  letter-spacing: 0.01em;
+}
+
+/* +N mote that flies up into the total on each hop. */
+.pip-xp-fly {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  transform: translateX(-50%);
+  font-family: "Courier New", monospace;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #eafff8;
+  text-shadow: 0 0 8px rgba(140, 255, 225, 0.9);
+  opacity: 0;
+  pointer-events: none;
+}
+.pip-xp-fly.pip-xp-fly-go { animation: pipXpFly 0.44s cubic-bezier(0.4, 0, 0.2, 1); }
+@keyframes pipXpFly {
+  0%   { opacity: 0; transform: translate(-50%, 16px) scale(0.75); }
+  30%  { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -26px) scale(1.15); }
 }
 
 /* Stronger white bloom on each face as it lands — the dopamine hit. Runs on an
@@ -789,6 +780,26 @@
   letter-spacing: 0.08em;
   color: rgba(134, 223, 255, 0.6);
   text-transform: uppercase;
+}
+
+/* Payout corona — an intense, uneven blue→teal→green flare around the ring
+   while the reel counts. The uneven shape + shimmer come from the SVG
+   turbulence filter (pip-corona-flare); opacity ramps with the inherited
+   --sc-intensity and a slow throb pulses the scale. Hidden outside payout. */
+.pip-payout-corona {
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+.pomodoro-pip.pip-sc-glow .pip-payout-corona {
+  opacity: calc(0.3 + 0.6 * var(--sc-intensity));
+  animation: pipCoronaThrob 1.5s ease-in-out infinite;
+}
+@keyframes pipCoronaThrob {
+  0%, 100% { transform: scale(1);    }
+  50%      { transform: scale(1.06); }
 }
 
 .pip-sc-banked { display: flex; flex-direction: column; align-items: center; gap: 0.15rem; }
