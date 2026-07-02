@@ -3902,6 +3902,12 @@ const PomodoroTimer = () => {
   const [breakPickerOpen,   setBreakPickerOpen]   = React.useState(false);
   const [activeBreakGroup,  setActiveBreakGroup]  = React.useState(null);
   const [sessionComplete,   setSessionComplete]   = React.useState(null); // { elapsed, increments, xp } while the finish-session celebration plays
+  // Mirrors "projectElapsedRef.current > 0" into real state — the ref itself
+  // is mutated per-second without a re-render (see the ticking effect below),
+  // so "Finish OPS →" needs this to ever become visible while the timer runs.
+  const [hasProjectTime, setHasProjectTime] = React.useState(
+    () => parseInt(localStorage.getItem("projectElapsed") || "0", 10) > 0
+  );
   const [sessionCount, setSessionCount] = React.useState(0);
   const [expanded,     setExpanded]     = React.useState(false);
   const [position,     setPosition]     = React.useState(null);
@@ -4070,6 +4076,7 @@ const PomodoroTimer = () => {
           projectElapsedRef.current++;
           localStorage.setItem("projectElapsed", projectElapsedRef.current);
           syncDisplay();
+          setHasProjectTime(true); // no-op re-render once already true — see declaration
           return;
         }
         // On a structured break — fixed-length countdown, same mechanics
@@ -4133,6 +4140,7 @@ const PomodoroTimer = () => {
       projectElapsedRef.current  = 0;
       projectXpBankedRef.current = 0;
       localStorage.removeItem("projectElapsed");
+      setHasProjectTime(false);
     } else {
       // mode === "break" resets to whatever length this break actually is —
       // previously hardcoded to SHORT_BREAK, which wrongly reset long
@@ -4294,6 +4302,7 @@ const PomodoroTimer = () => {
       projectElapsedRef.current  = 0;
       projectXpBankedRef.current = 0;
       localStorage.removeItem("projectElapsed");
+      setHasProjectTime(false);
       syncDisplay();
     }, 2200);
   }, [syncDisplay]);
@@ -4563,7 +4572,7 @@ const PomodoroTimer = () => {
             <button className="pip-take-break" onClick={() => setBreakPickerOpen(true)}>
               Take a break
             </button>
-            {projectElapsedRef.current > 0 && (
+            {hasProjectTime && (
               <button className="pip-finish-session" onClick={finishProjectSession}>
                 Finish OPS →
               </button>

@@ -320,7 +320,7 @@ const AppSettings = (function () {
     narrativeStyle:       true,  // true = M-VI tactical voice, false = general motivational
     neuralCaptureVisible: true,
     miniTimerSkin:        true,  // mirror active theme on the minimized timer badge
-    projectTimeXP:        false, // award XP for tracked project time (off by default — changes the XP economy)
+    projectTimeXP:        true,  // award XP for tracked project time
     ollamaEnabled:        false,
     ollamaModel:          "llama3.2:3b",
     ollamaUrl:            "http://localhost:11434",

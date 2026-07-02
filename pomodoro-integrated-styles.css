@@ -625,6 +625,9 @@
   transition: color 0.2s ease, opacity 0.2s ease;
 }
 
+/* Hidden until the operator hovers the PIP — "Finish OPS" ends the whole
+   session, so it stays out of the way rather than sitting permanently next
+   to "Take a break" and competing for attention every glance at the timer. */
 .pip-finish-session {
   display: block;
   padding: 0.2rem 0.5rem;
@@ -635,7 +638,14 @@
   letter-spacing: 0.04em;
   color: rgba(15, 223, 171, 0.7);
   cursor: pointer;
-  transition: color 0.2s ease;
+  opacity: 0;
+  pointer-events: none;
+  transition: color 0.2s ease, opacity 0.2s ease;
+}
+
+.pomodoro-pip:hover .pip-finish-session {
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .pip-finish-session:hover {
