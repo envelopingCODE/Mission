@@ -3498,7 +3498,7 @@ const SettingsPanel = () => {
 
   const DOT   = { idle: "rgba(134,223,255,0.2)", checking: "rgba(244,197,66,0.8)", ok: "#0fdfab", fail: "#ff6b6b" };
   const DLBL  = { idle: "Not tested", checking: "Checking…", ok: "Connected", fail: "Unreachable" };
-  const SHORTCUTS = [["c","Capture"],["r","Ready signal"],["t","Timer"],["m","Mode"],["s","Settings"],["a","Achievements"],["Esc","Dismiss"]];
+  const SHORTCUTS = [["c","Capture"],["r","Ready signal"],["t","Timer"],["m","Mode"],["s","Settings"],["a","Achievements"],["d","Diagnostics"],["Esc","Dismiss"]];
 
   // ── Demo effects — MUST be here, before any early returns ────────────────
   // React requires all hooks to be called unconditionally on every render.
@@ -3725,6 +3725,74 @@ const SettingsPanel = () => {
   const simMinutes = parseFloat(debugMinutes);
   const simUnits   = simMinutes > 0 ? Math.floor(simMinutes / 25) : 0;
 
+  // ── Diagnostics screen (early return) ─────────────────────────────────
+  if (view === "diagnostics" && open) {
+    return (
+      <div>
+        <button className="settings-gear settings-gear-active" onClick={() => setOpen(false)} title="Close">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <circle cx="12" cy="12" r="3"/><path d={GEAR_PATH} />
+          </svg>
+        </button>
+        <div className="settings-panel settings-panel-open">
+          <div className="settings-hdr">
+            <button className="st-back" onClick={() => navigateTo("main")}>‹</button>
+            <span><span className="st-breadcrumb">Settings ›</span> Diagnostics</span>
+          </div>
+          <div className="settings-body"><div key={view} className={"settings-view-anim settings-view-" + navDir}>
+
+            {/* OPS payout sim — replays the finish-session sequence at any
+                length; the payline previews the exact award before it fires. */}
+            <div className="st-section">
+              <div className="st-section-title"><span>OPS payout</span><span className="st-badge">SIM</span></div>
+              <div className="st-desc st-sim-desc">Runs the OPS payout sequence without a live session</div>
+              <div className="st-sim-presets">
+                {[25, 50, 100].map((m) => (
+                  <button key={m}
+                    className={"st-sim-chip" + (simMinutes === m ? " st-sim-chip-active" : "")}
+                    onClick={() => setDebugMinutes(String(m))}>
+                    {m}m
+                  </button>
+                ))}
+              </div>
+              <div className="st-row st-row-input">
+                <span className="st-label">Length</span>
+                <input className="st-input" type="number" min="1" step="1"
+                  value={debugMinutes}
+                  onChange={(e) => setDebugMinutes(e.target.value)}
+                  placeholder="25" />
+                <span className="st-sim-unit">min</span>
+              </div>
+              <div className="st-sim-row">
+                <div className={"st-sim-payline" + (simUnits === 0 ? " st-sim-payline-zero" : "")} key={simUnits}>
+                  <span className="st-sim-mult">{simUnits}×</span>
+                  <span className="st-sim-payout">25m = +{simUnits * PROJECT_XP_AWARD} XP</span>
+                </div>
+                <button className="st-btn" disabled={!(simMinutes > 0)} onClick={() => {
+                  if (typeof window.debugSimulateOpsFinish === "function") window.debugSimulateOpsFinish(simMinutes);
+                  setOpen(false);
+                }}>Run ▸</button>
+              </div>
+            </div>
+
+            {/* Pomodoro win — queues a 3s Pomodoro so the completion corona fires. */}
+            <div className="st-section">
+              <div className="st-section-title"><span>Pomodoro win</span><span className="st-badge">SIM</span></div>
+              <div className="st-desc st-sim-desc">Queues a Pomodoro with 3s left to demo the win corona</div>
+              <div className="st-sim-row">
+                <button className="st-btn" onClick={() => {
+                  if (typeof window.debugQueuePomodoro === "function") window.debugQueuePomodoro(3);
+                  setOpen(false);
+                }}>Queue 3s ▸</button>
+              </div>
+            </div>
+
+          </div></div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div>
       <button
@@ -3814,44 +3882,6 @@ const SettingsPanel = () => {
             </div>
           </div>
 
-          {/* Diagnostics — replays the OPS payout sequence at any length.
-              The payline window previews the exact award (teal multiplier +
-              cyan label, same glyphs as the real overlay) and re-pops via a
-              keyed remount whenever the 25m-unit count changes, so typing
-              toward a threshold gives the reel-settle feedback before the
-              run is ever fired. Reward math stays fully disclosed. */}
-          <div className="st-section">
-            <div className="st-section-title"><span>Diagnostics</span><span className="st-badge">SIM</span></div>
-            <div className="st-desc st-sim-desc">Runs the OPS payout sequence without a live session</div>
-            <div className="st-sim-presets">
-              {[25, 50, 100].map((m) => (
-                <button key={m}
-                  className={"st-sim-chip" + (simMinutes === m ? " st-sim-chip-active" : "")}
-                  onClick={() => setDebugMinutes(String(m))}>
-                  {m}m
-                </button>
-              ))}
-            </div>
-            <div className="st-row st-row-input">
-              <span className="st-label">Length</span>
-              <input className="st-input" type="number" min="1" step="1"
-                value={debugMinutes}
-                onChange={(e) => setDebugMinutes(e.target.value)}
-                placeholder="25" />
-              <span className="st-sim-unit">min</span>
-            </div>
-            <div className="st-sim-row">
-              <div className={"st-sim-payline" + (simUnits === 0 ? " st-sim-payline-zero" : "")} key={simUnits}>
-                <span className="st-sim-mult">{simUnits}×</span>
-                <span className="st-sim-payout">25m = +{simUnits * PROJECT_XP_AWARD} XP</span>
-              </div>
-              <button className="st-btn" disabled={!(simMinutes > 0)} onClick={() => {
-                if (typeof window.debugSimulateOpsFinish === "function") window.debugSimulateOpsFinish(simMinutes);
-                setOpen(false);
-              }}>Run ▸</button>
-            </div>
-          </div>
-
           {/* Navigation to sub-screens */}
           <div className="st-section st-nav-section">
             <button className="st-nav-btn" onClick={() => navigateTo("themes")}>
@@ -3867,6 +3897,11 @@ const SettingsPanel = () => {
             <button className="st-nav-btn" onClick={() => navigateTo("demo")}>
               <span className="st-nav-icon">◉</span>
               <span>M-VI Demo</span>
+              <span className="st-nav-arrow">›</span>
+            </button>
+            <button className="st-nav-btn" onClick={() => navigateTo("diagnostics")}>
+              <span className="st-nav-icon">◇</span>
+              <span>Diagnostics</span>
               <span className="st-nav-arrow">›</span>
             </button>
           </div>
@@ -4520,6 +4555,26 @@ const PomodoroTimer = () => {
     setDebugSimulateSeconds(null);
   }, [debugSimulateSeconds]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Debug hook — queues a running Pomodoro with only N seconds left so its
+  // completion (and the win-corona burst) fires almost immediately. The
+  // interval effect picks it up once this batched commit lands.
+  React.useEffect(() => {
+    window.debugQueuePomodoro = (secondsLeft) => {
+      var s = Math.max(1, Math.round(Number(secondsLeft) || 3));
+      setBreakPickerOpen(false);
+      setActiveBreakGroup(null);
+      setSessionComplete(null);
+      setTimerType("pomodoro");
+      setMode("work");
+      setExpanded(true);
+      timeLeftRef.current  = s;
+      totalTimeRef.current = WORK_TIME; // ring reads near-complete
+      setIsRunning(true);
+      syncDisplay();
+    };
+    return () => { delete window.debugQueuePomodoro; };
+  }, [syncDisplay]);
+
   const dragRef = React.useRef(null);
   const onDragStart = React.useCallback((e) => {
     if (e.button !== 0) return;
@@ -4599,7 +4654,7 @@ const PomodoroTimer = () => {
             <g className="pip-corona-outer">
               <circle cx="32" cy="32" r={MINI_R} fill="none"
                 stroke={miniIsNeon ? `url(#${miniGradId})` : ringColor}
-                strokeWidth="10" strokeOpacity={miniIsNeon ? 0.1 : 0.06} />
+                strokeWidth="12" strokeOpacity={miniIsNeon ? 0.1 : 0.06} />
             </g>
             {/* Track */}
             <circle cx="32" cy="32" r={MINI_R} fill="none"

@@ -5678,28 +5678,30 @@ document.addEventListener("keydown", (e) => {
   // deleted. Detect this by checking whether the gear is still in the DOM —
   // if not, remount and then open after one tick.
   function _openSettings(view) {
+    var openView = function() {
+      if (view && view !== "main" && typeof window.toggleSettingsView === "function") {
+        window.toggleSettingsView(view);
+      } else if (typeof window.toggleSettingsPanel === "function") {
+        window.toggleSettingsPanel();
+      }
+    };
     var gearPresent = document.querySelector(".settings-gear");
     if (!gearPresent && typeof window.remountSettingsPanel === "function") {
       window.remountSettingsPanel();
-      setTimeout(function() {
-        if (view === "achievements" && typeof window.toggleSettingsView === "function") {
-          window.toggleSettingsView("achievements");
-        } else if (typeof window.toggleSettingsPanel === "function") {
-          window.toggleSettingsPanel();
-        }
-      }, 60);
+      setTimeout(openView, 60);
       return;
     }
-    if (view === "achievements" && typeof window.toggleSettingsView === "function") {
-      window.toggleSettingsView("achievements");
-    } else if (typeof window.toggleSettingsPanel === "function") {
-      window.toggleSettingsPanel();
-    }
+    openView();
   }
 
   if (e.key === "a" || e.key === "A") {
     e.preventDefault();
     _openSettings("achievements");
+  }
+
+  if (e.key === "d" || e.key === "D") {
+    e.preventDefault();
+    _openSettings("diagnostics");
   }
 
   if (e.key === "s" || e.key === "S") {
