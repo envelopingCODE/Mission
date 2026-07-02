@@ -70,7 +70,12 @@ Surfaces are dark glass (see Glass token) with a 1px border at low alpha. Recess
 - **Navigation**: settings views slide directionally ±22px with fade, like iOS push/pop
   (`settingsViewForward` / `settingsViewBack`).
 - **Reward pops**: scale from ~1.1–1.6 down to 1 with a brief white bloom that settles to
-  teal (`pipXpTick`, `simPaylineSettle`). Rewards pop; chrome never does.
+  teal (`pipXpReelFlash`, `simPaylineSettle`). Rewards pop; chrome never does.
+- **XP reel**: the OPS payout counts up on an iOS wheel-picker drum — faces on a
+  horizontal-axis cylinder (`rotateX` + `translateZ`), the drum spinning through `0×…N×`
+  with accelerating hops and an eased final landing, each face flashing white as it lands
+  (`.pip-xp-reel` / `.pip-xp-drum` / `.pip-xp-face`). Plain 3D transforms — the robust core
+  the comet layers on top of.
 - **Intensity ramp**: a sustained reward (the OPS payout roll-up) drives a single
   `--sc-intensity` custom property (0→1) from JS per beat; CSS `calc()` maps it onto
   border/glow strength and a `transition` smooths between beats, so the panel visibly
@@ -107,10 +112,10 @@ Reuse these before inventing anything:
 - **Chips**: `.st-sim-chip` / `.demo-emotion-btn` / `.pip-break-chip` — equal-width monospace
   quick-picks, active state = brighter fill + border. This is the house segmented control.
 - **Payout overlay**: `.pip-session-complete` — the live OPS reward. A readout panel whose
-  border-glow intensity and comet sweep ramp with the roll-up (§5 Intensity ramp / Comet),
-  reward-teal multiplier flashing white per tick, disclosed `25m = +XP` label held on-screen
-  the whole time. Sub-unit sessions use the `.pip-sc-quiet` variant — soft steady glow, banked
-  time framed as forward progress, never a loss.
+  border-glow intensity and comet sweep ramp with the roll-up (§5 Intensity ramp / Comet /
+  XP reel), the multiplier counting up on a 3D wheel-picker drum that flashes white per face,
+  disclosed `25m = +XP` label held on-screen the whole time. Sub-unit sessions use the
+  `.pip-sc-quiet` variant — soft steady glow, banked time framed as forward progress, never a loss.
 - **Payout window**: `.st-sim-payline` — the *preview* twin of the above: recessed dark glass
   quoting the overlay verbatim (reward-teal multiplier + uppercase cyan label). Any reward
   preview must use the same glyphs and colors as the reward itself.

@@ -5252,9 +5252,9 @@ svg.minimalist-face {
 .st-key { font-family: "Courier New", monospace; font-size: 0.68rem; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.11); border-radius: 3px; padding: 0.14rem 0.42rem; color: rgba(134,223,255,0.55); min-width: 2rem; text-align: center; flex-shrink: 0; }
 
 /* ── Diagnostics / OPS payout sim ─────────────────────────────────────────
-   The payline window quotes the real payout overlay verbatim: reward-teal
-   multiplier (pip-sc-multiplier), uppercase cyan label (pip-sc-label),
-   recessed dark glass. Settle-pop mirrors pipXpTick's white flash so the
+   The payline window is the still preview of the live payout overlay: same
+   reward-teal multiplier, uppercase cyan label (pip-sc-label), recessed dark
+   glass. Settle-pop mirrors the reel's white flash (pipXpReelFlash) so the
    preview and the real reward read as the same instrument. */
 .st-sim-desc { margin: -0.35rem 0 0.6rem; }
 .st-sim-presets { display: flex; gap: 5px; margin-bottom: 0.55rem; }

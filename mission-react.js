@@ -3937,6 +3937,16 @@ const PomodoroTimer = () => {
   const PROJECT_XP_INCREMENT_SECONDS = WORK_TIME; // one Pomodoro-equivalent unit
   const PROJECT_XP_AWARD             = 10;
 
+  // XP payout reel — faces sit on a horizontal-axis cylinder (an iOS wheel-
+  // picker drum); the drum spins up through 0×…N× as the count lands. ANGLE is
+  // the degrees between faces; RADIUS = faceHeight / (2·tan(ANGLE/2)) so faces
+  // stack one row apart at the front. The drum is pushed back translateZ(-R)
+  // so the front face lands at Z=0 (no perspective ballooning) while the ones
+  // curving away recede and shrink. Faces coincide only 360/ANGLE steps apart
+  // (18 units ≈ 7.5h) — beyond any single focus session this app would endorse.
+  const XP_REEL_ANGLE  = 20;
+  const XP_REEL_RADIUS = 96;
+
   // Structural state — triggers re-render on meaningful changes only
   const [isRunning,    setIsRunning]    = React.useState(false);
   const [mode,         setMode]         = React.useState("work");
@@ -3997,12 +4007,12 @@ const PomodoroTimer = () => {
     parseInt(localStorage.getItem("projectElapsed") || "0", 10)
   );
   const projectXpBankedRef = React.useRef(0);
-  // Refs for the finish-session celebration: the animated XP counter and the
+  // Refs for the finish-session celebration: the spinning XP reel drum and the
   // readout-panel container (border-glow intensity + comet sweep are driven
   // directly on it). scCtrlRef holds the active run's coordinated teardown so
   // an early click-dismiss cancels every pending tick and banks time exactly
   // once — never leaving an orphaned timer to wipe a fresh session later.
-  const xpCounterRef = React.useRef(null);
+  const xpDrumRef    = React.useRef(null);
   const scOverlayRef = React.useRef(null);
   const scCtrlRef    = React.useRef(null);
 
@@ -4358,15 +4368,31 @@ const PomodoroTimer = () => {
       return;
     }
 
-    // Reel: anticipation beat, then an accelerating count that holds the final
-    // tick for a decisive landing. Border-glow intensity (--sc-intensity) and
-    // pitch both ramp with the count; the number flashes white on each pop.
+    // Reel: an anticipation beat (0× held at the front), then the drum spins up
+    // through each face — hops accelerate (200→95ms, linear so they read as one
+    // continuous spin) and the final hop eases out for a decisive landing.
+    // Each face flashes white as it lands; border-glow intensity and pitch both
+    // ramp with the count. A hop "lands" (flash + click) at start + duration.
     var ANTICIPATION = 300;
     var setIntensity = function (v) {
       if (scOverlayRef.current) scOverlayRef.current.style.setProperty("--sc-intensity", v.toFixed(3));
     };
-    // Charge the panel during the anticipation beat — comet + low glow, no
-    // number yet — so the reel arrives into a primed frame, not a cold one.
+    var rollTo = function (step, dur, ease) {
+      if (!xpDrumRef.current) return;
+      xpDrumRef.current.style.transitionDuration = dur + "ms";
+      xpDrumRef.current.style.transitionTimingFunction = ease;
+      xpDrumRef.current.style.transform =
+        "translateZ(-" + XP_REEL_RADIUS + "px) rotateX(" + (step * XP_REEL_ANGLE) + "deg)";
+    };
+    var flashFace = function (step) {
+      var face = xpDrumRef.current && xpDrumRef.current.children[step];
+      if (!face) return;
+      face.classList.remove("pip-xp-flash");
+      void face.offsetWidth; // reflow: restart the bloom
+      face.classList.add("pip-xp-flash");
+    };
+    // Charge the panel during the anticipation beat — comet + low glow, 0× at
+    // the front — so the reel arrives into a primed frame, not a cold one.
     push(function () {
       if (scOverlayRef.current) scOverlayRef.current.classList.add("pip-sc-counting");
       setIntensity(0.18);
@@ -4374,21 +4400,22 @@ const PomodoroTimer = () => {
 
     var t = ANTICIPATION;
     for (var i = 1; i <= increments; i++) {
-      (function (step, when, isLast) {
+      var isLast = i === increments;
+      var prog   = increments > 1 ? (i - 1) / (increments - 1) : 0;
+      var hopDur = isLast ? 260 : Math.round(200 + (95 - 200) * prog);
+      (function (step, startAt, dur, last) {
+        // Start the hop
         push(function () {
-          if (xpCounterRef.current) {
-            xpCounterRef.current.textContent = step + "×";
-            xpCounterRef.current.classList.remove("pip-xp-tick");
-            void xpCounterRef.current.offsetWidth; // reflow: restart the pop
-            xpCounterRef.current.classList.add("pip-xp-tick");
-          }
+          rollTo(step, dur, last ? "cubic-bezier(0.22, 1, 0.36, 1)" : "linear");
           setIntensity(0.18 + 0.82 * (step / increments));
-          if (soundOn) playXpTickSound(step - 1, isLast);
-          if (isLast) {
-            // Stop the comet, hold the peak glow for a beat, then ease down to
-            // a calm resting glow — the decisive land, then the settle.
+        }, startAt);
+        // Land the hop — face flashes white, tick clicks in sync
+        push(function () {
+          flashFace(step);
+          if (soundOn) playXpTickSound(step - 1, last);
+          if (last) {
             if (scOverlayRef.current) scOverlayRef.current.classList.remove("pip-sc-counting");
-            push(function () { setIntensity(0.42); }, 260);
+            setIntensity(0.42); // settle to a calm resting glow
             if (soundOn) {
               var lvl = document.getElementById("levelUpSound");
               if (lvl) {
@@ -4400,16 +4427,12 @@ const PomodoroTimer = () => {
               }
             }
           }
-        }, when);
-      })(i, t, i === increments);
-      // Accelerate through the body (190ms → 85ms), then hold the last gap
-      // longer so the biggest number lands with weight instead of blurring by.
-      var isFinalGap = i === increments - 1;
-      var prog = increments > 1 ? (i - 1) / (increments - 1) : 0;
-      t += isFinalGap ? 250 : Math.round(190 + (85 - 190) * prog);
+        }, startAt + dur);
+      })(i, t, hopDur, isLast);
+      t += hopDur;
     }
 
-    // Dismiss after the reel plus time to read the result.
+    // Dismiss after the final landing plus time to read the result.
     push(finalize, t + 1600);
   }, [syncDisplay]);
 
@@ -4728,7 +4751,17 @@ const PomodoroTimer = () => {
             <div className="pip-sc-time">{fmt(sessionComplete.elapsed)}</div>
             {sessionComplete.xp > 0 ? (
               <div className="pip-sc-xp">
-                <span ref={xpCounterRef} className="pip-sc-multiplier">0×</span>
+                <div className="pip-xp-reel">
+                  <div className="pip-xp-drum" ref={xpDrumRef}
+                    style={{ transform: `translateZ(-${XP_REEL_RADIUS}px) rotateX(0deg)` }}>
+                    {Array.from({ length: sessionComplete.increments + 1 }).map((_, v) => (
+                      <div key={v} className="pip-xp-face"
+                        style={{ transform: `rotateX(${-v * XP_REEL_ANGLE}deg) translateZ(${XP_REEL_RADIUS}px)` }}>
+                        <span>{v}×</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
                 <span className="pip-sc-label"> 25m = +{sessionComplete.xp} XP</span>
               </div>
             ) : (

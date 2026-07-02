@@ -728,28 +728,59 @@
 
 .pip-sc-xp {
   display: flex;
-  align-items: baseline;
-  gap: 0.15rem;
+  align-items: center;
+  gap: 0.2rem;
 }
 
-.pip-sc-multiplier {
+/* XP reel — an iOS wheel-picker drum: faces sit on a horizontal-axis cylinder
+   (rotateX + translateZ) and the drum spins up through 0×…N×, each face
+   flashing white as it lands at the front. A top/bottom gradient mask fades
+   the faces curving away, selling the wheel. Standard 3D transforms — no
+   exotic features — so this is the robust core even where the comet can't
+   render. Drum transform (spin) is set inline per-hop from JS. */
+.pip-xp-reel {
+  position: relative;
+  width: 2.7em;
+  height: 34px;
+  perspective: 240px;
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 32%, #000 68%, transparent 100%);
+          mask-image: linear-gradient(to bottom, transparent 0%, #000 32%, #000 68%, transparent 100%);
+}
+.pip-xp-drum {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  transform: translateZ(-96px) rotateX(0deg);
+  transition: transform 0.2s linear;
+}
+.pip-xp-face {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  -webkit-backface-visibility: hidden;
+          backface-visibility: hidden;
+}
+.pip-xp-face > span {
+  display: inline-block;
   font-family: "Courier New", monospace;
-  font-size: 1.55rem;
+  font-size: 1.5rem;
   font-weight: 700;
   color: #0fdfab;
   text-shadow: 0 0 9px rgba(15, 223, 171, 0.5);
   letter-spacing: 0.02em;
-  display: inline-block;
 }
 
-/* Scale-pop + white bloom on each tick — class toggled via JS to restart it.
-   The number flashes to pure white with a bright halo, then settles to teal. */
-.pip-sc-multiplier.pip-xp-tick { animation: pipXpTick 0.26s cubic-bezier(0.22, 1, 0.36, 1); }
+/* Stronger white bloom on each face as it lands — the dopamine hit. Runs on an
+   inner span so it never clobbers the face's own 3D placement transform. */
+.pip-xp-face.pip-xp-flash > span { animation: pipXpReelFlash 0.34s cubic-bezier(0.22, 1, 0.36, 1); }
 
-@keyframes pipXpTick {
-  0%   { transform: scale(1.55); color: #ffffff; text-shadow: 0 0 18px rgba(255,255,255,0.95), 0 0 30px rgba(140,255,225,0.8); }
-  60%  { color: #eafff8; }
-  100% { transform: scale(1);    color: #0fdfab; text-shadow: 0 0 9px rgba(15,223,171,0.5); }
+@keyframes pipXpReelFlash {
+  0%   { color: #ffffff; text-shadow: 0 0 28px #ffffff, 0 0 50px rgba(140,255,225,0.95); transform: scale(1.32); }
+  55%  { color: #eafff8; }
+  100% { color: #0fdfab; text-shadow: 0 0 9px rgba(15,223,171,0.5); transform: scale(1); }
 }
 
 .pip-sc-label {
