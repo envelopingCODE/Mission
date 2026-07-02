@@ -69,8 +69,16 @@ Surfaces are dark glass (see Glass token) with a 1px border at low alpha. Recess
   3–5s and are subtle enough to ignore.
 - **Navigation**: settings views slide directionally ±22px with fade, like iOS push/pop
   (`settingsViewForward` / `settingsViewBack`).
-- **Reward pops**: scale from 1.12–1.5 down to 1 with a brief white/bright flash
-  (`pipXpTick`, `simPaylineSettle`). Rewards pop; chrome never does.
+- **Reward pops**: scale from ~1.1–1.6 down to 1 with a brief white bloom that settles to
+  teal (`pipXpTick`, `simPaylineSettle`). Rewards pop; chrome never does.
+- **Intensity ramp**: a sustained reward (the OPS payout roll-up) drives a single
+  `--sc-intensity` custom property (0→1) from JS per beat; CSS `calc()` maps it onto
+  border/glow strength and a `transition` smooths between beats, so the panel visibly
+  charges as the count climbs, then eases to a calm resting glow on landing. This is the
+  house pattern for "escalate then settle" — one property, disclosed math, no variable reward.
+- **Comet**: a `conic-gradient` traced onto a border via `mask`/`mask-composite`, its angle
+  animated through an `@property <angle>`, giving a bright head that races the border during
+  a payout. Modern-CSS ornament — always degrade gracefully to the plain glow beneath it.
 - Animation is *feedback*, not decoration. If it doesn't communicate state, cut it.
   A paused timer must also pause its ambient effects (steam, glow) — a still clock with
   moving parts reads as broken.
@@ -98,9 +106,14 @@ Reuse these before inventing anything:
 - **Button**: `.st-btn` — quiet cyan bordered chip. Disabled = 0.35 opacity.
 - **Chips**: `.st-sim-chip` / `.demo-emotion-btn` / `.pip-break-chip` — equal-width monospace
   quick-picks, active state = brighter fill + border. This is the house segmented control.
-- **Payout window**: `.st-sim-payline` — recessed dark glass quoting the real reward overlay
-  verbatim (reward-teal multiplier + uppercase cyan label). Any reward *preview* must use the
-  same glyphs and colors as the reward itself.
+- **Payout overlay**: `.pip-session-complete` — the live OPS reward. A readout panel whose
+  border-glow intensity and comet sweep ramp with the roll-up (§5 Intensity ramp / Comet),
+  reward-teal multiplier flashing white per tick, disclosed `25m = +XP` label held on-screen
+  the whole time. Sub-unit sessions use the `.pip-sc-quiet` variant — soft steady glow, banked
+  time framed as forward progress, never a loss.
+- **Payout window**: `.st-sim-payline` — the *preview* twin of the above: recessed dark glass
+  quoting the overlay verbatim (reward-teal multiplier + uppercase cyan label). Any reward
+  preview must use the same glyphs and colors as the reward itself.
 - **Destructive**: `purge-trigger` pattern — transparent fill, red border, radius 2px. Red is
   never used at rest anywhere else.
 

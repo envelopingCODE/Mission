@@ -3997,8 +3997,14 @@ const PomodoroTimer = () => {
     parseInt(localStorage.getItem("projectElapsed") || "0", 10)
   );
   const projectXpBankedRef = React.useRef(0);
-  // Ref for the animated XP counter inside the celebration overlay.
+  // Refs for the finish-session celebration: the animated XP counter and the
+  // readout-panel container (border-glow intensity + comet sweep are driven
+  // directly on it). scCtrlRef holds the active run's coordinated teardown so
+  // an early click-dismiss cancels every pending tick and banks time exactly
+  // once — never leaving an orphaned timer to wipe a fresh session later.
   const xpCounterRef = React.useRef(null);
+  const scOverlayRef = React.useRef(null);
+  const scCtrlRef    = React.useRef(null);
 
   // DOM refs for direct per-second writes
   const pipTimeRef  = React.useRef(null);
@@ -4253,52 +4259,90 @@ const PomodoroTimer = () => {
     syncDisplay();
   }, [syncDisplay]);
 
-  // Plays a short crisp ascending tick for each XP increment during the
-  // slot-machine counter — distinct from the warm finale (levelUpSound).
-  function playXpTickSound(step) {
+  // A short crisp ascending tick per XP increment during the roll-up —
+  // distinct from the warm finale (levelUpSound). Pitch is a D-major
+  // pentatonic that climbs an octave every five steps and never plateaus,
+  // so the highest note always lands on the final, largest tick (Peak-End):
+  // the old fixed six-note table went monotone past 6 units, gutting the
+  // payoff on exactly the longest, best-earned sessions. Ceiling-clamped so
+  // multi-hour runs don't turn piercing. The last tick gets a touch more
+  // gain + length to read as a decisive landing rather than one-of-many.
+  function playXpTickSound(step, isLast) {
     try {
       var Ctx = window.AudioContext || window.webkitAudioContext;
       if (!Ctx) return;
       var ctx = new Ctx();
       var osc = ctx.createOscillator();
       var gain = ctx.createGain();
-      // Ascending pitches: D4(293) E4(329) G4(392) A4(440) B4(494) D5(587)
-      var pitches = [293, 329, 392, 440, 494, 587];
+      var scale  = [293.66, 329.63, 392.00, 440.00, 493.88]; // D E G A B
+      var octave = Math.floor(step / scale.length);
+      var freq   = scale[step % scale.length] * Math.pow(2, octave);
       osc.type = "square";
-      osc.frequency.value = pitches[Math.min(step, pitches.length - 1)];
+      osc.frequency.value = Math.min(freq, 1568); // ~G6 ceiling
       osc.connect(gain).connect(ctx.destination);
-      var now = ctx.currentTime;
+      var now  = ctx.currentTime;
+      var peak = isLast ? 0.085 : 0.06;
+      var dur  = isLast ? 0.09  : 0.055;
       gain.gain.setValueAtTime(0.0001, now);
-      gain.gain.linearRampToValueAtTime(0.06, now + 0.01);
-      gain.gain.linearRampToValueAtTime(0.0001, now + 0.055);
+      gain.gain.linearRampToValueAtTime(peak, now + 0.01);
+      gain.gain.linearRampToValueAtTime(0.0001, now + dur);
       osc.start(now);
-      osc.stop(now + 0.06);
+      osc.stop(now + dur + 0.01);
     } catch (e) {}
   }
 
-  // One big reward at session end instead of silent background accrual —
-  // gives the user a deliberate endpoint gesture and a satisfying payout
-  // moment where they can see exactly what the session earned them.
+  // One big reward at session end instead of silent background accrual — a
+  // deliberate endpoint where the operator sees exactly what the session
+  // earned. The roll-up borrows a slot machine's *feel* (anticipation beat →
+  // accelerating counter → decisive held landing, pitch and border-glow both
+  // rising with the count) while keeping none of its mechanics: the math is
+  // disclosed, fixed-ratio, and proportional to real work. See DESIGN.md §9.2.
   const finishProjectSession = React.useCallback(() => {
     if (projectElapsedRef.current === 0) return;
     setIsRunning(false);
 
     var elapsed    = projectElapsedRef.current;
     var increments = Math.floor(elapsed / PROJECT_XP_INCREMENT_SECONDS);
+    // Un-rewarded time is banked forward, never discarded — losing an
+    // operator's logged minutes to rounding would be a quiet Zeroth-Law
+    // violation, and re-frames the sub-unit close from "you got nothing"
+    // into honest progress toward the next unit.
+    var remainder  = elapsed % PROJECT_XP_INCREMENT_SECONDS;
     var xp         = increments * PROJECT_XP_AWARD;
     var soundOn    = !window.AppSettings || window.AppSettings.get().soundEnabled;
     var xpEnabled  = window.AppSettings && window.AppSettings.get().projectTimeXP;
+    var payout     = xpEnabled && increments > 0;
 
-    if (xpEnabled && xp > 0 && typeof window.addXp === "function") {
-      window.addXp(xp);
-    }
+    if (payout && typeof window.addXp === "function") window.addXp(xp);
 
-    // Ring sweep flash: dashoffset → 0 briefly then back to full (handled
-    // by setting the pip ring refs directly so the CSS transition carries it).
+    setSessionComplete({ elapsed, increments, remainder, xp: xpEnabled ? xp : 0 });
+
+    // Coordinated teardown: all pending timers live in one array so an early
+    // click-dismiss (or a second finish) cancels the whole run and banks time
+    // exactly once. Guard flag prevents a double-finalize.
+    var timers = [];
+    var push   = function (fn, t) { timers.push(setTimeout(fn, t)); };
+    var done   = false;
+    var finalize = function () {
+      if (done) return;
+      done = true;
+      timers.forEach(clearTimeout);
+      setSessionComplete(null);
+      projectElapsedRef.current  = remainder;
+      projectXpBankedRef.current = 0;
+      if (remainder > 0) localStorage.setItem("projectElapsed", remainder);
+      else               localStorage.removeItem("projectElapsed");
+      setHasProjectTime(remainder > 0);
+      syncDisplay();
+    };
+    scCtrlRef.current = { finalize: finalize };
+
+    // Ring sweep flash — dashoffset → 0 then back to full; the CSS transition
+    // carries the sweep. Kept as the opening gesture before the reel.
     if (pipRingRef.current) {
       pipRingRef.current.style.strokeDashoffset = "0";
       pipGlowRef.current && (pipGlowRef.current.style.strokeDashoffset = "0");
-      setTimeout(function () {
+      push(function () {
         if (pipRingRef.current) {
           pipRingRef.current.style.strokeDashoffset = String(PIP_C);
           if (pipGlowRef.current) pipGlowRef.current.style.strokeDashoffset = String(PIP_C);
@@ -4306,49 +4350,67 @@ const PomodoroTimer = () => {
       }, 400);
     }
 
-    // Slot-machine counter: animate XP display from 0 → increments ticking
-    // up one step at a time, each with a sound tick and a scale-pop.
-    var tickInterval = null;
-    var tickStep = 0;
-    if (xpEnabled && increments > 0) {
-      tickInterval = setInterval(function () {
-        tickStep++;
-        if (soundOn) playXpTickSound(tickStep - 1);
-        if (xpCounterRef.current) {
-          xpCounterRef.current.textContent = tickStep + "×";
-          xpCounterRef.current.classList.remove("pip-xp-tick");
-          void xpCounterRef.current.offsetWidth; // force reflow to restart animation
-          xpCounterRef.current.classList.add("pip-xp-tick");
-        }
-        if (tickStep >= increments) {
-          clearInterval(tickInterval);
-          // Landing sound — levelUpSound at lower volume so it's warm not startling
-          if (soundOn) {
-            var lvl = document.getElementById("levelUpSound");
-            if (lvl) {
-              var origVol = lvl.volume;
-              lvl.volume = 0.38;
-              lvl.currentTime = 0;
-              lvl.play().catch(function () {});
-              setTimeout(function () { lvl.volume = origVol; }, 2000);
-            }
-          }
-        }
-      }, Math.max(180, Math.min(400, 1400 / Math.max(increments, 1))));
+    if (!payout) {
+      // Sub-unit close — no reel; a calm, dignified readout of banked progress
+      // with a single soft affirming note. Never a loss frame.
+      if (soundOn) push(function () { playXpTickSound(0, false); }, 180);
+      push(finalize, 2400);
+      return;
     }
 
-    setSessionComplete({ elapsed, increments, xp: xpEnabled ? xp : 0 });
+    // Reel: anticipation beat, then an accelerating count that holds the final
+    // tick for a decisive landing. Border-glow intensity (--sc-intensity) and
+    // pitch both ramp with the count; the number flashes white on each pop.
+    var ANTICIPATION = 300;
+    var setIntensity = function (v) {
+      if (scOverlayRef.current) scOverlayRef.current.style.setProperty("--sc-intensity", v.toFixed(3));
+    };
+    // Charge the panel during the anticipation beat — comet + low glow, no
+    // number yet — so the reel arrives into a primed frame, not a cold one.
+    push(function () {
+      if (scOverlayRef.current) scOverlayRef.current.classList.add("pip-sc-counting");
+      setIntensity(0.18);
+    }, 30);
 
-    // Auto-dismiss after 2.2s; any click also dismisses (see JSX overlay).
-    setTimeout(function () {
-      clearInterval(tickInterval);
-      setSessionComplete(null);
-      projectElapsedRef.current  = 0;
-      projectXpBankedRef.current = 0;
-      localStorage.removeItem("projectElapsed");
-      setHasProjectTime(false);
-      syncDisplay();
-    }, 2200);
+    var t = ANTICIPATION;
+    for (var i = 1; i <= increments; i++) {
+      (function (step, when, isLast) {
+        push(function () {
+          if (xpCounterRef.current) {
+            xpCounterRef.current.textContent = step + "×";
+            xpCounterRef.current.classList.remove("pip-xp-tick");
+            void xpCounterRef.current.offsetWidth; // reflow: restart the pop
+            xpCounterRef.current.classList.add("pip-xp-tick");
+          }
+          setIntensity(0.18 + 0.82 * (step / increments));
+          if (soundOn) playXpTickSound(step - 1, isLast);
+          if (isLast) {
+            // Stop the comet, hold the peak glow for a beat, then ease down to
+            // a calm resting glow — the decisive land, then the settle.
+            if (scOverlayRef.current) scOverlayRef.current.classList.remove("pip-sc-counting");
+            push(function () { setIntensity(0.42); }, 260);
+            if (soundOn) {
+              var lvl = document.getElementById("levelUpSound");
+              if (lvl) {
+                var origVol = lvl.volume;
+                lvl.volume = 0.38;
+                lvl.currentTime = 0;
+                lvl.play().catch(function () {});
+                push(function () { lvl.volume = origVol; }, 2000);
+              }
+            }
+          }
+        }, when);
+      })(i, t, i === increments);
+      // Accelerate through the body (190ms → 85ms), then hold the last gap
+      // longer so the biggest number lands with weight instead of blurring by.
+      var isFinalGap = i === increments - 1;
+      var prog = increments > 1 ? (i - 1) / (increments - 1) : 0;
+      t += isFinalGap ? 250 : Math.round(190 + (85 - 190) * prog);
+    }
+
+    // Dismiss after the reel plus time to read the result.
+    push(finalize, t + 1600);
   }, [syncDisplay]);
 
   // Debug hook — lets the Settings debug panel fast-forward the OPS tracker
@@ -4660,7 +4722,9 @@ const PomodoroTimer = () => {
         )}
 
         {sessionComplete && (
-          <div className="pip-session-complete" onClick={() => setSessionComplete(null)}>
+          <div ref={scOverlayRef}
+            className={"pip-session-complete" + (sessionComplete.xp > 0 ? "" : " pip-sc-quiet")}
+            onClick={() => { if (scCtrlRef.current) scCtrlRef.current.finalize(); }}>
             <div className="pip-sc-time">{fmt(sessionComplete.elapsed)}</div>
             {sessionComplete.xp > 0 ? (
               <div className="pip-sc-xp">
@@ -4668,7 +4732,12 @@ const PomodoroTimer = () => {
                 <span className="pip-sc-label"> 25m = +{sessionComplete.xp} XP</span>
               </div>
             ) : (
-              <div className="pip-sc-label">OPS COMPLETE</div>
+              <div className="pip-sc-banked">
+                <div className="pip-sc-label">TIME LOGGED</div>
+                <div className="pip-sc-subnote">
+                  {Math.ceil((WORK_TIME - sessionComplete.remainder) / 60)}m to +{PROJECT_XP_AWARD} XP · carried over
+                </div>
+              </div>
             )}
           </div>
         )}
