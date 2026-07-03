@@ -4022,6 +4022,9 @@ const PomodoroTimer = () => {
   const [bankedUnits, setBankedUnits] = React.useState(
     () => Math.floor(parseInt(localStorage.getItem("projectElapsed") || "0", 10) / (25 * 60))
   );
+  // Transient ×N celebration shown on the *minimized* badge when a unit banks
+  // (a temporary counter + corona that fades — no permanent pip when small).
+  const [miniBurst, setMiniBurst] = React.useState(null);
   const [sessionCount, setSessionCount] = React.useState(0);
   const [expanded,     setExpanded]     = React.useState(false);
   const [position,     setPosition]     = React.useState(null);
@@ -4133,21 +4136,54 @@ const PomodoroTimer = () => {
   // banked pip pops in. Silent unless sound is on; under reduced-motion the pip
   // just updates with no animation.
   function bankUnit() {
-    var units = Math.floor(projectElapsedRef.current / PROJECT_XP_INCREMENT_SECONDS);
-    setBankedUnits(units);
+    var units   = Math.floor(projectElapsedRef.current / PROJECT_XP_INCREMENT_SECONDS);
     var soundOn = !window.AppSettings || window.AppSettings.get().soundEnabled;
-    if (soundOn) playXpTickSound(Math.min(units - 1, 4), false);
-    var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    var flash = pipBankFlashRef.current;
-    if (reduce || !flash) return;
+    var reduce  = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     bankTimersRef.current.forEach(clearTimeout);
     bankTimersRef.current = [];
-    flash.classList.remove("pip-bank-go");
-    void flash.offsetWidth; // reflow: restart the collapse animation
-    flash.classList.add("pip-bank-go");
-    bankTimersRef.current.push(setTimeout(function () {
-      if (pipBankFlashRef.current) pipBankFlashRef.current.classList.remove("pip-bank-go");
-    }, 720));
+    var push = function (fn, t) { bankTimersRef.current.push(setTimeout(fn, t)); };
+
+    // Minimized celebration — a temporary ×N counter + corona flare that fades,
+    // no permanent pip. Set unconditionally; only rendered while minimized.
+    setMiniBurst({ units: units, id: Date.now() });
+    push(function () { setMiniBurst(null); }, 2400);
+
+    // Reduced motion (or minimized): skip the cinematic sequence; the pip just
+    // appears. (When minimized the expanded refs are null anyway.)
+    if (reduce) { setBankedUnits(units); return; }
+
+    var root  = pipRootRef.current;
+    var flash = pipBankFlashRef.current;
+    if (!flash && !root) { setBankedUnits(units); return; }
+
+    // Phase 1 — supernova (0–3s): the victory corona flares, ring holds bright.
+    if (root)  { root.classList.add("pip-sc-glow"); root.style.setProperty("--sc-intensity", "0.85"); }
+    if (flash) { flash.classList.remove("pip-bank-super", "pip-bank-hole"); void flash.offsetWidth; flash.classList.add("pip-bank-super"); }
+    if (soundOn) playXpTickSound(Math.min(units - 1, 4), false);
+
+    // Phase 2 — black hole (3.0s): corona + ring implode inward toward a point.
+    push(function () {
+      if (root)  { root.classList.add("pip-imploding"); root.style.setProperty("--sc-intensity", "0.25"); }
+      if (flash) { flash.classList.remove("pip-bank-super"); void flash.offsetWidth; flash.classList.add("pip-bank-hole"); }
+    }, 3000);
+
+    // Phase 3 — the dot forms (3.56s): a fresh pip pops in, corona fully off.
+    push(function () {
+      setBankedUnits(units);
+      if (flash) flash.classList.remove("pip-bank-hole");
+      if (root)  { root.classList.remove("pip-sc-glow", "pip-imploding"); root.style.setProperty("--sc-intensity", "0"); }
+    }, 3560);
+  }
+
+  // Cancels any in-flight bank flourish and clears its widget-glow state — used
+  // when a session ends/resets so a pending phase can't clobber the next state.
+  function clearBankAnim() {
+    bankTimersRef.current.forEach(clearTimeout);
+    bankTimersRef.current = [];
+    setMiniBurst(null);
+    var root = pipRootRef.current, flash = pipBankFlashRef.current;
+    if (root)  { root.classList.remove("pip-sc-glow", "pip-imploding"); root.style.setProperty("--sc-intensity", "0"); }
+    if (flash)   flash.classList.remove("pip-bank-super", "pip-bank-hole");
   }
 
   // Lazily requested the first time a project-mode break actually starts —
@@ -4323,6 +4359,7 @@ const PomodoroTimer = () => {
   const reset = React.useCallback(() => {
     setIsRunning(false);
     if (timerType === "project" && mode === "work") {
+      clearBankAnim();
       projectElapsedRef.current  = 0;
       projectXpBankedRef.current = 0;
       localStorage.removeItem("projectElapsed");
@@ -4437,6 +4474,7 @@ const PomodoroTimer = () => {
   const finishProjectSession = React.useCallback(() => {
     if (projectElapsedRef.current === 0) return;
     setIsRunning(false);
+    clearBankAnim(); // a unit-bank flourish may be mid-flight — cancel it cleanly
 
     var elapsed    = projectElapsedRef.current;
     var increments = Math.floor(elapsed / PROJECT_XP_INCREMENT_SECONDS);
@@ -4719,7 +4757,7 @@ const PomodoroTimer = () => {
         onClick={() => setExpanded(true)}
         title="Open timer"
       >
-        <div className="pomodoro-mini-ring">
+        <div className={"pomodoro-mini-ring" + (miniBurst ? " pomodoro-mini-ring-burst" : "")}>
           <svg width="64" height="64" viewBox="0 0 64 64"
                style={{ position: "absolute", inset: 0, overflow: "visible" }}>
             {miniIsNeon && (
@@ -4761,6 +4799,9 @@ const PomodoroTimer = () => {
           <span ref={miniTimeRef} className={"pomodoro-mini-time" + (miniIsNeon ? " pip-time-neon" : "")}>
             {fmt(timeLeftRef.current)}
           </span>
+          {miniBurst && (
+            <span className="pomodoro-mini-burst" key={miniBurst.id}>×{miniBurst.units}</span>
+          )}
         </div>
       </div>
     );
@@ -4889,9 +4930,9 @@ const PomodoroTimer = () => {
               }}
             />
 
-            {/* Collapse-to-pip overlay — a full bright ring that blooms then
-                collapses down toward the pip row when a unit banks. Hidden
-                (opacity 0) until bankUnit() adds .pip-bank-go. */}
+            {/* Supernova→black-hole overlay — a full bright ring that flares
+                (~3s) then implodes to a point when a unit banks. Hidden
+                (opacity 0) until bankUnit() adds .pip-bank-super/.pip-bank-hole. */}
             <circle ref={pipBankFlashRef} className="pip-bank-flash"
               cx="98" cy="98" r={PIP_R} fill="none"
               stroke="url(#pip-corona-grad)" strokeWidth="4" strokeLinecap="round" />
