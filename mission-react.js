@@ -4069,6 +4069,7 @@ const PomodoroTimer = () => {
   const pipGlowRef     = React.useRef(null); // blurred halo arc — follows same dashoffset
   const pipRingWrapRef = React.useRef(null); // .pip-timer-ring (anticipation-glow class)
   const pipBankFlashRef = React.useRef(null); // overlay ring for the collapse-to-pip flourish
+  const pipSingularityRef = React.useRef(null); // white flash dot — fired independently, see bankUnit()
   const bankTimersRef  = React.useRef([]);
   const miniTimeRef = React.useRef(null);
   const miniRingRef = React.useRef(null);
@@ -4149,6 +4150,20 @@ const PomodoroTimer = () => {
       if (flash) { flash.classList.remove("pip-bank-super"); void flash.offsetWidth; flash.classList.add("pip-bank-hole"); }
     }, 3000);
 
+    // The singularity flash — fired as its own independent pop (same
+    // restart-via-reflow pattern as the XP reel's flashFace) rather than as
+    // one segment of the longer implosion keyframe, which read as invisible:
+    // a thin white ring the same size/position as the still-bright teal ring
+    // blended into it instead of reading as a flash.
+    push(function () {
+      var dot = pipSingularityRef.current;
+      if (dot) {
+        dot.classList.remove("pip-singularity-go");
+        void dot.offsetWidth; // reflow: restart the pop
+        dot.classList.add("pip-singularity-go");
+      }
+    }, 3000 + 380);
+
     // Phase 3 — the dot forms (3.56s): a fresh pip pops in, corona fully off.
     push(function () {
       setBankedUnits(units);
@@ -4163,9 +4178,10 @@ const PomodoroTimer = () => {
     bankTimersRef.current.forEach(clearTimeout);
     bankTimersRef.current = [];
     setMiniBurst(null);
-    var root = pipRootRef.current, flash = pipBankFlashRef.current;
+    var root = pipRootRef.current, flash = pipBankFlashRef.current, dot = pipSingularityRef.current;
     if (root)  { root.classList.remove("pip-sc-glow", "pip-imploding"); root.style.setProperty("--sc-intensity", "0"); }
     if (flash)   flash.classList.remove("pip-bank-super", "pip-bank-hole");
+    if (dot)     dot.classList.remove("pip-singularity-go");
   }
 
   // Lazily requested the first time a project-mode break actually starts —
@@ -4914,16 +4930,17 @@ const PomodoroTimer = () => {
 
             {/* Supernova→black-hole overlay — a full bright ring that flares
                 (~3s) then implodes to a point when a unit banks. Hidden
-                (opacity 0) until bankUnit() adds .pip-bank-super/.pip-bank-hole.
-                A dedicated white ring (pip-bank-singularity) flashes at the
-                collapse's peak — brightness()-ing the teal gradient can't
-                reach true white, so it's a separate stroke, not a filter. */}
+                (opacity 0) until bankUnit() adds .pip-bank-super/.pip-bank-hole. */}
             <g ref={pipBankFlashRef} className="pip-bank-flash-group">
               <circle className="pip-bank-flash" cx="98" cy="98" r={PIP_R} fill="none"
                 stroke="url(#pip-corona-grad)" strokeWidth="4" strokeLinecap="round" />
-              <circle className="pip-bank-singularity" cx="98" cy="98" r={PIP_R} fill="none"
-                stroke="#ffffff" strokeWidth="4" strokeLinecap="round" />
             </g>
+            {/* The singularity flash — a small FILLED white dot (not a stroked
+                ring the same size as the teal one, which blended into it and
+                read as invisible) that pops independently mid-implosion, at
+                roughly where the ring has shrunk to by then. */}
+            <circle ref={pipSingularityRef} className="pip-bank-singularity"
+              cx="98" cy="98" r="7" fill="#ffffff" />
           </svg>
           <div className="pip-time-display">
             {sessionComplete && sessionComplete.xp > 0 ? (

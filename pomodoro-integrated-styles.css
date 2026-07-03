@@ -810,23 +810,14 @@
 }
 
 /* ── OPS accretion ring: collapse-to-pip + banked-unit pips ──────────────── */
-/* Overlay ring group that blooms full, then collapses down toward the pip row
-   when a 25-min unit banks — masking the real ring resetting to empty
-   underneath. Two rings: the teal payout ring, and a dedicated white ring
-   that flashes at the collapse's peak (brightness()-ing the teal gradient
-   can't reach true white, so the flash is a separate stroke, not a filter). */
+/* Overlay ring that blooms full, then collapses down toward the pip row when a
+   25-min unit banks — masking the real ring resetting to empty underneath. */
 .pip-bank-flash-group { pointer-events: none; }
-.pip-bank-flash-group .pip-bank-flash,
-.pip-bank-flash-group .pip-bank-singularity {
+.pip-bank-flash-group .pip-bank-flash {
   opacity: 0;
   transform-box: fill-box;
   transform-origin: center;
-}
-.pip-bank-flash-group .pip-bank-flash {
   filter: drop-shadow(0 0 6px rgba(15,223,171,0.9)) drop-shadow(0 0 16px rgba(72,255,158,0.6));
-}
-.pip-bank-flash-group .pip-bank-singularity {
-  filter: drop-shadow(0 0 10px #ffffff) drop-shadow(0 0 26px #ffffff) drop-shadow(0 0 48px rgba(140,255,225,0.9));
 }
 
 /* Phase 1 — supernova: bloom to a bright full ring and hold ~3s. */
@@ -840,8 +831,7 @@
 
 /* Phase 2 — black hole: implode inward AND fall toward the pip row (58px,
    matching the pip row's offset below the ring) while collapsing — the
-   directional "collapsing into a dot" motion. The white ring rides along but
-   stays hidden until pipBankSingularity spikes it right at the peak. */
+   directional "collapsing into a dot" motion. */
 .pip-bank-flash-group.pip-bank-hole .pip-bank-flash { animation: pipBankHole 0.62s cubic-bezier(0.55, 0, 0.85, 0.3) forwards; }
 @keyframes pipBankHole {
   0%   { opacity: 1; transform: scale(1)    translateY(0);    }
@@ -849,14 +839,26 @@
   80%  { opacity: 1; transform: scale(0.08) translateY(54px); }
   100% { opacity: 0; transform: scale(0)    translateY(56px); }
 }
-/* Phase 2b — the actual white flash: a sharp spike to pure white right as the
-   ring reaches the singularity point, then gone. */
-.pip-bank-flash-group.pip-bank-hole .pip-bank-singularity { animation: pipBankSingularity 0.62s cubic-bezier(0.55, 0, 0.85, 0.3) forwards; }
-@keyframes pipBankSingularity {
-  0%,  60% { opacity: 0;   transform: scale(0.32) translateY(30px); }
-  74%      { opacity: 1;   transform: scale(0.16) translateY(46px); } /* the flash */
-  88%      { opacity: 0.5; transform: scale(0.06) translateY(54px); }
-  100%     { opacity: 0;   transform: scale(0)    translateY(56px); }
+
+/* The singularity flash — a small filled dot (not a stroked ring the same
+   size/position as the teal one, which blended in and read as invisible)
+   fired independently via JS partway through the implosion (bankUnit()),
+   the same restart-via-reflow pop pattern as the XP reel's flashFace. Pure
+   white core + wide glow so it reads unambiguously as a flash. */
+.pip-bank-singularity {
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+  transform: translateY(0) scale(0.4);
+  pointer-events: none;
+  filter: drop-shadow(0 0 6px #ffffff) drop-shadow(0 0 16px #ffffff) drop-shadow(0 0 34px rgba(140,255,225,0.95));
+}
+.pip-bank-singularity.pip-singularity-go { animation: pipSingularityFlash 0.4s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+@keyframes pipSingularityFlash {
+  0%   { opacity: 0;   transform: translateY(40px) scale(0.3); }
+  22%  { opacity: 1;   transform: translateY(46px) scale(1.7); }
+  55%  { opacity: 1;   transform: translateY(50px) scale(1);   }
+  100% { opacity: 0;   transform: translateY(56px) scale(0.2); }
 }
 
 /* The corona is pulled into the hole during phase 2. */
@@ -937,7 +939,7 @@
 @media (prefers-reduced-motion: reduce) {
   .pip-bank-flash-group.pip-bank-super .pip-bank-flash,
   .pip-bank-flash-group.pip-bank-hole .pip-bank-flash,
-  .pip-bank-flash-group.pip-bank-hole .pip-bank-singularity,
+  .pip-bank-singularity.pip-singularity-go,
   .pip-timer-ring.pip-ops-approach .pip-arc-halo,
   .pomodoro-mini-burst,
   .pomodoro-mini-ring-burst,
