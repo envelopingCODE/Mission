@@ -831,13 +831,18 @@
 
 /* Phase 2 — black hole: implode inward AND fall toward the pip row (58px,
    matching the pip row's offset below the ring) while collapsing — the
-   directional "collapsing into a dot" motion. */
+   directional "collapsing into a dot" motion. Opacity now fades from 45%
+   onward (was: held at full opacity until 80%) — at small scale the 4px
+   stroke shrinks to a near-invisible hairline that read as a stray, oddly
+   placed ring; fading it out early lets the singularity flash (which peaks
+   right as this is fading past ~65%) carry the climax instead of the two
+   competing for attention. */
 .pip-bank-flash-group.pip-bank-hole .pip-bank-flash { animation: pipBankHole 0.62s cubic-bezier(0.55, 0, 0.85, 0.3) forwards; }
 @keyframes pipBankHole {
-  0%   { opacity: 1; transform: scale(1)    translateY(0);    }
-  55%  { opacity: 1; transform: scale(0.32) translateY(30px); }
-  80%  { opacity: 1; transform: scale(0.08) translateY(54px); }
-  100% { opacity: 0; transform: scale(0)    translateY(56px); }
+  0%   { opacity: 1;    transform: scale(1)    translateY(0);    }
+  45%  { opacity: 1;    transform: scale(0.42) translateY(22px); }
+  70%  { opacity: 0.5;  transform: scale(0.16) translateY(44px); }
+  100% { opacity: 0;    transform: scale(0)    translateY(56px); }
 }
 
 /* The singularity flash — a small filled dot (not a stroked ring the same
@@ -853,12 +858,15 @@
   pointer-events: none;
   filter: drop-shadow(0 0 6px #ffffff) drop-shadow(0 0 16px #ffffff) drop-shadow(0 0 34px rgba(140,255,225,0.95));
 }
-.pip-bank-singularity.pip-singularity-go { animation: pipSingularityFlash 0.4s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+/* 0.18s, fired at phase-2 +440ms — ends at +620ms, the same moment the teal
+   ring (pipBankHole, 620ms total) finishes and vanishes, so the flash's own
+   fade-out and the ring's disappearance land on the same frame instead of
+   drifting apart. translateY tracks roughly where the ring is in that window. */
+.pip-bank-singularity.pip-singularity-go { animation: pipSingularityFlash 0.18s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
 @keyframes pipSingularityFlash {
-  0%   { opacity: 0;   transform: translateY(40px) scale(0.3); }
-  22%  { opacity: 1;   transform: translateY(46px) scale(1.7); }
-  55%  { opacity: 1;   transform: translateY(50px) scale(1);   }
-  100% { opacity: 0;   transform: translateY(56px) scale(0.2); }
+  0%   { opacity: 0; transform: translateY(45px) scale(0.3); }
+  35%  { opacity: 1; transform: translateY(48px) scale(1.6); }
+  100% { opacity: 0; transform: translateY(55px) scale(0.15); }
 }
 
 /* The corona is pulled into the hole during phase 2. */

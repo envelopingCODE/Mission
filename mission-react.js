@@ -4155,6 +4155,11 @@ const PomodoroTimer = () => {
     // one segment of the longer implosion keyframe, which read as invisible:
     // a thin white ring the same size/position as the still-bright teal ring
     // blended into it instead of reading as a flash.
+    // Timed to finish exactly when the teal ring vanishes and Phase 3 fires
+    // (3000+620=3620): starts at +440 with a 180ms duration (see the matching
+    // 0.18s in pipSingularityFlash) so the flash's fade-out and the ring's
+    // disappearance land on the same frame, instead of the flash lingering
+    // alone after the ring it's supposed to be the climax of has already gone.
     push(function () {
       var dot = pipSingularityRef.current;
       if (dot) {
@@ -4162,7 +4167,7 @@ const PomodoroTimer = () => {
         void dot.offsetWidth; // reflow: restart the pop
         dot.classList.add("pip-singularity-go");
       }
-    }, 3000 + 380);
+    }, 3000 + 440);
 
     // Phase 3 — the dot forms (3.56s): a fresh pip pops in, corona fully off.
     push(function () {
