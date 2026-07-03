@@ -3506,7 +3506,7 @@ const SettingsPanel = () => {
   // causes React to throw + unmount the component when that branch is taken.
   var DEMO_EMOTIONS = ["neutral","happy","excited","alert","composing","flow","curious","perplexed","playful","sleepy","glitched"];
   React.useEffect(function() {
-    if (view !== "demo" || !autoCycle) return;
+    if (view !== "diagnostics" || !autoCycle) return;
     var idx = 0;
     var iv = setInterval(function() {
       idx = (idx + 1) % DEMO_EMOTIONS.length;
@@ -3575,77 +3575,6 @@ const SettingsPanel = () => {
       </div>
     </div>
   );
-
-  // ── M-VI Demo screen (early return) ──────────────────────────────────
-  if (view === "demo" && open) {
-    var DEMO_LABELS = ["Neutral","Happy","Excited","Alert","Composing","Flow","Curious","Perplexed","Playful","Sleepy","Glitched"];
-
-    var FEATURES = [
-      "Idle body sway (6s CSS cycle)",
-      "Head tilt per emotion",
-      "Glow temperature shift",
-      "Screen glare / panel reflection",
-      "Proximity pupil dilation",
-      "Micro-blink on transition (Breazeal)",
-    ];
-
-    return (
-      <div>
-        <button className={"settings-gear settings-gear-active"} onClick={() => setOpen(false)} title="Close">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <circle cx="12" cy="12" r="3"/><path d={GEAR_PATH} />
-          </svg>
-        </button>
-        <div className="settings-panel settings-panel-open">
-          <div className="settings-hdr">
-            <button className="st-back" onClick={() => navigateTo("main")}>‹</button>
-            <span><span className="st-breadcrumb">Settings ›</span> M-VI Demo</span>
-          </div>
-          <div className="settings-body"><div key={view} className={"settings-view-anim settings-view-" + navDir}>
-
-            <div className="st-section">
-              <div className="st-section-title">Trigger emotion states</div>
-              <div className="demo-emotion-grid">
-                {DEMO_EMOTIONS.map(function(em, i) {
-                  return (
-                    <button key={em}
-                      className={"demo-emotion-btn" + (demoActive === em ? " demo-emotion-active" : "")}
-                      onClick={function() {
-                        setAutoCycle(false);
-                        setDemoActive(em);
-                        if (typeof window.setRobotEmotion === "function") window.setRobotEmotion(em, 0);
-                      }}>
-                      {DEMO_LABELS[i]}
-                    </button>
-                  );
-                })}
-              </div>
-              <div className="st-row" style={{ marginTop: "0.6rem" }}>
-                <span className="st-label">Auto-cycle</span>
-                <button className={"st-switch" + (autoCycle ? " st-switch-on" : "")}
-                  onClick={() => setAutoCycle(function(a) { return !a; })} role="switch">
-                  <span className="st-thumb" />
-                </button>
-              </div>
-            </div>
-
-            <div className="st-section">
-              <div className="st-section-title">Active enhancements</div>
-              {FEATURES.map(function(f) {
-                return (
-                  <div key={f} className="demo-feature-row">
-                    <span className="demo-feature-check">✓</span>
-                    <span className="st-desc">{f}</span>
-                  </div>
-                );
-              })}
-            </div>
-
-          </div></div>
-        </div>
-      </div>
-    );
-  }
 
   // ── Achievements screen (early return) ────────────────────────────────
   if (view === "achievements" && open) {
@@ -3727,6 +3656,17 @@ const SettingsPanel = () => {
 
   // ── Diagnostics screen (early return) ─────────────────────────────────
   if (view === "diagnostics" && open) {
+    var DEMO_LABELS = ["Neutral","Happy","Excited","Alert","Composing","Flow","Curious","Perplexed","Playful","Sleepy","Glitched"];
+
+    var FEATURES = [
+      "Idle body sway (6s CSS cycle)",
+      "Head tilt per emotion",
+      "Glow temperature shift",
+      "Screen glare / panel reflection",
+      "Proximity pupil dilation",
+      "Micro-blink on transition (Breazeal)",
+    ];
+
     return (
       <div>
         <button className="settings-gear settings-gear-active" onClick={() => setOpen(false)} title="Close">
@@ -3798,6 +3738,47 @@ const SettingsPanel = () => {
                   setOpen(false);
                 }}>Bank unit ▸</button>
               </div>
+            </div>
+
+            {/* M-VI Demo — folded in from its former standalone screen; the
+                robot buddy's expressive states are themselves a diagnostic
+                surface (verifying the affect layer renders correctly). */}
+            <div className="st-section">
+              <div className="st-section-title">Trigger emotion states</div>
+              <div className="demo-emotion-grid">
+                {DEMO_EMOTIONS.map(function(em, i) {
+                  return (
+                    <button key={em}
+                      className={"demo-emotion-btn" + (demoActive === em ? " demo-emotion-active" : "")}
+                      onClick={function() {
+                        setAutoCycle(false);
+                        setDemoActive(em);
+                        if (typeof window.setRobotEmotion === "function") window.setRobotEmotion(em, 0);
+                      }}>
+                      {DEMO_LABELS[i]}
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="st-row" style={{ marginTop: "0.6rem" }}>
+                <span className="st-label">Auto-cycle</span>
+                <button className={"st-switch" + (autoCycle ? " st-switch-on" : "")}
+                  onClick={() => setAutoCycle(function(a) { return !a; })} role="switch">
+                  <span className="st-thumb" />
+                </button>
+              </div>
+            </div>
+
+            <div className="st-section">
+              <div className="st-section-title">Active enhancements</div>
+              {FEATURES.map(function(f) {
+                return (
+                  <div key={f} className="demo-feature-row">
+                    <span className="demo-feature-check">✓</span>
+                    <span className="st-desc">{f}</span>
+                  </div>
+                );
+              })}
             </div>
 
           </div></div>
@@ -3911,11 +3892,6 @@ const SettingsPanel = () => {
             <button className="st-nav-btn" onClick={() => navigateTo("achievements")}>
               <span className="st-nav-icon">▲</span>
               <span>Achievements</span>
-              <span className="st-nav-arrow">›</span>
-            </button>
-            <button className="st-nav-btn" onClick={() => navigateTo("demo")}>
-              <span className="st-nav-icon">◉</span>
-              <span>M-VI Demo</span>
               <span className="st-nav-arrow">›</span>
             </button>
             <button className="st-nav-btn" onClick={() => navigateTo("diagnostics")}>
@@ -4178,7 +4154,7 @@ const PomodoroTimer = () => {
       setBankedUnits(units);
       if (flash) flash.classList.remove("pip-bank-hole");
       if (root)  { root.classList.remove("pip-sc-glow", "pip-imploding"); root.style.setProperty("--sc-intensity", "0"); }
-    }, 3560);
+    }, 3620); // 3000 (phase-1 end) + 620 (pipBankHole duration, kept in sync with the CSS)
   }
 
   // Cancels any in-flight bank flourish and clears its widget-glow state — used
@@ -4344,7 +4320,7 @@ const PomodoroTimer = () => {
           });
         }
         setMode("break");
-        flashWinCorona(10000); // celebrate the completed work block into the break
+        flashWinCorona(4000); // celebrate the completed work block into the break
         // Check if user deferred the first-run briefing to their next break
         if (localStorage.getItem("pendingBriefing") === "true") {
           localStorage.removeItem("pendingBriefing");
@@ -4938,10 +4914,16 @@ const PomodoroTimer = () => {
 
             {/* Supernova→black-hole overlay — a full bright ring that flares
                 (~3s) then implodes to a point when a unit banks. Hidden
-                (opacity 0) until bankUnit() adds .pip-bank-super/.pip-bank-hole. */}
-            <circle ref={pipBankFlashRef} className="pip-bank-flash"
-              cx="98" cy="98" r={PIP_R} fill="none"
-              stroke="url(#pip-corona-grad)" strokeWidth="4" strokeLinecap="round" />
+                (opacity 0) until bankUnit() adds .pip-bank-super/.pip-bank-hole.
+                A dedicated white ring (pip-bank-singularity) flashes at the
+                collapse's peak — brightness()-ing the teal gradient can't
+                reach true white, so it's a separate stroke, not a filter. */}
+            <g ref={pipBankFlashRef} className="pip-bank-flash-group">
+              <circle className="pip-bank-flash" cx="98" cy="98" r={PIP_R} fill="none"
+                stroke="url(#pip-corona-grad)" strokeWidth="4" strokeLinecap="round" />
+              <circle className="pip-bank-singularity" cx="98" cy="98" r={PIP_R} fill="none"
+                stroke="#ffffff" strokeWidth="4" strokeLinecap="round" />
+            </g>
           </svg>
           <div className="pip-time-display">
             {sessionComplete && sessionComplete.xp > 0 ? (
