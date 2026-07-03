@@ -829,44 +829,31 @@
   100% { opacity: 1; transform: scale(1);    }
 }
 
-/* Phase 2 — black hole: implode inward AND fall toward the pip row (58px,
-   matching the pip row's offset below the ring) while collapsing — the
-   directional "collapsing into a dot" motion. Opacity now fades from 45%
-   onward (was: held at full opacity until 80%) — at small scale the 4px
-   stroke shrinks to a near-invisible hairline that read as a stray, oddly
-   placed ring; fading it out early lets the singularity flash (which peaks
-   right as this is fading past ~65%) carry the climax instead of the two
-   competing for attention. */
-.pip-bank-flash-group.pip-bank-hole .pip-bank-flash { animation: pipBankHole 0.62s cubic-bezier(0.55, 0, 0.85, 0.3) forwards; }
+/* Phase 2 — black hole: ONE ring implodes toward the pip row (58px below,
+   matching the pip row's offset) — no second element. It shrinks and travels
+   down through 55%, then from 55%→86% its color drains from teal to white
+   (saturate 1→0 stacked with rising brightness — brightness() alone can't
+   turn a low-red teal into true white, so it's desaturated to gray first,
+   then brightened to clip at white) while it keeps shrinking to a near-point,
+   arriving white and tiny by 86%. A brief bloom (86%→92%, scale ticks back up
+   slightly) is the flash eclipsing that tiny remnant, then it vanishes at
+   100% — the exact moment Phase 3 pops the fresh banked pip into place. */
+.pip-bank-flash-group.pip-bank-hole .pip-bank-flash { animation: pipBankHole 0.62s cubic-bezier(0.5, 0, 0.75, 0.35) forwards; }
 @keyframes pipBankHole {
-  0%   { opacity: 1;    transform: scale(1)    translateY(0);    }
-  45%  { opacity: 1;    transform: scale(0.42) translateY(22px); }
-  70%  { opacity: 0.5;  transform: scale(0.16) translateY(44px); }
-  100% { opacity: 0;    transform: scale(0)    translateY(56px); }
-}
-
-/* The singularity flash — a small filled dot (not a stroked ring the same
-   size/position as the teal one, which blended in and read as invisible)
-   fired independently via JS partway through the implosion (bankUnit()),
-   the same restart-via-reflow pop pattern as the XP reel's flashFace. Pure
-   white core + wide glow so it reads unambiguously as a flash. */
-.pip-bank-singularity {
-  opacity: 0;
-  transform-box: fill-box;
-  transform-origin: center;
-  transform: translateY(0) scale(0.4);
-  pointer-events: none;
-  filter: drop-shadow(0 0 6px #ffffff) drop-shadow(0 0 16px #ffffff) drop-shadow(0 0 34px rgba(140,255,225,0.95));
-}
-/* 0.18s, fired at phase-2 +440ms — ends at +620ms, the same moment the teal
-   ring (pipBankHole, 620ms total) finishes and vanishes, so the flash's own
-   fade-out and the ring's disappearance land on the same frame instead of
-   drifting apart. translateY tracks roughly where the ring is in that window. */
-.pip-bank-singularity.pip-singularity-go { animation: pipSingularityFlash 0.18s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
-@keyframes pipSingularityFlash {
-  0%   { opacity: 0; transform: translateY(45px) scale(0.3); }
-  35%  { opacity: 1; transform: translateY(48px) scale(1.6); }
-  100% { opacity: 0; transform: translateY(55px) scale(0.15); }
+  0%   { opacity: 1; transform: scale(1)     translateY(0);
+         filter: drop-shadow(0 0 6px rgba(15,223,171,0.9)) drop-shadow(0 0 16px rgba(72,255,158,0.6))
+                 saturate(1) brightness(1); }
+  55%  { opacity: 1; transform: scale(0.4)   translateY(24px);
+         filter: drop-shadow(0 0 7px rgba(15,223,171,0.95)) drop-shadow(0 0 18px rgba(140,255,225,0.75))
+                 saturate(1) brightness(1.05); }
+  86%  { opacity: 1; transform: scale(0.09)  translateY(51px);
+         filter: drop-shadow(0 0 10px #ffffff) drop-shadow(0 0 24px #ffffff)
+                 saturate(0) brightness(2.6); }
+  92%  { opacity: 1; transform: scale(0.16)  translateY(53px);   /* the flash — eclipses the tiny remnant */
+         filter: drop-shadow(0 0 16px #ffffff) drop-shadow(0 0 40px #ffffff)
+                 saturate(0) brightness(3.2); }
+  100% { opacity: 0; transform: scale(0.02)  translateY(56px);
+         filter: drop-shadow(0 0 4px #ffffff) saturate(0) brightness(1.6); }
 }
 
 /* The corona is pulled into the hole during phase 2. */
@@ -947,7 +934,6 @@
 @media (prefers-reduced-motion: reduce) {
   .pip-bank-flash-group.pip-bank-super .pip-bank-flash,
   .pip-bank-flash-group.pip-bank-hole .pip-bank-flash,
-  .pip-bank-singularity.pip-singularity-go,
   .pip-timer-ring.pip-ops-approach .pip-arc-halo,
   .pomodoro-mini-burst,
   .pomodoro-mini-ring-burst,
