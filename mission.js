@@ -324,6 +324,7 @@ const AppSettings = (function () {
     ollamaEnabled:        false,
     ollamaModel:          "llama3.2:3b",
     ollamaUrl:            "http://localhost:11434",
+    ollamaToken:          "",  // X-Bridge-Token, only needed when URL points at ollama-bridge.js
   };
   function get() {
     try { return Object.assign({}, DEFAULTS, JSON.parse(localStorage.getItem(KEY) || "{}")); }
@@ -370,13 +371,19 @@ const OllamaClient = (function () {
       url:     (s.ollamaUrl  || "http://localhost:11434").replace(/\/$/, ""),
       model:   s.ollamaModel || "llama3.2:3b",
       enabled: !!s.ollamaEnabled,
+      token:   s.ollamaToken || "",
     };
+  }
+  function authHeaders(c, extra) {
+    var h = Object.assign({}, extra);
+    if (c.token) h["X-Bridge-Token"] = c.token;
+    return h;
   }
   async function checkAvailable() {
     var c = cfg();
     if (!c.enabled) { _available = false; return false; }
     try {
-      var res = await fetch(c.url + "/api/tags", { signal: AbortSignal.timeout(2000) });
+      var res = await fetch(c.url + "/api/tags", { signal: AbortSignal.timeout(2000), headers: authHeaders(c) });
       _available = res.ok;
     } catch (e) { _available = false; }
     return _available;
@@ -392,7 +399,7 @@ const OllamaClient = (function () {
     try {
       var res = await fetch(c.url + "/api/chat", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: authHeaders(c, { "Content-Type": "application/json" }),
         signal: ctrl.signal,
         body: JSON.stringify({
           model: c.model,

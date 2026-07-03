@@ -3863,6 +3863,12 @@ const SettingsPanel = () => {
                     onChange={(e) => setText("ollamaUrl", e.target.value)}
                     placeholder="http://localhost:11434" spellCheck={false} />
                 </div>
+                <div className="st-row st-row-input">
+                  <span className="st-label">Token</span>
+                  <input className="st-input" type="password" value={cfg.ollamaToken || ""}
+                    onChange={(e) => setText("ollamaToken", e.target.value)}
+                    placeholder="only if using ollama-bridge.js" spellCheck={false} autoComplete="off" />
+                </div>
                 <div className="st-row st-row-action">
                   <div style={{ display: "flex", alignItems: "center", gap: "0.45rem" }}>
                     <span className="ollama-dot" style={{ background: DOT[ollamaStatus] }} />
