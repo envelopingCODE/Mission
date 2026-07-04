@@ -817,7 +817,7 @@
   opacity: 0;
   transform-box: fill-box;
   transform-origin: center;
-  filter: drop-shadow(0 0 6px rgba(15,223,171,0.9)) drop-shadow(0 0 16px rgba(72,255,158,0.6));
+  filter: drop-shadow(0 0 10px rgba(15,223,171,0.75));
 }
 
 /* Phase 1 — supernova: bloom to a bright full ring and hold ~3s. */
@@ -830,30 +830,28 @@
 }
 
 /* Phase 2 — black hole: ONE ring implodes toward the pip row (58px below,
-   matching the pip row's offset) — no second element. It shrinks and travels
-   down through 55%, then from 55%→86% its color drains from teal to white
-   (saturate 1→0 stacked with rising brightness — brightness() alone can't
-   turn a low-red teal into true white, so it's desaturated to gray first,
-   then brightened to clip at white) while it keeps shrinking to a near-point,
-   arriving white and tiny by 86%. A brief bloom (86%→92%, scale ticks back up
-   slightly) is the flash eclipsing that tiny remnant, then it vanishes at
-   100% — the exact moment Phase 3 pops the fresh banked pip into place. */
+   matching the pip row's offset) — no second element, and no filter-based
+   saturate()/brightness() trick (stacking that on top of drop-shadow reads as
+   a second, blurrier "ghost ring" trailing the sharp one, and still didn't
+   land as a visible flash). Instead the ring's actual paint animates: stroke
+   color runs a real color interpolation from teal toward white, and — the
+   part that sells the flash — fill-opacity ramps in a white fill as it
+   shrinks, so by the time it's tiny it's a small solid glowing disc, not a
+   hollow outline. A single drop-shadow tracks the same color, no stacking. */
 .pip-bank-flash-group.pip-bank-hole .pip-bank-flash { animation: pipBankHole 0.62s cubic-bezier(0.5, 0, 0.75, 0.35) forwards; }
 @keyframes pipBankHole {
-  0%   { opacity: 1; transform: scale(1)     translateY(0);
-         filter: drop-shadow(0 0 6px rgba(15,223,171,0.9)) drop-shadow(0 0 16px rgba(72,255,158,0.6))
-                 saturate(1) brightness(1); }
-  55%  { opacity: 1; transform: scale(0.4)   translateY(24px);
-         filter: drop-shadow(0 0 7px rgba(15,223,171,0.95)) drop-shadow(0 0 18px rgba(140,255,225,0.75))
-                 saturate(1) brightness(1.05); }
-  86%  { opacity: 1; transform: scale(0.09)  translateY(51px);
-         filter: drop-shadow(0 0 10px #ffffff) drop-shadow(0 0 24px #ffffff)
-                 saturate(0) brightness(2.6); }
-  92%  { opacity: 1; transform: scale(0.16)  translateY(53px);   /* the flash — eclipses the tiny remnant */
-         filter: drop-shadow(0 0 16px #ffffff) drop-shadow(0 0 40px #ffffff)
-                 saturate(0) brightness(3.2); }
-  100% { opacity: 0; transform: scale(0.02)  translateY(56px);
-         filter: drop-shadow(0 0 4px #ffffff) saturate(0) brightness(1.6); }
+  0%   { opacity: 1; fill: #ffffff; fill-opacity: 0;    stroke: #0fdfab; stroke-opacity: 1;
+         transform: scale(1)     translateY(0);
+         filter: drop-shadow(0 0 8px rgba(15,223,171,0.75)); }
+  55%  { opacity: 1; fill: #ffffff; fill-opacity: 0;    stroke: #7dffce; stroke-opacity: 1;
+         transform: scale(0.42)  translateY(24px);
+         filter: drop-shadow(0 0 9px rgba(125,255,206,0.85)); }
+  84%  { opacity: 1; fill: #ffffff; fill-opacity: 0.9;  stroke: #ffffff; stroke-opacity: 1;
+         transform: scale(0.16)  translateY(50px);       /* the flash — a small solid disc */
+         filter: drop-shadow(0 0 18px #ffffff); }
+  100% { opacity: 0; fill: #ffffff; fill-opacity: 1;    stroke: #ffffff; stroke-opacity: 0;
+         transform: scale(0.02)  translateY(56px);
+         filter: drop-shadow(0 0 4px #ffffff); }
 }
 
 /* The corona is pulled into the hole during phase 2. */
