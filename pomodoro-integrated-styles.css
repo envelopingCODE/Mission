@@ -862,11 +862,48 @@
   transition: transform 0.6s cubic-bezier(0.55, 0, 0.85, 0.3), opacity 0.6s ease-in;
 }
 
-/* Anticipation — the halo breathes brighter in the final ~20s before a bank. */
-.pip-timer-ring.pip-ops-approach .pip-arc-halo { animation: pipOpsApproach 1.4s ease-in-out infinite; }
+/* Anticipation — the halo (or, on the Tidal skin, the liquid surface)
+   breathes brighter in the final ~20s before a bank. */
+.pip-timer-ring.pip-ops-approach .pip-arc-halo,
+.pip-timer-ring.pip-ops-approach .pip-tidal-surface { animation: pipOpsApproach 1.4s ease-in-out infinite; }
 @keyframes pipOpsApproach {
   0%, 100% { opacity: 1;    }
   50%      { opacity: 0.45; }
+}
+
+/* ── Tidal skin (alternate OPS ring, unlocked at 20 lifetime banked units) ──
+   The liquid surface: a thin highlight line at the current fill level, with
+   a gentle ambient shimmer so it reads as liquid rather than a static edge. */
+.pip-tidal-surface {
+  stroke: rgba(255,255,255,0.5);
+  stroke-width: 1.5;
+  filter: drop-shadow(0 0 3px rgba(255,255,255,0.4));
+  animation: pipTidalShimmer 3.2s ease-in-out infinite;
+}
+@keyframes pipTidalShimmer {
+  0%, 100% { opacity: 0.75; }
+  50%      { opacity: 1;    }
+}
+
+/* Crest flash — the surface briefly blazes white right as the tide banks,
+   the same "one object flashes, doesn't spawn a second one" lesson as the
+   collapse-to-pip ring. */
+.pip-tidal-surface.pip-tidal-crest-go { animation: pipTidalCrest 0.42s ease-out forwards; }
+@keyframes pipTidalCrest {
+  0%   { stroke: rgba(255,255,255,0.6); stroke-width: 1.5; filter: drop-shadow(0 0 3px rgba(255,255,255,0.4)); }
+  30%  { stroke: #ffffff; stroke-width: 3; filter: drop-shadow(0 0 14px #ffffff) drop-shadow(0 0 30px #ffffff); }
+  100% { stroke: #ffffff; stroke-width: 1; filter: drop-shadow(0 0 4px rgba(255,255,255,0.3)); opacity: 0.35; }
+}
+
+/* Drain — the rising-level clip-rect (see the tidal-level-clip def in the
+   SVG) animates back to empty over the same 0.62s the ring implosion uses,
+   so both skins land Phase 3 (the banked pip) at the same moment. Animating
+   y/height directly relies on SVG geometry properties being CSS-animatable
+   (standard in current Chromium/Firefox/Safari). */
+.pip-tidal-level.pip-tidal-draining { animation: pipTidalDrain 0.62s cubic-bezier(0.5, 0, 0.75, 0.35) forwards; }
+@keyframes pipTidalDrain {
+  0%   { y: 16px;  height: 168px; }
+  100% { y: 174px; height: 0px;   }
 }
 
 /* Banked-unit pips under the ring — one per completed 25-min unit. */

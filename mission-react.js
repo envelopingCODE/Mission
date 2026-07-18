@@ -2732,6 +2732,14 @@ const SKINS_DEF = [
   { id:"forge",   name:"???",     desc:"Classified",                               unlocked:false, condition:"4 Pomodoro cycles in one session", secret:true },
 ];
 
+// OPS ring completion style — a separate axis from the timer skin (this
+// changes the ring's *behavior*, not just its color). "collapse" ships
+// unlocked; alternates are earned by lifetime OPS discipline.
+const OPS_ANIM_DEF = [
+  { id:"collapse", name:"Collapse",  desc:"Ring fills toward each unit, then collapses into a banked pip", unlocked:true, condition:null },
+  { id:"tidal",    name:"Tidal",     desc:"Liquid rises with each unit, crests, and drains into a banked pip", unlocked:function(){ return _lsJson("opsAnimUnlocked").indexOf("tidal") !== -1; }, condition:"Bank 20 OPS units (lifetime)" },
+];
+
 const ACHIEVEMENTS_DEF = [
   { id:"first_op",    cat:"Operator",     icon:"▣", name:"First Op",       desc:"Complete your first objective",       check:function(){ return _totalTasks()>=1; },          prog:null },
   { id:"blitz",       cat:"Operator",     icon:"◈", name:"Blitz",          desc:"10 objectives in a single day",       check:function(){ return _bestDay()>=10; },            prog:function(){ return [Math.min(_bestDay(),10),10]; } },
@@ -3440,6 +3448,7 @@ const SettingsPanel = () => {
   const [cfg,          setCfg]          = React.useState(() => window.AppSettings.get());
   const [ollamaStatus, setOllamaStatus] = React.useState("idle");
   const [activeSkin,   setActiveSkin]   = React.useState(() => localStorage.getItem("timerSkinActive") || "eclipse");
+  const [opsRingAnim,  setOpsRingAnim]  = React.useState(() => localStorage.getItem("opsRingAnimation") || "collapse");
   // showPurge lives in PurgePortal (own React root) — call window.showPurgeModal()
   const [navDir,       setNavDir]       = React.useState("forward"); // "forward"|"back"
   const [autoCycle,    setAutoCycle]    = React.useState(false);
@@ -3954,6 +3963,10 @@ const PomodoroTimer = () => {
   const CYCLE_LENGTH     = 4;           // Pomodoros before a long break
   const MINI_R = 30, MINI_C = 2 * Math.PI * 30; // ring hugs the badge edge (no dark gap)
   const PIP_R  = 74, PIP_C  = 2 * Math.PI * 74;
+  // Tidal fill (alternate OPS ring style) — bounding box of the moon disc
+  // (radius PIP_R-2=72, centred at 98,98): 26 is the top/left edge, 144 the
+  // span. The rising level is expressed against this box regardless of skin.
+  const TIDAL_BOX = 26, TIDAL_SPAN = 144;
 
   // Project mode — open-ended stopwatch for live/team work not bound to the
   // 25-min Pomodoro cycle. Structured breaks (lunch/coffee) are still fixed-
@@ -4017,6 +4030,13 @@ const PomodoroTimer = () => {
   const [miniSkin,     setMiniSkin]     = React.useState(
     () => window.AppSettings ? window.AppSettings.get().miniTimerSkin !== false : true
   );
+  // Which OPS ring completion style is active — "collapse" (default) or an
+  // unlocked alternate ("tidal"). Picked in Settings > Themes, same pattern
+  // as the timer skin, just a separate axis (this changes the *behavior* of
+  // the ring, not just its color).
+  const [opsRingAnim, setOpsRingAnim] = React.useState(
+    () => localStorage.getItem("opsRingAnimation") || "collapse"
+  );
 
   // Listen for skin unlock notification from mission.js
   React.useEffect(() => {
@@ -4025,9 +4045,11 @@ const PomodoroTimer = () => {
       setSkin(s);
     };
     window._onMiniSkinChange = (v) => setMiniSkin(v !== false);
+    window._onOpsRingAnimChange = (v) => setOpsRingAnim(v || "collapse");
     return () => {
       delete window._onTimerSkinUnlock;
       delete window._onMiniSkinChange;
+      delete window._onOpsRingAnimChange;
     };
   }, []);
 
@@ -4069,6 +4091,15 @@ const PomodoroTimer = () => {
   const pipGlowRef     = React.useRef(null); // blurred halo arc — follows same dashoffset
   const pipRingWrapRef = React.useRef(null); // .pip-timer-ring (anticipation-glow class)
   const pipBankFlashRef = React.useRef(null); // overlay ring for the collapse-to-pip flourish
+  const pipTidalLevelRef   = React.useRef(null); // clip-rect: rising liquid level (Tidal skin)
+  const pipTidalSurfaceRef = React.useRef(null); // liquid surface highlight line (Tidal skin)
+  // True for the duration of a bank celebration — the ring variant's overlay
+  // already masks its real ring quietly resetting to 0% and re-filling into
+  // the *next* unit underneath (the interval keeps ticking; it doesn't pause
+  // for the celebration). Tidal has no such overlay, so syncDisplay() must
+  // itself skip touching the level while this is true, or the "hold at the
+  // crest" phase would visibly drain and re-fill out from under the flourish.
+  const bankingActiveRef  = React.useRef(false);
   const bankTimersRef  = React.useRef([]);
   const miniTimeRef = React.useRef(null);
   const miniRingRef = React.useRef(null);
@@ -4099,14 +4130,29 @@ const PomodoroTimer = () => {
     if (pipGlowRef.current)  pipGlowRef.current.setAttribute("stroke-dashoffset", pipOffset);
     if (miniRingRef.current)
       miniRingRef.current.setAttribute("stroke-dashoffset", String(MINI_C * (1 - p)));
-    // Anticipation: intensify the ring's halo in the final ~20s before a unit
-    // banks, making the goal gradient felt rather than just seen.
+    // Tidal skin: same progress fraction p, but expressed as a rising liquid
+    // level (a clip-rect's y/height) instead of a stroke-dashoffset. The
+    // level clip and the surface line move together since they share one
+    // "top of the fill" coordinate. Skipped mid-celebration — see
+    // bankingActiveRef above.
+    if (opsRingAnim === "tidal" && !bankingActiveRef.current && pipTidalLevelRef.current) {
+      const levelY = TIDAL_BOX + TIDAL_SPAN * (1 - p);
+      pipTidalLevelRef.current.setAttribute("y", levelY);
+      pipTidalLevelRef.current.setAttribute("height", TIDAL_SPAN * p + 4); // +4: outer circle clip trims the overshoot, avoids a seam at the very bottom
+      if (pipTidalSurfaceRef.current) {
+        pipTidalSurfaceRef.current.setAttribute("y1", levelY);
+        pipTidalSurfaceRef.current.setAttribute("y2", levelY);
+      }
+    }
+    // Anticipation: intensify the ring's halo (or the tidal surface) in the
+    // final ~20s before a unit banks, making the goal gradient felt rather
+    // than just seen.
     if (pipRingWrapRef.current) {
       const approaching = isProjectTracking && (UNIT - (projectElapsedRef.current % UNIT)) <= 20
                           && projectElapsedRef.current % UNIT !== 0;
       pipRingWrapRef.current.classList.toggle("pip-ops-approach", approaching);
     }
-  }, [timerType, mode]);
+  }, [timerType, mode, opsRingAnim]);
 
   // Runs synchronously after every React commit, before browser paint.
   // Keeps DOM in sync when expand/collapse or mode switch re-mounts nodes.
@@ -4125,6 +4171,27 @@ const PomodoroTimer = () => {
     bankTimersRef.current = [];
     var push = function (fn, t) { bankTimersRef.current.push(setTimeout(fn, t)); };
 
+    // Lifetime tally (never reset by session finish/reset, unlike bankedUnits)
+    // — gates alternate OPS ring styles. Checked/unlocked here since this is
+    // the one place a unit actually completes, regardless of which ring style
+    // is currently drawing it.
+    var lifetime = parseInt(localStorage.getItem("opsLifetimeUnits") || "0", 10) + 1;
+    localStorage.setItem("opsLifetimeUnits", lifetime);
+    var OPS_ANIM_UNLOCKS = { tidal: 20 }; // id -> lifetime units required
+    Object.keys(OPS_ANIM_UNLOCKS).forEach(function (id) {
+      if (lifetime < OPS_ANIM_UNLOCKS[id]) return;
+      var unlocked = JSON.parse(localStorage.getItem("opsAnimUnlocked") || "[]");
+      if (unlocked.indexOf(id) !== -1) return;
+      unlocked.push(id);
+      localStorage.setItem("opsAnimUnlocked", JSON.stringify(unlocked));
+      if (typeof window.showBuddySuggestion === "function") {
+        window.showBuddySuggestion("Tidal ring protocol unlocked — pick it in Settings → Themes.", {
+          duration: 5000,
+          priority: 2, // milestone unlock — reward tier
+        });
+      }
+    });
+
     // Minimized celebration — a temporary ×N counter + corona flare that fades,
     // no permanent pip. Set unconditionally; only rendered while minimized.
     setMiniBurst({ units: units, id: Date.now() });
@@ -4134,31 +4201,65 @@ const PomodoroTimer = () => {
     // appears. (When minimized the expanded refs are null anyway.)
     if (reduce) { setBankedUnits(units); return; }
 
-    var root  = pipRootRef.current;
+    var root = pipRootRef.current;
+    var tidal = opsRingAnim === "tidal";
     var flash = pipBankFlashRef.current;
-    if (!flash && !root) { setBankedUnits(units); return; }
+    var level = pipTidalLevelRef.current, surface = pipTidalSurfaceRef.current;
+    if (!root && !flash && !level) { setBankedUnits(units); return; }
 
-    // Phase 1 — supernova (0–3s): the victory corona flares, ring holds bright.
-    if (root)  { root.classList.add("pip-sc-glow"); root.style.setProperty("--sc-intensity", "0.85"); }
-    if (flash) { flash.classList.remove("pip-bank-super", "pip-bank-hole"); void flash.offsetWidth; flash.classList.add("pip-bank-super"); }
+    // Phase 1 (0–3s): hold at the peak — ring supernova, or tidal crest-hold.
+    // The interval keeps ticking project time throughout (unit-bank isn't a
+    // pause), so on Tidal the level would otherwise visibly drain-and-refill
+    // into the *next* unit right under the celebration; freeze it explicitly
+    // at full and tell syncDisplay() to leave it alone until Phase 3.
+    if (tidal) {
+      bankingActiveRef.current = true;
+      if (level)   { level.setAttribute("y", TIDAL_BOX); level.setAttribute("height", TIDAL_SPAN + 4); }
+      if (surface) { surface.setAttribute("y1", TIDAL_BOX); surface.setAttribute("y2", TIDAL_BOX); }
+    }
+    if (root) { root.classList.add("pip-sc-glow"); root.style.setProperty("--sc-intensity", "0.85"); }
+    if (!tidal && flash) {
+      flash.classList.remove("pip-bank-super", "pip-bank-hole");
+      void flash.offsetWidth;
+      flash.classList.add("pip-bank-super");
+    }
     if (soundOn) playXpTickSound(Math.min(units - 1, 4), false);
 
-    // Phase 2 — black hole (3.0s): the ring implodes toward a point, draining
-    // from teal to a white flash exactly as it becomes smallest (the flash
-    // eclipses the tiny remnant, rather than a second element popping in
-    // beside it — one shrinking object, one continuous motion; see the
-    // pipBankHole filter ramp for where the color-drain happens).
+    // Phase 2 (3.0s): the completion motion — ring implodes to a white-flash
+    // point (see pipBankHole), or the tide crests white then drains — both
+    // converge on Phase 3 at the same +620ms.
     push(function () {
-      if (root)  { root.classList.add("pip-imploding"); root.style.setProperty("--sc-intensity", "0.25"); }
-      if (flash) { flash.classList.remove("pip-bank-super"); void flash.offsetWidth; flash.classList.add("pip-bank-hole"); }
+      if (root) { root.classList.add("pip-imploding"); root.style.setProperty("--sc-intensity", "0.25"); }
+      if (tidal) {
+        if (surface) {
+          surface.classList.remove("pip-tidal-crest-go");
+          void surface.offsetWidth;
+          surface.classList.add("pip-tidal-crest-go");
+        }
+        if (level) {
+          level.classList.remove("pip-tidal-draining");
+          void level.offsetWidth;
+          level.classList.add("pip-tidal-draining");
+        }
+      } else if (flash) {
+        flash.classList.remove("pip-bank-super");
+        void flash.offsetWidth;
+        flash.classList.add("pip-bank-hole");
+      }
     }, 3000);
 
-    // Phase 3 — the dot forms (3.56s): a fresh pip pops in, corona fully off.
+    // Phase 3 — the dot forms (3.56s): a fresh pip pops in, corona fully off,
+    // and Tidal's level resumes normal per-tick updates (it's already drained
+    // to empty, which is also correct for wherever the *next* unit's real
+    // progress is — the interval never stopped ticking underneath).
     push(function () {
       setBankedUnits(units);
-      if (flash) flash.classList.remove("pip-bank-hole");
-      if (root)  { root.classList.remove("pip-sc-glow", "pip-imploding"); root.style.setProperty("--sc-intensity", "0"); }
-    }, 3620); // 3000 (phase-1 end) + 620 (pipBankHole duration, kept in sync with the CSS)
+      bankingActiveRef.current = false;
+      if (flash)   flash.classList.remove("pip-bank-hole");
+      if (level)   level.classList.remove("pip-tidal-draining");
+      if (surface) surface.classList.remove("pip-tidal-crest-go");
+      if (root)    { root.classList.remove("pip-sc-glow", "pip-imploding"); root.style.setProperty("--sc-intensity", "0"); }
+    }, 3620); // 3000 (phase-1 end) + 620 (completion-motion duration, kept in sync with the CSS)
   }
 
   // Cancels any in-flight bank flourish and clears its widget-glow state — used
@@ -4168,8 +4269,12 @@ const PomodoroTimer = () => {
     bankTimersRef.current = [];
     setMiniBurst(null);
     var root = pipRootRef.current, flash = pipBankFlashRef.current;
-    if (root)  { root.classList.remove("pip-sc-glow", "pip-imploding"); root.style.setProperty("--sc-intensity", "0"); }
+    var level = pipTidalLevelRef.current, surface = pipTidalSurfaceRef.current;
+    bankingActiveRef.current = false;
+    if (root)    { root.classList.remove("pip-sc-glow", "pip-imploding"); root.style.setProperty("--sc-intensity", "0"); }
     if (flash)   flash.classList.remove("pip-bank-super", "pip-bank-hole");
+    if (level)   level.classList.remove("pip-tidal-draining");
+    if (surface) surface.classList.remove("pip-tidal-crest-go");
   }
 
   // Lazily requested the first time a project-mode break actually starts —
@@ -4844,6 +4949,16 @@ const PomodoroTimer = () => {
                   xChannelSelector="R" yChannelSelector="G" />
                 <feGaussianBlur stdDeviation="2.4" />
               </filter>
+              {/* Tidal skin: outer clip keeps the liquid within the round disc
+                  (constant); inner clip's rect is the rising level itself,
+                  written directly by syncDisplay()/bankUnit() — two clips
+                  rather than one because a rect clip alone would square off
+                  the disc's corners. */}
+              <clipPath id="tidal-disc-clip"><circle cx="98" cy="98" r={PIP_R - 2} /></clipPath>
+              <clipPath id="tidal-level-clip">
+                <rect ref={pipTidalLevelRef} className="pip-tidal-level"
+                  x={TIDAL_BOX - 10} width={TIDAL_SPAN + 20} y={TIDAL_BOX + TIDAL_SPAN} height="4" />
+              </clipPath>
             </defs>
 
             {isNeon && (
@@ -4891,41 +5006,62 @@ const PomodoroTimer = () => {
 
             <circle cx="98" cy="98" r={PIP_R - 2} fill="rgba(0,0,0,0.42)" />
 
-            <g className="pip-arc-halo">
-              <circle ref={pipGlowRef} cx="98" cy="98" r={PIP_R} fill="none"
-                stroke={isNeon ? "url(#pip-neon-grad)" : ringColor}
-                strokeWidth={isNeon ? 12 : 9} strokeOpacity={isNeon ? 0.45 : 0.35}
-                strokeDasharray={PIP_C} strokeDashoffset={PIP_C}
-                strokeLinecap="round" transform="rotate(-90 98 98)"
-                style={{ filter: isNeon ? "blur(7px)" : "blur(5px)" }}
-              />
-            </g>
+            {opsRingAnim !== "tidal" && (
+              <React.Fragment>
+                <g className="pip-arc-halo">
+                  <circle ref={pipGlowRef} cx="98" cy="98" r={PIP_R} fill="none"
+                    stroke={isNeon ? "url(#pip-neon-grad)" : ringColor}
+                    strokeWidth={isNeon ? 12 : 9} strokeOpacity={isNeon ? 0.45 : 0.35}
+                    strokeDasharray={PIP_C} strokeDashoffset={PIP_C}
+                    strokeLinecap="round" transform="rotate(-90 98 98)"
+                    style={{ filter: isNeon ? "blur(7px)" : "blur(5px)" }}
+                  />
+                </g>
 
-            <circle ref={pipRingRef} cx="98" cy="98" r={PIP_R} fill="none"
-              stroke={isNeon ? "url(#pip-neon-grad)" : ringColor}
-              strokeWidth={isNeon ? 3.5 : 2.5}
-              strokeDasharray={PIP_C} strokeDashoffset={PIP_C}
-              strokeLinecap="round" transform="rotate(-90 98 98)"
-              style={{
-                filter: isNeon
-                  ? "drop-shadow(0 0 3px #00d4ff) drop-shadow(0 0 10px #8b00ff) drop-shadow(0 0 24px #ff00e5)"
-                  : mode === "break"
-                    ? "drop-shadow(0 0 2px rgba(15,223,171,1)) drop-shadow(0 0 7px rgba(15,223,171,0.85)) drop-shadow(0 0 18px rgba(15,223,171,0.5))"
-                    : "drop-shadow(0 0 2px rgba(134,223,255,1)) drop-shadow(0 0 7px rgba(134,223,255,0.85)) drop-shadow(0 0 18px rgba(134,223,255,0.5))",
-                transition: "stroke 0.5s ease, filter 0.5s ease",
-              }}
-            />
+                <circle ref={pipRingRef} cx="98" cy="98" r={PIP_R} fill="none"
+                  stroke={isNeon ? "url(#pip-neon-grad)" : ringColor}
+                  strokeWidth={isNeon ? 3.5 : 2.5}
+                  strokeDasharray={PIP_C} strokeDashoffset={PIP_C}
+                  strokeLinecap="round" transform="rotate(-90 98 98)"
+                  style={{
+                    filter: isNeon
+                      ? "drop-shadow(0 0 3px #00d4ff) drop-shadow(0 0 10px #8b00ff) drop-shadow(0 0 24px #ff00e5)"
+                      : mode === "break"
+                        ? "drop-shadow(0 0 2px rgba(15,223,171,1)) drop-shadow(0 0 7px rgba(15,223,171,0.85)) drop-shadow(0 0 18px rgba(15,223,171,0.5))"
+                        : "drop-shadow(0 0 2px rgba(134,223,255,1)) drop-shadow(0 0 7px rgba(134,223,255,0.85)) drop-shadow(0 0 18px rgba(134,223,255,0.5))",
+                    transition: "stroke 0.5s ease, filter 0.5s ease",
+                  }}
+                />
 
-            {/* Supernova→black-hole overlay — one ring that flares (~3s) then
-                implodes to a point when a unit banks, draining from teal to a
-                white flash exactly as it becomes smallest (pipBankHole) — a
-                single shrinking object, not a ring plus a separate flash
-                element. Hidden (opacity 0) until bankUnit() adds
-                .pip-bank-super/.pip-bank-hole. */}
-            <g ref={pipBankFlashRef} className="pip-bank-flash-group">
-              <circle className="pip-bank-flash" cx="98" cy="98" r={PIP_R} fill="none"
-                stroke="url(#pip-corona-grad)" strokeWidth="4" strokeLinecap="round" />
-            </g>
+                {/* Supernova→black-hole overlay — one ring that flares (~3s) then
+                    implodes to a point when a unit banks, draining from teal to a
+                    white flash exactly as it becomes smallest (pipBankHole) — a
+                    single shrinking object, not a ring plus a separate flash
+                    element. Hidden (opacity 0) until bankUnit() adds
+                    .pip-bank-super/.pip-bank-hole. */}
+                <g ref={pipBankFlashRef} className="pip-bank-flash-group">
+                  <circle className="pip-bank-flash" cx="98" cy="98" r={PIP_R} fill="none"
+                    stroke="url(#pip-corona-grad)" strokeWidth="4" strokeLinecap="round" />
+                </g>
+              </React.Fragment>
+            )}
+
+            {opsRingAnim === "tidal" && (
+              // Tidal skin: liquid rises with each unit instead of an edge
+              // ring. Outer clip (tidal-disc-clip) keeps it round; inner clip
+              // (tidal-level-clip, driven by syncDisplay()) is the rising
+              // level. Surface line shimmers gently, flashes white at the
+              // crest, then both drain together on bank (see CSS).
+              <g clipPath="url(#tidal-disc-clip)">
+                <g clipPath="url(#tidal-level-clip)">
+                  <rect x={TIDAL_BOX - 10} y={TIDAL_BOX - 10} width={TIDAL_SPAN + 20} height={TIDAL_SPAN + 20}
+                    fill="url(#pip-corona-grad)" />
+                  <line ref={pipTidalSurfaceRef} className="pip-tidal-surface"
+                    x1={TIDAL_BOX - 10} x2={TIDAL_BOX + TIDAL_SPAN + 10}
+                    y1={TIDAL_BOX + TIDAL_SPAN} y2={TIDAL_BOX + TIDAL_SPAN} strokeLinecap="round" />
+                </g>
+              </g>
+            )}
           </svg>
           <div className="pip-time-display">
             {sessionComplete && sessionComplete.xp > 0 ? (
