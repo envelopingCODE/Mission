@@ -1842,10 +1842,14 @@ const CuteRobotFace = ({
         {/* Left Eye Group with pupil dilation */}
         <g
           id="left-eye"
-          transform={`translate(${
-            -25 + eyePosition.x + (isGlitching ? glitchOffset.x : 0)
-          },
-                ${-10 + eyePosition.y + (isGlitching ? glitchOffset.y : 0)})`}
+          style={{
+            transform: `translate(${
+              -25 + eyePosition.x + (isGlitching ? glitchOffset.x : 0)
+            }px, ${-10 + eyePosition.y + (isGlitching ? glitchOffset.y : 0)}px)`,
+            transition: isGlitching
+              ? "none"
+              : "transform 0.5s cubic-bezier(0.22, 1, 0.36, 1)",
+          }}
           className={currentExpression.isGlitched ? "glitching-element" : ""}
         >
           {/* Inner wrapper receives squint — outer <g> keeps SVG transform positioning */}
@@ -1876,8 +1880,17 @@ const CuteRobotFace = ({
             }
           />
 
-          {/* Clipped group for pupil and shine to fix teardrop effect */}
-          <g clipPath="url(#leftEyeClip)">
+          {/* Clipped group for pupil and shine to fix teardrop effect.
+              Own transform + fast transition so the pupil leads the
+              slower-lagging eye-shape above instead of sliding as one
+              rigid tile — the gaze reads as a socket, not a decal. */}
+          <g
+            clipPath="url(#leftEyeClip)"
+            style={{
+              transform: `translate(${eyePosition.x * 0.35}px, ${eyePosition.y * 0.35}px)`,
+              transition: "transform 0.12s cubic-bezier(0.4, 0, 0.2, 1)",
+            }}
+          >
             {/* Pupil with dilation effect - only visible when not blinking */}
             {!isBlinking && !currentExpression.isHeartEyes && (
               <CircleComponent
@@ -1911,10 +1924,14 @@ const CuteRobotFace = ({
         {/* Right Eye Group with same enhancements */}
         <g
           id="right-eye"
-          transform={`translate(${
-            25 + eyePosition.x - (isGlitching ? glitchOffset.x : 0)
-          },
-                ${-10 + eyePosition.y + (isGlitching ? glitchOffset.y : 0)})`}
+          style={{
+            transform: `translate(${
+              25 + eyePosition.x - (isGlitching ? glitchOffset.x : 0)
+            }px, ${-10 + eyePosition.y + (isGlitching ? glitchOffset.y : 0)}px)`,
+            transition: isGlitching
+              ? "none"
+              : "transform 0.5s cubic-bezier(0.22, 1, 0.36, 1)",
+          }}
           className={currentExpression.isGlitched ? "glitching-element" : ""}
         >
           <g className={isSpeaking ? "robot-eye-speaking" : ""}>
@@ -1943,8 +1960,17 @@ const CuteRobotFace = ({
             }
           />
 
-          {/* Clipped group for pupil and shine to fix teardrop effect */}
-          <g clipPath="url(#rightEyeClip)">
+          {/* Clipped group for pupil and shine to fix teardrop effect.
+              Own transform + fast transition so the pupil leads the
+              slower-lagging eye-shape above instead of sliding as one
+              rigid tile — the gaze reads as a socket, not a decal. */}
+          <g
+            clipPath="url(#rightEyeClip)"
+            style={{
+              transform: `translate(${eyePosition.x * 0.35}px, ${eyePosition.y * 0.35}px)`,
+              transition: "transform 0.12s cubic-bezier(0.4, 0, 0.2, 1)",
+            }}
+          >
             {/* Pupil with dilation */}
             {!isBlinking && !currentExpression.isHeartEyes && (
               <CircleComponent
@@ -3933,9 +3959,14 @@ function BreakIcon({ kind, size, animate }) {
   // cup reads as broken, not charming.
   const paused = animate === false;
   const cls = "pip-break-icon" + (size > 20 ? " pip-break-icon-lg" : "") + (paused ? " pip-break-icon-paused" : "");
+  // Inline size (not just the width/height attrs) — the app-wide `svg { width:
+  // 100%; height: 100% }` reset (for the robot face etc.) otherwise overrides
+  // these small icons' attrs via the cascade, blowing them up to fill their
+  // flex row and shoving the picker's group label/buttons out of place.
+  const sizeStyle = { width: size, height: size, minWidth: size, minHeight: size };
   if (kind === "lunch") {
     return (
-      <svg className={cls} width={size} height={size} viewBox="0 0 24 24" fill="none"
+      <svg className={cls} width={size} height={size} style={sizeStyle} viewBox="0 0 24 24" fill="none"
            stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
         <path d="M6 2v5M8.5 2v5M11 2v5" />
         <path d="M6 7c0 1.5 1 2.3 2.5 2.3S11 8.5 11 7" />
@@ -3945,7 +3976,7 @@ function BreakIcon({ kind, size, animate }) {
     );
   }
   return (
-    <svg className={cls} width={size} height={size} viewBox="0 0 24 24" fill="none"
+    <svg className={cls} width={size} height={size} style={sizeStyle} viewBox="0 0 24 24" fill="none"
          stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
       <path d="M4 9h13v5a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4V9z" />
       <path d="M17 10.5h1.3a2 2 0 0 1 0 4H17" />

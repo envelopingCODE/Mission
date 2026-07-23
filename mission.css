@@ -271,6 +271,37 @@ body {
   transform-origin: center;
 }
 
+/* Grounding shadow — anchors the face to the panel instead of letting it
+   float. Offset lower-right to agree with the upper-left key light already
+   implied by glareGrad/pupilGradient. Same 6s cycle as robotIdleSway, phased
+   so the shadow shrinks/lightens while the face rises and grows/darkens as
+   it settles — the shadow's size is the height cue, not the face itself. */
+.minimalist-face-wrapper::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 84%;
+  width: 60%;
+  height: 20%;
+  transform: translate(-42%, -50%);
+  background: radial-gradient(ellipse at center,
+    rgba(0, 8, 16, 0.42) 0%,
+    rgba(0, 8, 16, 0.20) 55%,
+    rgba(0, 8, 16, 0) 100%);
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: -1;
+  animation: robotShadowBreathe 6s ease-in-out infinite;
+}
+
+@keyframes robotShadowBreathe {
+  0%   { transform: translate(-42%, -50%) scale(1);     opacity: 0.9;  }
+  22%  { transform: translate(-42%, -50%) scale(0.93);  opacity: 0.7;  }
+  50%  { transform: translate(-42%, -50%) scale(1);     opacity: 0.9;  }
+  78%  { transform: translate(-42%, -50%) scale(1.05);  opacity: 0.95; }
+  100% { transform: translate(-42%, -50%) scale(1);     opacity: 0.9;  }
+}
+
 .container2 {
   background-image: url(assets/images/free-photo-of-black-and-white-photo-of-people-waiting-in-a-modern-building-hallway.jpeg);
   background-attachment: scroll;
