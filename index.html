@@ -11,6 +11,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="stylesheet" type="text/css" href="mission.css" />
     <link rel="stylesheet" type="text/css" href="pomodoro-integrated-styles.css" />
+    <link rel="stylesheet" type="text/css" href="timeline-view.css" />
 
     <title>Mission — Gamify your tasks</title>
   </head>
@@ -170,6 +171,9 @@
       <div class="missions-grid">
         <div class="grid-item-1">
           <h2>Stored missions<span id="session-progress"></span></h2>
+          <button id="matchModeButton" type="button">Match mode</button>
+          <button id="focusModeButton" type="button">Focus mode</button>
+          <button id="timelineViewButton" type="button">Timeline</button>
         </div>
         <div class="grid-item-2">
           <ul id="missionList"></ul>
@@ -203,7 +207,11 @@
     </div>
 
     <script src="notification-queue.js"></script>
+    <script src="buddy-beats.js"></script>
     <script src="mission.js"></script>
+    <script src="match-mode.js"></script>
+    <script src="focus-mode.js"></script>
+    <script src="timeline-view.js"></script>
     <script type="text/babel" src="xp-selector-react.js"></script>
     <script type="text/babel" src="mission-react.js"></script>
   </body>

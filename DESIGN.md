@@ -197,7 +197,7 @@ Learning and performance fail when working memory is overloaded. Cognitive load 
 The interface minimizes extraneous load through:
 
 - **Progressive disclosure**: XP selector modal appears only when needed; dispatch modal is a standalone overlay; Settings panel uses view-based navigation rather than a single overwhelming screen
-- **Contextual revelation**: Pomodoro timer is a persistent PIP widget, not part of the main flow; Neural Capture is collapsible; the Week's Best HUD appears fixed-position without disrupting the task list
+- **Contextual revelation**: the Pomodoro timer is a floating PIP widget on the board rather than part of the main flow — on a *planning* surface, elapsed time is extraneous to the decision being taken. On an *execution* surface it is intrinsic to the task, so Focus mode docks the same widget under the objective (see [mission_design.md](mission_design.md) §5, *Focus Mode*). Same principle, opposite conclusion by context; the timer appears exactly where it becomes relevant. Neural Capture is collapsible; the Week's Best HUD appears fixed-position without disrupting the task list
 - **Keyboard shortcuts**: `S`/`A`/`P` provide expert navigation without visible UI elements; `E` enters task edit mode without a button polluting the task surface
 - **Standalone React roots**: DispatchPortal, AchievementToastSystem, PomodoroTimer, SettingsPanel, and PurgePortal each live on their own `ReactDOM.createRoot()`. A crash or re-render in one system cannot cascade into another. This is cognitive load management at the architecture level — system failures do not become user-facing complexity.
 
@@ -370,6 +370,10 @@ The M-VI mouth animation uses three incommensurable sine waves at irrational fre
 | **Pomo calibration confidence** | HCML transparency (Amershi et al. 2019) | Goal-setting (accurate time-bound targets) |
 | **Neural Capture theme detection** | Recognition over Recall (Nielsen 1994) | Goal-setting (standing objective from recurring concern) |
 | **Time-slot task tagging [AM/PM/EVE]** | Implementation Intention (Gollwitzer & Sheeran 2006) | Availability Heuristic (off-schedule tasks dimmed) |
+| **Match mode (swipe triage deck)** | Cognitive Load Theory (single-item decision, Sweller 1988) | SDT autonomy (deferral is free and non-destructive), Recognition over Recall (Nielsen 1994 — auto-tags) |
+| **Match auto-topic tags (#fitness, #finance)** | Recognition over Recall (Nielsen 1994) | Cognitive load (card carries its own context) |
+| **Deferral-weighted ranker (`rankMissions`)** | Temporal Motivation Theory / present bias (Steel 2007; Ainslie 1975) | Availability Heuristic (Tversky & Kahneman 1973), CET informational framing (§9.3) |
+| **`explainMissionRank()` rank accounting** | HCML transparency (Amershi et al. 2019) | SDT autonomy (an interrogable re-order is not a controlling one) |
 | Standalone React roots | Cognitive load (system reliability) | — |
 | Keyboard shortcuts (S/A/P/E) | Cognitive load (expert navigation) | Habit (motor memory) |
 
@@ -439,7 +443,9 @@ This is the narrative equivalent of progressive disclosure: the lore reveals its
 - Flow dispatch gate — story events suppressed during high-arousal / positive state
 - Peak-End Rule ceremony — highest-XP task named at session close for specific positive memory
 - Goal Gradient pulse — session progress indicator pulses cyan at remaining === 1
-- Auto-sort by XP on load — highest-XP task surfaces to position 1 (Availability Heuristic)
+- Auto-sort by XP on load — highest-XP task surfaces to position 1 (Availability Heuristic); superseded on load by `rankMissions()`
+- Match mode — swipe-deck triage view (`match-mode.js`), one objective per card, MATCH promotes / LATER defers, never deletes; keyword-derived topic tags; keyboard and button parity with the gesture
+- Deferral-weighted ranker — `RANK_WEIGHTS` / `scoreMission` / `rankMissions` order the board on load and on deck close; `explainMissionRank()` implemented but not yet surfaced in the UI
 - Pomodoro calibration confidence — sample count shown alongside estimate (~25m · 4)
 - Neural Capture theme detection — recurring keywords surfaced as "create objective" prompts (Recognition over Recall)
 - Time-slot tagging — tasks tagged [AM], [PM], or [EVE] dim when off-schedule (Implementation Intention Scheduling)
@@ -580,6 +586,64 @@ This also maps onto **deliberate practice** (Ericsson, 1993): the defining featu
 **Proposed resolution**: Add an explicit override — `Shift+F` keyboard shortcut pins the state to "flow" for 60 minutes. The operator who knows they are entering deep work signals this explicitly, preventing any inference-based interruption.
 
 **Future expansion**: Surface the current inferred state in the settings panel as a diagnostic — not as a label ("you are in flow") but as a signal ("M-VI is currently in quiet mode"). Transparency is consistent with SDT autonomy support and the PrimerOS aesthetic.
+
+---
+
+### 9.9 Avoidance Recognition ↔ Self-Blame and Controlling Reward
+
+**The friction**: A task that survives many sessions untouched while others clear around it is a real, measurable dread signal (see `dwell` / `lastSeenDay` in the mission data model — a task's dwell count increments once per calendar day it remains on the board unstarted). Finally clearing it is exactly the moment competence feedback (CET §9.3) is most valuable — but it is also the moment most likely to backfire, for two independent reasons:
+
+- **Self-blame risk.** Any acknowledgment that references *how long* the task sat is available to be read as the operator's own prior self-criticism confirmed by the system: "you avoided this." For an ADHD-typical operator, avoidance is already a source of shame, not a neutral fact — surfacing duration risks re-triggering the exact aversive state the acknowledgment is meant to relieve.
+- **Controlling-reward risk, but a subtler one than usual.** Deci, Koestner & Ryan's 1999 meta-analysis (the same source underlying §9.3) found the undermining effect is specific to **expected** tangible rewards — an unexpected, unadvertised bonus does not carry the same controlling signal. So a one-off surprise bonus is not, on its own, the CET violation it first appears to be. The real hazard is downstream: `dwell` is operator-controllable. A bonus the operator can learn to predict — and dwell is trivially learnable, since letting a task rot is the entire trigger — converts a one-time informational surprise into a farmable incentive to avoid tasks *in order to* collect the recognition later. This is a mechanism-design problem, not strictly a CET one: it rewards the exact behavior the feature exists to counteract.
+
+**The resolution: separate the narrative acknowledgment from any XP mechanism, and constrain each independently.**
+
+*Narrative framing — name the difficulty, never the duration.* Attribution stays on the task, never on the operator's prior behavior. "That one sat a while" fails this test; "High-resistance objective. Cleared." passes it — it is factual, dry, M-VI-register, and contains no claim the operator could read as reproach. Warmth belongs in a non-propositional channel that cannot be misread as commentary: a buddy celebration animation (high-five / equivalent), not the text line. This mirrors the existing division of labor elsewhere in the system — buddy emotion states carry affect, dispatch/M-VI copy carries precision — rather than introducing a new pattern.
+
+*If a bonus XP is added, four constraints keep it informational rather than a farmable payout:*
+1. **Variable ratio, not every qualifying completion** — reuses the story-dispatch probability model (§2.4) already in the codebase, keeping the bonus a discovery rather than an expected payout.
+2. **Small and capped** relative to self-selected XP, so it can never dominate the economy the operator's own judgment sets (§9.3's self-selection mechanic must remain the primary signal).
+3. **Itemized as a separate line** ("+15 · difficulty recognized"), never folded silently into the base award. Self-selected XP is what keeps the economy informational per §9.3 — silently inflating that number overrides the operator's own difficulty judgment; a distinct line makes it the system commenting on the *task*, not replacing the operator's rating of it.
+4. **Keyed on a compound, hard-to-fake signal** — not raw `dwell` alone, and never the operator's own XP tier (that is only a multiplier on self-report). High dwell *combined with* evidence the task was skipped in sessions where other tasks were cleared is much costlier to farm deliberately than to encounter honestly.
+
+**Current state**: The data model (`dwell`, `lastSeenDay`, per-task `createdAt`/`id`) exists in `mission.js`. Neither the narrated acknowledgment nor the bonus XP mechanism is implemented yet — this section is a design constraint for whoever builds them, not a description of shipped behavior.
+
+**Future expansion**: If the bonus ships, log which completions triggered it (already possible via the `dailyTasks_*` event log's `dwell`/`persistentId` fields) so the variable-ratio rate can be tuned empirically rather than guessed.
+
+---
+
+### 9.10 Deferral as Relief ↔ Deferral as Signal
+
+**The friction**: Match mode (`match-mode.js`) presents the board one objective at a time as a card. Swipe right is MATCH — commit, and the objective is promoted to position 1. Swipe left is LATER — defer, and the card is gone. The left swipe has to do two incompatible jobs at once.
+
+For it to function as *relief*, it must be free. The operator opening the deck is, by construction, looking at things they have not started. If the escape route costs anything — a confirmation, a reschedule dialog, a deletion decision, or a visible penalty — the cost attaches not to the objective but to the act of looking, and the operator stops opening the deck at all. That is the failure mode of every triage interface that makes "not now" expensive: it does not produce fewer deferrals, it produces fewer honest ones.
+
+For it to function as a *signal*, it must have a consequence. A left swipe that does nothing but hide the card is a snooze button, and a snooze button ordered by recency buries the objective exactly in proportion to how much it is being avoided. That is not neutral — it is the system amplifying the operator's own discounting curve. §2.9 covers why the curve exists (Steel, 2007; Ainslie, 1975): the objective whose payoff is distant and whose start cost is high loses every moment-to-moment comparison against a nearer, smaller item. A board ordered by anything correlated with recent attention hands that comparison a mechanical advantage.
+
+The two requirements are only incompatible if the consequence has to arrive at the same moment as the relief.
+
+**The resolution: immediate relief, delayed insistence.**
+
+The left swipe is the cheapest gesture in the app and pays off instantly — the card leaves, the objective drops to the bottom of the board for the rest of the session, nothing is deleted, nothing is said. What the operator does not see at that moment is `deferCount` incrementing. On the next ranking pass (`rankMissions()` on load, and on closing the deck), that count is the largest term in the score: 28 points per pass-over, against 9 per dwell-day and 0.5 per XP. Three deferrals put an objective above almost anything else on the board.
+
+The design assumption this rests on is specific to the operator profile the app is built for. The failure mode is not that the operator cannot identify what matters — asked directly, they will name the right objective immediately. The failure is that identifying it does not produce starting it, and that the gap between the two is filled by steep delay discounting, by importance and salience coming apart (the important thing is rarely the loud thing), and by the board flattening its own history: an objective that has been sitting for eleven days does not *feel* eleven days old. `dwell` and `deferCount` are the system holding duration the operator does not reliably perceive. §2.9's Pomodoro chunking answers present bias at the execution layer — once you have started, make the interval near. This answers it at the selection layer, which chunking never touched.
+
+Rewarding avoidance with prominence rather than burial makes the ranking function's heaviest term the one the operator's bias attacks hardest. The operator is permitted to offload the cost onto their future self, which they were going to do anyway; the difference is that the future arrives with the objective at the top of the board instead of the bottom.
+
+**Why a transparent linear scorer and not a learned one.** Two independent reasons, and either alone would be sufficient. First, the data does not exist: one operator and a handful of objectives a day is orders of magnitude short of what would be needed to fit a ranker that generalises, and a model trained on that volume would fit noise and present it as insight. Second, and more binding: an opaque re-order is a *controlling* event in CET terms (§9.3). A board that rearranges itself for reasons the operator cannot interrogate shifts the perceived locus of causality outward — the system decides what is important and declines to say why. `RANK_WEIGHTS` is five named integers, and `explainMissionRank()` exists so that any position can be accounted for in one sentence ("passed over 3× · due this week"). This is the Amershi et al. (2019) transparency guideline applied where it costs least: the model is simple enough that explanation is extraction, not approximation.
+
+**The honest tension: `deferCount` is operator-controllable, and prominence-for-avoidance could in principle teach avoidance.** The risk is real in form but weak in force, for a reason worth stating precisely: the payout for deferring is *more of the thing that was deferred, presented more insistently*. It is not a currency. §9.9's hazard was different in kind — a dwell-triggered XP bonus pays in a fungible, accumulable resource, which is farmable in the ordinary sense. Here, farming the mechanic means deliberately engineering more confrontations with an item you find aversive. There is no exchange rate out.
+
+What actually bounds it is a constraint that must be held deliberately: **nothing convertible is ever attached to `deferCount`.** No XP, no achievement, no unlock, no streak credit. The moment a deferral pays anything the operator can spend or accumulate, §9.9's four constraints (variable ratio, capped, itemised, compound signal) come into force and this analysis no longer applies.
+
+Two residual risks are real and currently unmitigated:
+
+- **Rank inflation.** The counter is monotonic — it never decays and is not capped. Five deferrals score 140, which outweighs the `dueSoon` term (40) by a wide margin, so a long-avoided trivial item can outrank a genuine deadline. This is not incentive-farming; it is signal degradation, and it is self-correcting only because the operator sees the wrong thing at position 1 and re-orders by hand. Decay or a cap is the obvious fix and is not implemented.
+- **Triage as substitute for work.** Clearing a full deck of LATER swipes produces the felt sense of having done a pass over the board while starting nothing. Match mode does not currently distinguish this from useful triage, and should not be treated as a completion event.
+
+**Current state**: Match mode ships as a third view alongside the list board (`match-mode.js`, opened from `#matchModeButton`, closed on `ESC`; `←`/`→` and the two buttons mirror the swipe for keyboard and pointer parity). It never deletes. Card copy follows §9.9's framing rule on a new surface — "High-resistance · passed over 3 times" attributes to the objective, never to the operator. `deferCount` and `lastDeferredAt` persist per objective through `saveMissions()`. `rankMissions()` orders the board on load and on deck close, superseding the older XP-only `sortMissionsByPriority()`. `explainMissionRank()` is implemented but is not yet rendered on any surface — the accountability hook exists; the board does not yet display it.
+
+**Future expansion**: Surface `explainMissionRank()` inline on the top-ranked objective, which is where an unexplained re-order is most likely to read as controlling. Add decay to `deferCount` (or cap its contribution) once there is enough real usage to see whether inflation actually occurs. Speculatively, a run of deferrals with no completions has the same behavioural shape as the existing `AffectInference` avoidance state (adding without completing, §2.5) and could feed it — not implemented, and it would need §9.8's false-positive discipline before it changed M-VI's behaviour at all.
 
 ---
 

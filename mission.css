@@ -59,6 +59,7 @@ body {
   transform: translateZ(0); /* Hardware acceleration */
   transition: all 0.2s ease;
   position: relative; /* Ensure this is properly defined */
+  touch-action: pan-y; /* let JS own horizontal gestures; vertical scroll stays native */
 }
 
 .mission.dragging {
@@ -5168,8 +5169,11 @@ svg.minimalist-face {
 }
 
 /* ==================== SETTINGS PANEL ==================== */
+/* Absolute, not fixed: the gear scrolls away with the page top. It stays
+   reachable at any scroll position via the S key, so pinning it costs
+   screen edge for nothing. */
 .settings-gear {
-  position: fixed;
+  position: absolute;
   top: 1.1rem;
   right: 1.4rem;
   z-index: 9998;
@@ -5189,7 +5193,9 @@ svg.minimalist-face {
   transition: color 0.2s ease, border-color 0.2s ease, transform 0.35s ease;
 }
 .settings-gear:hover { color: #86dfff; border-color: rgba(134,223,255,0.5); }
-.settings-gear-active { color: #86dfff; border-color: rgba(134,223,255,0.55); transform: rotate(55deg); }
+/* While the panel is open the gear doubles as its close affordance, so it
+   pins to the viewport alongside the fixed panel. */
+.settings-gear-active { position: fixed; color: #86dfff; border-color: rgba(134,223,255,0.55); transform: rotate(55deg); }
 
 .settings-backdrop { position: fixed; inset: 0; z-index: 9997; pointer-events: auto; }
 
@@ -5369,6 +5375,24 @@ svg.minimalist-face {
   animation: eyeSquint 1.4s cubic-bezier(0.4, 0, 0.2, 1) infinite !important;
   transform-box: fill-box;
   transform-origin: center;
+}
+
+/* Buddy Beats — glyphs the eyes morph into for brief reactive gestures
+   (see buddy-beats.js). Rendered with the same eyeGlow/cuteGlow fill and
+   filter as the eyes themselves, so a glyph reads as the eye's socket
+   wearing a different shape, not a sticker placed on top of it. */
+.buddy-glyph {
+  transition: opacity 0.1s ease;
+}
+.buddy-glyph-dash {
+  stroke-dasharray: 1.1 0.7;
+  animation: buddyGlyphSpin 1.1s linear infinite;
+}
+@keyframes buddyGlyphSpin {
+  to { stroke-dashoffset: -3.6; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .buddy-glyph-dash { animation: none; }
 }
 @keyframes sparkleFlicker {
   0%, 100% { opacity: 0.4; }
@@ -6155,6 +6179,75 @@ svg.minimalist-face {
   50%       { border-bottom-color: rgba(134, 223, 255, 0.25); }
 }
 
+/* ==================== SWIPE / DRAG ACTIONS ==================== */
+/* Trigger: horizontal drag or swipe. Left = delete, right = bring to top.
+   Vertical reorder and this gesture share one pointer handler (see
+   wireMissionInteractions in mission.js) — this styling only covers the
+   moment the horizontal branch has been claimed. Live transform is set
+   inline by JS; these classes only mark the "past the commit point" state. */
+.mission.mission-swiping {
+  cursor: grabbing;
+  z-index: 5;
+}
+
+.mission.swipe-commit-delete {
+  border-left-color: rgba(255, 80, 60, 0.75); /* Warning red — destructive actions only */
+  background: rgba(255, 80, 60, 0.08);
+}
+
+.mission.swipe-commit-promote {
+  border-left-color: rgba(134, 223, 255, 0.8);
+  background: rgba(134, 223, 255, 0.08);
+}
+
+/* ==================== DELETE CONFIRM (hover + D) ==================== */
+.mission.delete-confirm-pending {
+  border-left: 3px solid rgba(255, 80, 60, 0.7) !important;
+  background: rgba(255, 80, 60, 0.05) !important;
+  transform: none !important;
+  scale: 1 !important;
+}
+
+.delete-confirm-bar {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+  margin-left: 0.6em;
+  font-family: "Courier New", monospace;
+  font-size: 0.72em;
+  color: rgba(255, 80, 60, 0.85);
+  letter-spacing: 0.04em;
+}
+
+.delete-confirm-yes,
+.delete-confirm-no {
+  font-family: "Courier New", monospace;
+  font-size: 0.85em;
+  line-height: 1;
+  padding: 0.15em 0.55em;
+  border-radius: 3px;
+  cursor: pointer;
+  background: none;
+}
+
+.delete-confirm-yes {
+  border: 1px solid rgba(255, 80, 60, 0.55);
+  color: rgba(255, 100, 80, 0.9);
+}
+.delete-confirm-yes:hover {
+  background: rgba(255, 80, 60, 0.12);
+  border-color: rgba(255, 80, 60, 0.85);
+}
+
+.delete-confirm-no {
+  border: 1px solid rgba(134, 223, 255, 0.3);
+  color: rgba(134, 223, 255, 0.7);
+}
+.delete-confirm-no:hover {
+  background: rgba(134, 223, 255, 0.08);
+  border-color: rgba(134, 223, 255, 0.55);
+}
+
 /* ==================== GOAL GRADIENT ==================== */
 /* Hull (1932) / Kivetz et al. (2006): effort accelerates as the goal nears.
    At remaining === 1 the session progress indicator pulses to increase salience. */
@@ -6667,3 +6760,743 @@ svg.minimalist-face {
   100% { --orbit-angle: 360deg; }
 }
 
+
+/* ==================== MATCH MODE — swipe-to-triage deck ==================== */
+/* A third view beside the board. iOS-dating-app card deck, PrimerOS palette:
+   right = MATCH (commit), left = LATER (defer). Never deletes. */
+
+#matchModeButton {
+  font-family: "Courier New", monospace;
+  font-size: 0.62rem;
+  letter-spacing: 0.12em;
+  padding: 0.3rem 0.7rem;
+  margin-top: 0.4rem;
+  background: none;
+  border: 1px solid rgba(134, 223, 255, 0.3);
+  color: rgba(134, 223, 255, 0.75);
+  border-radius: 3px;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+#matchModeButton:hover {
+  background: rgba(134, 223, 255, 0.08);
+  border-color: rgba(134, 223, 255, 0.65);
+}
+
+#match-mode {
+  /* Two curves. The settle is the house navigation curve; the spring is the
+     timeline view's, and is used for the same reason it is used there — only
+     the cards, the things the operator moves with their own hand, overshoot.
+     Chrome does not. (DESIGN_LANGUAGE §5) */
+  --mm-settle: cubic-bezier(0.22, 1, 0.36, 1);
+  --mm-spring: cubic-bezier(0.34, 1.4, 0.64, 1);
+
+  position: fixed;
+  inset: 0;
+  z-index: 9990;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: rgba(0, 6, 12, 0.94);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  opacity: 0;
+  transform: scale(1.012);
+  transition: opacity 0.22s var(--mm-settle), transform 0.26s var(--mm-settle);
+}
+#match-mode.match-mode-visible {
+  opacity: 1;
+  transform: none;
+}
+
+.match-header {
+  width: 100%;
+  max-width: 420px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.1rem 0.4rem;
+  font-family: "Courier New", monospace;
+}
+.match-title-label {
+  font-size: 0.7rem;
+  letter-spacing: 0.28em;
+  color: rgba(134, 223, 255, 0.8);
+}
+.match-progress {
+  font-size: 0.62rem;
+  letter-spacing: 0.1em;
+  color: rgba(134, 223, 255, 0.4);
+}
+.match-close {
+  background: none;
+  border: 1px solid rgba(134, 223, 255, 0.28);
+  color: rgba(134, 223, 255, 0.7);
+  font-family: "Courier New", monospace;
+  font-size: 0.58rem;
+  letter-spacing: 0.1em;
+  padding: 0.2rem 0.5rem;
+  border-radius: 3px;
+  cursor: pointer;
+}
+.match-close:hover { border-color: rgba(134, 223, 255, 0.6); color: #86dfff; }
+
+/* ── The deck ─────────────────────────────────────────────────────────── */
+.match-stack {
+  position: relative;
+  width: min(92vw, 380px);
+  height: min(58vh, 460px);
+  margin-top: 1.2rem;
+  flex-shrink: 0;
+}
+
+.match-card {
+  position: absolute;
+  inset: 0;
+  border-radius: 18px;
+  background: linear-gradient(160deg, rgba(10, 26, 38, 0.98), rgba(6, 16, 24, 0.98));
+  border: 1px solid rgba(134, 223, 255, 0.16);
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.02) inset;
+  overflow: hidden;
+  touch-action: pan-y;
+  transition: transform 0.34s var(--mm-spring), opacity 0.28s ease;
+  will-change: transform;
+}
+.match-card-dragging { transition: none !important; cursor: grabbing; }
+
+/* Depth — the two cards behind peek out, iOS-deck style.
+   --mm-p is the live swipe progress (0→1) written by match-mode.js while the
+   top card is under the hand. The cards behind interpolate their own depth
+   against it, so the whole deck answers the drag: pull the top card halfway to
+   its commit threshold and the next one is already halfway to the top slot.
+   That is also why a commit needs no separate promotion animation — the deck
+   is already most of the way there when the card lets go. */
+.match-card-depth-0 { transform: none; z-index: 3; cursor: grab; }
+.match-card-depth-1 {
+  z-index: 2;
+  transform: scale(calc(0.955 + 0.045 * var(--mm-p, 0)))
+             translateY(calc(14px * (1 - var(--mm-p, 0))));
+  opacity: calc(0.75 + 0.25 * var(--mm-p, 0));
+}
+.match-card-depth-2 {
+  z-index: 1;
+  transform: scale(calc(0.91 + 0.045 * var(--mm-p, 0)))
+             translateY(calc(28px - 14px * var(--mm-p, 0)));
+  opacity: calc(0.45 + 0.3 * var(--mm-p, 0));
+}
+/* Off the back of the stack — where a card new to the window is born, so it
+   rises into the deck rather than appearing inside it. */
+.match-card-depth-3 {
+  z-index: 0;
+  transform: scale(0.865) translateY(42px);
+  opacity: 0;
+  pointer-events: none;
+}
+/* While the hand is on a card the deck follows it frame for frame; a
+   transition here would make the cards behind lag the finger. */
+.match-stack-dragging .match-card-depth-1,
+.match-stack-dragging .match-card-depth-2 { transition: none; }
+
+/* Committed — flying out. No overshoot on a departure: it leaves on the settle
+   curve and takes itself out of the DOM when it lands. */
+.match-card-gone {
+  z-index: 5;
+  pointer-events: none;
+  transition: transform 0.42s var(--mm-settle), opacity 0.34s ease;
+}
+
+.match-card-inner {
+  position: relative;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 1.2rem 1.25rem 1.1rem;
+}
+
+.match-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: "Courier New", monospace;
+  font-size: 0.58rem;
+  letter-spacing: 0.16em;
+  color: rgba(134, 223, 255, 0.45);
+}
+.match-xp { color: rgba(15, 223, 171, 0.75); }
+
+.match-card-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1rem;
+}
+.match-title {
+  font-size: 1.35rem;
+  line-height: 1.32;
+  color: rgba(232, 246, 255, 0.96);
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+/* ── Auto-derived topic tags ──────────────────────────────────────────── */
+.match-tags { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.match-tag {
+  font-family: "Courier New", monospace;
+  font-size: 0.6rem;
+  letter-spacing: 0.06em;
+  padding: 0.22rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid rgba(134, 223, 255, 0.22);
+  color: rgba(134, 223, 255, 0.72);
+  background: rgba(134, 223, 255, 0.05);
+}
+/* Only tags that map to a real CATEGORY_CONFIG hue get a color override —
+   reward teal (fitness/health, earned-effort domains) and the financial
+   category's own green. Everything else (code, creative, admin, home,
+   social, study) stays on the base .match-tag cyan: §2 has no purple or
+   pink, and not every tag needs a unique hue — opacity carries hierarchy. */
+.match-tag-fitness  { border-color: rgba(15, 223, 171, 0.4);  color: rgba(15, 223, 171, 0.9); }
+.match-tag-health   { border-color: rgba(15, 223, 171, 0.4);  color: rgba(15, 223, 171, 0.9); }
+.match-tag-finance  { border-color: rgba(26, 228, 46, 0.4);   color: rgba(26, 228, 46, 0.9); }
+.match-tag-study    { border-color: rgba(20, 255, 208, 0.38); color: rgba(20, 255, 208, 0.85); } /* CATEGORY_CONFIG academic green */
+
+.match-history {
+  font-family: "Courier New", monospace;
+  font-size: 0.6rem;
+  letter-spacing: 0.05em;
+  color: rgba(134, 223, 255, 0.5);
+  padding-top: 0.7rem;
+  border-top: 1px solid rgba(134, 223, 255, 0.08);
+}
+
+/* ── LIKE / NOPE stamps ───────────────────────────────────────────────── */
+/* The stamp does not just fade in, it presses in: scale rides the same
+   --mm-p the deck does, so the verdict grows more certain as the card travels
+   and is at full size exactly when the threshold is crossed. */
+.match-stamp {
+  position: absolute;
+  top: 1.4rem;
+  font-family: "Courier New", monospace;
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  padding: 0.25rem 0.8rem;
+  border-radius: 8px;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 4;
+  transition: opacity 0.2s ease, transform 0.2s var(--mm-settle);
+}
+/* Under the hand the stamp tracks the drag directly — an eased stamp on a
+   live gesture reads as lag, not as smoothing. */
+.match-card-dragging .match-stamp { transition: none; }
+
+.match-stamp-yes {
+  right: 1.2rem;
+  transform: rotate(14deg) scale(calc(0.8 + 0.2 * var(--mm-p, 0)));
+  color: rgba(15, 223, 171, 0.95);
+  border: 3px solid rgba(15, 223, 171, 0.85);
+}
+/* Cyan, not amber or red: deferring is a neutral chrome action, not a
+   destructive one (§2 reserves red for destruction, teal for the earned). */
+.match-stamp-no {
+  left: 1.2rem;
+  transform: rotate(-14deg) scale(calc(0.8 + 0.2 * var(--mm-p, 0)));
+  color: rgba(134, 223, 255, 0.9);
+  border: 3px solid rgba(134, 223, 255, 0.8);
+}
+
+/* ── Action row ───────────────────────────────────────────────────────── */
+.match-actions {
+  display: flex;
+  align-items: center;
+  gap: 1.4rem;
+  margin-top: 1.8rem;
+}
+.match-actions-hidden { visibility: hidden; }
+.match-btn {
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  font-size: 1.4rem;
+  cursor: pointer;
+  background: rgba(4, 12, 20, 0.9);
+  transition: transform 0.12s ease, box-shadow 0.15s ease;
+}
+.match-btn:active { transform: scale(0.92); }
+/* Both modes are driven from the keyboard as much as the hand, so the focus
+   ring has to be real chrome rather than the UA default. */
+.match-btn:focus-visible,
+.match-close:focus-visible {
+  outline: 1px solid rgba(134, 223, 255, 0.55);
+  outline-offset: 3px;
+}
+.match-btn-no {
+  border: 1.5px solid rgba(134, 223, 255, 0.5);
+  color: rgba(134, 223, 255, 0.9);
+}
+.match-btn-no:hover { box-shadow: 0 0 18px rgba(134, 223, 255, 0.25); }
+.match-btn-yes {
+  border: 1.5px solid rgba(15, 223, 171, 0.6);
+  color: rgba(15, 223, 171, 0.95);
+}
+.match-btn-yes:hover { box-shadow: 0 0 18px rgba(15, 223, 171, 0.28); }
+.match-hint {
+  font-family: "Courier New", monospace;
+  font-size: 0.55rem;
+  letter-spacing: 0.1em;
+  color: rgba(134, 223, 255, 0.3);
+}
+
+/* Arrives while the last card is still flying out, so it rises in behind the
+   departure rather than snapping into the gap it leaves. */
+.match-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-family: "Courier New", monospace;
+  text-align: center;
+  padding: 1rem;
+  animation: matchEmptyIn 0.44s var(--mm-settle) 0.1s backwards;
+}
+@keyframes matchEmptyIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+.match-empty-title {
+  font-size: 0.95rem;
+  letter-spacing: 0.14em;
+  color: rgba(134, 223, 255, 0.8);
+}
+.match-empty-sub {
+  font-size: 0.62rem;
+  letter-spacing: 0.06em;
+  color: rgba(134, 223, 255, 0.4);
+  max-width: 260px;
+  line-height: 1.5;
+}
+
+/* Motion-sensitive operators keep the deck and the verdict, lose the travel.
+   The swipe still works — it is the gesture, not an effect. */
+@media (prefers-reduced-motion: reduce) {
+  #match-mode,
+  .match-card,
+  .match-card-gone,
+  .match-stamp,
+  .match-btn {
+    transition-duration: 0.01ms !important;
+  }
+  .match-empty {
+    animation: none;
+  }
+}
+
+/* ==================== FOCUS MODE — one objective at a time ==================== */
+/* The single-task counterpart to the board. A ranked list of twelve is still
+   twelve decisions; this view removes the choice entirely. Always escapable.
+   Per DESIGN_LANGUAGE §1 the texture stays terminal but the manners are iOS:
+   safe-area aware, 44px minimum targets, one settle curve, nothing startles.
+   Palette is §2 only — cyan for chrome, teal for the earned action. */
+
+#focusModeButton {
+  font-family: "Courier New", monospace;
+  font-size: 0.62rem;
+  letter-spacing: 0.12em;
+  padding: 0.3rem 0.7rem;
+  margin: 0.4rem 0 0 0.4rem;
+  background: none;
+  border: 1px solid rgba(15, 223, 171, 0.3);
+  color: rgba(15, 223, 171, 0.78);
+  border-radius: 3px;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+#focusModeButton:hover {
+  background: rgba(15, 223, 171, 0.08);
+  border-color: rgba(15, 223, 171, 0.65);
+}
+
+#focus-mode {
+  position: fixed;
+  inset: 0;
+  z-index: 9991;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  /* dvh so mobile browser chrome collapsing doesn't jump the layout */
+  height: 100dvh;
+  background:
+    radial-gradient(120% 70% at 50% 18%, rgba(134, 223, 255, 0.05), transparent 60%),
+    rgba(0, 0, 0, 0.95);
+  backdrop-filter: blur(22px);
+  -webkit-backdrop-filter: blur(22px);
+  /* iOS manners: no tap flash, no rubber-band, no accidental text selection */
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: contain;
+  user-select: none;
+  opacity: 0;
+  transition: opacity 0.24s cubic-bezier(0.22, 1, 0.36, 1);
+  padding:
+    calc(env(safe-area-inset-top, 0px) + 0.9rem)
+    calc(env(safe-area-inset-right, 0px) + 1.1rem)
+    calc(env(safe-area-inset-bottom, 0px) + 1.1rem)
+    calc(env(safe-area-inset-left, 0px) + 1.1rem);
+}
+#focus-mode.focus-mode-visible { opacity: 1; }
+
+/* ── Header ───────────────────────────────────────────────────────────── */
+.focus-header {
+  width: 100%;
+  max-width: 460px;
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  font-family: "Courier New", monospace;
+  flex: 0 0 auto;
+}
+.focus-title-label {
+  font-size: 0.68rem;
+  letter-spacing: 0.28em;
+  color: rgba(15, 223, 171, 0.7);
+}
+.focus-remaining {
+  flex: 1;
+  text-align: right;
+  font-size: 0.58rem;
+  letter-spacing: 0.12em;
+  color: rgba(134, 223, 255, 0.32);
+}
+.focus-close {
+  min-width: 44px;
+  min-height: 32px;
+  background: none;
+  border: 1px solid rgba(134, 223, 255, 0.22);
+  color: rgba(134, 223, 255, 0.6);
+  font-family: "Courier New", monospace;
+  font-size: 0.56rem;
+  letter-spacing: 0.1em;
+  border-radius: 4px;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+.focus-close:hover {
+  border-color: rgba(134, 223, 255, 0.5);
+  color: rgba(134, 223, 255, 0.9);
+  background: rgba(134, 223, 255, 0.05);
+}
+.focus-close:active { transform: scale(0.96); }
+
+/* ── The objective, as a glass card (§4 card recipe) ──────────────────── */
+.focus-body {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 1.2rem 0;
+}
+.focus-card {
+  width: min(100%, 460px);
+  text-align: center;
+  padding: 2rem 1.6rem 1.7rem;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid rgba(134, 223, 255, 0.12);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  /* Each render replaces this node, so the settle animation re-fires per
+     objective — it communicates "new objective", it isn't decoration (§5). */
+  animation: focusCardIn 0.26s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@keyframes focusCardIn {
+  from { opacity: 0; transform: translateY(10px) scale(0.985); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* ── Leaving ──────────────────────────────────────────────────────────── */
+/* The hand-off between objectives, which is the only sustained motion in this
+   view. Skip and Complete are different events and must not look the same, or
+   the mode teaches the operator that the two decisions are interchangeable:
+   a skipped objective settles quietly out of the way, a completed one lifts
+   away and blooms reward-teal on the way out (§2 — teal marks the earned).
+   Both are shorter than the entrance: a departure should not hold the screen.
+   Timed against the 170ms hand-off in focus-mode.js — change one, change both. */
+.focus-card-leaving { animation: focusCardOut 0.16s ease both; }
+@keyframes focusCardOut {
+  to { opacity: 0; transform: translateY(-9px) scale(0.985); }
+}
+
+.focus-card-done { animation: focusCardDone 0.16s ease both; }
+@keyframes focusCardDone {
+  to { opacity: 0; transform: translateY(-18px) scale(1.025); }
+}
+.focus-card-done .focus-title { animation: focusTitleEarned 0.16s ease both; }
+@keyframes focusTitleEarned {
+  to {
+    color: rgba(15, 223, 171, 0.98);
+    text-shadow: 0 0 8px rgba(15, 223, 171, 0.85),
+                 0 0 22px rgba(15, 223, 171, 0.4);
+  }
+}
+
+.focus-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.85rem;
+  font-family: "Courier New", monospace;
+  font-size: 0.56rem;
+  letter-spacing: 0.2em;
+}
+.focus-cat { color: rgba(134, 223, 255, 0.4); }
+.focus-xp {
+  color: rgba(15, 223, 171, 0.7); /* teal = earned (§2) */
+  letter-spacing: 0.12em;
+}
+
+/* Body content, not HUD chrome — system stack per §3. On iOS this is SF Pro,
+   which is most of why the view reads as native rather than as a web page. */
+.focus-title {
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: clamp(1.5rem, 6vw, 2rem);
+  line-height: 1.25;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  color: rgba(240, 250, 255, 0.98);
+  margin: 1.3rem 0 1.4rem;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+}
+
+.focus-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  font-family: "Courier New", monospace;
+}
+/* Metadata, never a heading — sits low on the alpha ladder so the objective
+   stays the only prominent thing on screen. */
+.focus-difficulty {
+  font-size: 0.56rem;
+  letter-spacing: 0.18em;
+  color: rgba(134, 223, 255, 0.34);
+}
+/* Cyan, not amber: §2 has no amber, and this is secondary text (ladder 0.3–0.5) */
+.focus-reason {
+  font-size: 0.62rem;
+  letter-spacing: 0.04em;
+  color: rgba(134, 223, 255, 0.46);
+  line-height: 1.55;
+}
+.focus-reason-quiet { color: rgba(134, 223, 255, 0.3); }
+
+/* ── Actions — thumb-reachable, 44px minimum (Apple HIG) ──────────────── */
+.focus-actions {
+  display: flex;
+  align-items: stretch;
+  gap: 0.7rem;
+  width: 100%;
+  max-width: 460px;
+  flex: 0 0 auto;
+}
+.focus-actions-hidden { visibility: hidden; }
+.focus-btn {
+  min-height: 48px;
+  padding: 0 1.2rem;
+  border-radius: 8px;
+  background: none;
+  cursor: pointer;
+  touch-action: manipulation;
+  font-family: "Courier New", monospace;
+  font-size: 0.66rem;
+  letter-spacing: 0.14em;
+  transition: background 0.15s ease, border-color 0.15s ease,
+              color 0.15s ease, transform 0.12s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.focus-btn:active { transform: scale(0.975); }
+
+/* Complete is the primary action and carries the reward hue (§2 teal) */
+.focus-btn-done {
+  flex: 2 1 0;
+  border: 1px solid rgba(15, 223, 171, 0.55);
+  color: rgba(15, 223, 171, 0.95);
+  background: rgba(15, 223, 171, 0.07);
+}
+.focus-btn-done:hover {
+  background: rgba(15, 223, 171, 0.14);
+  border-color: rgba(15, 223, 171, 0.85);
+}
+/* The escape hatch — always present, deliberately quieter than Complete */
+.focus-btn-skip {
+  flex: 1 1 0;
+  border: 1px solid rgba(134, 223, 255, 0.22);
+  color: rgba(134, 223, 255, 0.55);
+}
+.focus-btn-skip:hover {
+  background: rgba(134, 223, 255, 0.06);
+  color: rgba(134, 223, 255, 0.8);
+}
+
+.focus-hint {
+  font-family: "Courier New", monospace;
+  font-size: 0.54rem;
+  letter-spacing: 0.1em;
+  color: rgba(134, 223, 255, 0.24);
+  padding-top: 0.85rem;
+  text-align: center;
+  flex: 0 0 auto;
+}
+/* Pointer-only affordance: on touch there is no keyboard to hint at */
+@media (hover: none) { .focus-hint { display: none; } }
+
+/* Focus mode is driven from the keyboard as much as the hand — the ring has
+   to be real chrome, not the UA default. */
+.focus-btn:focus-visible,
+.focus-close:focus-visible {
+  outline: 1px solid rgba(134, 223, 255, 0.55);
+  outline-offset: 3px;
+}
+
+/* ── The docked timer ─────────────────────────────────────────────────── */
+/* Flow requires a clear goal *and* continuous feedback (Csikszentmihalyi,
+   1990). The objective above supplies the first; the ring supplies the second.
+   Keeping them on one surface is also an attention-residue argument: reading
+   the time from a corner widget is a switch away from the objective, and
+   switches are the expensive part (Mark, Gudith & Klocke, 2008 — cited in
+   mission_design.md §2).
+
+   This slot holds the real #pomodoro-mount node, moved here by focus-mode.js
+   and moved back on close. Nothing about the timer is reimplemented, so the
+   payout path stays in exactly one place. */
+.focus-timer {
+  flex: 0 0 auto;
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  padding-bottom: 0.4rem;
+}
+/* The operator can turn the timer off in settings; then nothing docks and the
+   slot must not reserve space it isn't using. */
+.focus-timer:empty { display: none; }
+
+/* The mount node itself carries no styling of its own, so it has to become a
+   centering box once it is part of a layout instead of a fixed overlay. */
+.pip-docked {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+/* Defensive: the minimise affordance is hidden while docked, but the badge is
+   also position:fixed and would fly to a corner if anything else minimised it. */
+.pip-docked .pomodoro-minimized {
+  position: relative !important;
+  left: auto !important;
+  top: auto !important;
+  right: auto !important;
+  bottom: auto !important;
+}
+
+/* Docked: the widget stops being a window. Only the inline position/size the
+   React component writes needs !important — everything else is out-specified. */
+.pip-docked .pomodoro-pip {
+  /* relative, not static: the widget has to join normal flow, but it is also
+     the containing block for absolutely-positioned payout bits (.pip-xp-fly),
+     and static would send those to the focus overlay instead. */
+  position: relative !important;
+  left: auto !important;
+  top: auto !important;
+  right: auto !important;
+  bottom: auto !important;
+  width: 100% !important;
+  height: auto !important;
+  max-width: 290px;
+  /* The panel dissolves so the ring sits directly on the focus backdrop —
+     parked-widget-in-a-view is exactly the reading we are trying to avoid.
+     The 1px border stays, transparent, so the payout ramp (.pip-sc-glow) still
+     has a border to paint when a session lands. */
+  background: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  border-color: transparent;
+  box-shadow: none;
+  z-index: auto;
+}
+.pip-docked .pomodoro-pip:hover { box-shadow: none; }
+
+/* Window management goes; session control stays. Dragging, resizing and
+   minimising act on a frame that no longer exists here, and the Pomo/OPS tabs
+   are a planning decision — the wrong question to put in front of someone who
+   has just committed to one objective. Everything that acts on the session
+   itself (transport, break, Finish OPS, the payout) stays exactly as it is. */
+.pip-docked .pip-header,
+.pip-docked .pip-resize-grip { display: none; }
+
+/* Smaller than in the corner widget: below the objective it is ambient state,
+   not the subject. A countdown given top billing becomes a monitoring task
+   that competes with the work it is meant to support. */
+.pip-docked .pip-timer-ring {
+  width: 156px;
+  height: 156px;
+}
+.pip-docked .pip-timer-ring > svg {
+  width: 100%;
+  height: 100%;
+}
+.pip-docked .pomodoro-pip-content {
+  padding: 0.2rem 0 0.7rem;
+  gap: 0.85rem;
+}
+
+/* Short viewports: the ring gives up size before the objective does. The
+   hierarchy has to survive the squeeze, not just hold at full height — an
+   objective crushed to two lines under a full-size timer inverts the whole
+   point of the view. */
+@media (max-height: 720px) {
+  .pip-docked .pip-timer-ring {
+    width: 124px;
+    height: 124px;
+  }
+  .pip-docked .pomodoro-pip-content {
+    gap: 0.6rem;
+    padding-bottom: 0.4rem;
+  }
+}
+
+.focus-empty { text-align: center; padding: 1.5rem 0; }
+.focus-empty-title {
+  font-family: "Courier New", monospace;
+  font-size: 0.95rem;
+  letter-spacing: 0.14em;
+  color: rgba(134, 223, 255, 0.78);
+}
+.focus-empty-sub {
+  font-family: "Courier New", monospace;
+  font-size: 0.62rem;
+  letter-spacing: 0.05em;
+  color: rgba(134, 223, 255, 0.38);
+  margin-top: 0.55rem;
+  line-height: 1.55;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* The hand-off keeps its shape — the card still leaves and the next still
+     arrives — but the travel collapses. The teal bloom is state, not travel,
+     so it stays: it is how Complete tells itself apart from Skip. */
+  .focus-card,
+  .focus-card-leaving,
+  .focus-card-done { animation: none; }
+  .focus-card-done .focus-title { animation-duration: 0.01ms; }
+  #focus-mode,
+  .focus-btn,
+  .focus-close,
+  .focus-exit { transition: none; }
+}

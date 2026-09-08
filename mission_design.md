@@ -111,7 +111,13 @@ Mission App
 │   ├── XP system (addXp, pulseXpMeter)
 │   ├── Buddy message system (displayRandomMessage, showBuddySuggestion)
 │   ├── NotifyQueue (notification-queue.js)
+│   ├── Ranker (RANK_WEIGHTS, scoreMission, explainMissionRank, rankMissions)
 │   └── AppSettings (localStorage-backed settings object)
+│
+├── Match Mode (match-mode.js)
+│   ├── Swipe-deck triage view (one objective per card)
+│   ├── Auto-derived topic tags (keyword table)
+│   └── Verdicts: MATCH → promoteMissionToTop / LATER → deferCount++
 │
 ├── Focus Timer (mission-react.js)
 │   ├── Pomodoro mode (25min work / configurable break)
@@ -228,6 +234,56 @@ The timer is React (Babel-compiled in-browser); the task engine and notification
 
 **Rationale**: the timer's state complexity — multiple co-dependent variables, concurrent intervals, animation sync — benefits from React's declarative model. The task engine predates the React component and is optimized for direct DOM manipulation. Migrating either direction would add risk without proportional benefit; the `window` bridge is a deliberate seam, inspectable and auditable from the browser console.
 
+### Match Mode: Triage as a Separate Activity from Work
+
+Match mode (`match-mode.js`) is a third view alongside the list board. It presents the board one objective at a time as a card: swipe right to MATCH (commit — the objective is promoted to position 1), swipe left to LATER (defer — the card leaves and the deferral is counted). It never deletes. The behavioral argument for why deferral raises an objective's rank rather than burying it is in [DESIGN.md](DESIGN.md) §9.10; this section covers the interface decisions.
+
+**Why one card at a time.** The list board is a *comparison* surface. Every objective is visible simultaneously, and the operator resolves the board by scanning it — which is exactly the operation that present bias wins. Given a set, the item selected is the one that is cheapest to start right now, and the set makes that comparison free to perform. Worse, a list affords a third answer that a card does not: *none of these*, executed by simply not clicking anything and closing the tab.
+
+A card is a forced-choice surface. One objective, two verdicts, no comparison set, and no way to resolve it by inaction. It also asks a much smaller question than the board does. The board implicitly asks "what are you going to do?" — a question that requires a plan. The card asks "is this next, or not yet?" — answerable in about a second, with no plan required. Framing the decision small is what makes a fast pass over twenty objectives possible at all.
+
+This is Cognitive Load Theory (Sweller, 1988) applied to a decision rather than to a layout: during triage of objective *k*, the other *n−1* objectives are extraneous load. They are relevant to planning and irrelevant to the single verdict being taken.
+
+**Why swiping suits triage specifically.** Three properties of the gesture matter here, and none of them are aesthetic.
+
+*The escape route has to be the cheapest action in the app.* The entire mechanic depends on LATER being free — cognitively, emotionally, and in motor cost. A confirmation dialog, a reschedule picker, or a "why are you deferring?" prompt would tax the exact action the design needs the operator to take honestly. A single lateral drag is close to the floor of what an interface can charge for a decision. And both verdicts cost the same mirrored gesture, so the interface does not nudge toward either: the commit threshold is 96px in both directions.
+
+*The verdict is visible before it is committed.* During the drag, the card follows the pointer, rotates proportionally (`dx / 18`), and fades in a MATCH or LATER stamp whose opacity tracks progress toward the threshold. Dragging back below the threshold cancels with a spring back to center and no consequence. This is feedforward in Norman's (2013) sense — the operator sees what the action *will* do while there is still time not to do it — and it is why the gesture is safe to perform quickly.
+
+*Push-away sorting is the right physical metaphor.* Sorting a physical stack into two piles is a well-worn motor pattern, and the semantics line up: right is toward you and forward, left is aside. Nothing has to be learned.
+
+Because the gesture is the primary affordance, it is not the only one: `←` / `→` and the two action buttons perform identical commits, and `ESC` closes. A gesture-only surface would exclude keyboard operation and any pointing device where dragging is awkward.
+
+**Why it cannot delete.** Deletion stays on the board's own affordances. A surface designed to be moved through fast, with a committing gesture and a 240ms card animation, is the wrong place for an irreversible action — the same reasoning that keeps destructive operations behind the multi-stage purge confirmation rather than behind a swipe.
+
+**What the auto-tags are for.** Each card derives up to three topic tags (`#fitness`, `#finance`, `#admin`, …) by keyword matching against the objective text. They serve three purposes:
+
+1. **Restoring context the card strips away.** On the board an objective is legible partly from its neighbours and its position. A card removes both. The tag puts the "what kind of thing is this" cue back in a glance — recognition rather than recall (Nielsen, 1994), which matters more here than on the board because the operator is moving fast and reading each title exactly once.
+2. **A different axis from the category prefixes.** The `1.` / `2.` / `3.` prefixes are operator-assigned at creation and say which life-domain goal the objective serves. A tag is derived, costs the operator nothing, and says what the work *is*. "Pay the gym invoice" is Financial by prefix and `#finance` by tag; "book a doctor's appointment" is Life by prefix and `#health` `#admin` by tag. The second axis is the one that predicts what the work will feel like to start.
+3. **Making batchable clusters visible.** Three `#admin` cards in a row is a pattern the ranked board actively hides, because ranking sorts on avoidance and urgency, not on kind. Seeing the cluster during a pass is what suggests doing them together.
+
+The matcher is deliberately crude: case-insensitive substring matching against a fixed keyword table, first rule match per tag, capped at three tags. It will produce false positives — "read the bank letter" picks up `#study` from *read*. That is an acceptable error rate because a tag is decoration on a decision the operator makes from the title; a wrong tag costs a glance. Anything more accurate would mean shipping a classifier, and a classifier here would buy precision on a label that is not load-bearing.
+
+Tags are currently derived at render time and displayed only. They are not persisted, not filterable, and do not participate in ranking.
+
+### Focus Mode: The Timer Belongs Where the Work Is
+
+Focus mode (`focus-mode.js`) is the execution counterpart to Match mode's triage. Match asks *is this next?*; Focus assumes that question is settled and shows position one alone. The Pomodoro widget is docked into it, centered under the objective.
+
+**Why dock it at all.** Flow requires clear goals *and* immediate feedback simultaneously (Csikszentmihalyi, 1990) — neither alone produces it. Focus mode already supplied the first: one objective, no comparison set, nothing to decide. The second was in a corner PIP, which meant that checking elapsed time cost a switch away from the objective. Switching is the expensive part, not the reading: interruption-recovery costs are measured in minutes, not seconds (Mark, Gudith & Klocke, 2008), and even a self-initiated switch leaves attention residue on the surface being left (Leroy, 2009). Co-locating the two conditions removes the switch entirely.
+
+**The apparent contradiction with contextual revelation.** [DESIGN.md](DESIGN.md) §2.14 lists "Pomodoro timer is a persistent PIP widget, not part of the main flow" as a cognitive-load win. Docking it looks like a reversal of that principle. It is the same principle reaching the opposite conclusion in a different context. Sweller's (1988) distinction is between *extraneous* load — interface present but not relevant to the current task — and *intrinsic* load, which belongs to the task itself. On the board, a planning surface, the timer is extraneous: the operator is deciding what to do, and how long they have been working is irrelevant to that decision. In Focus mode, an execution surface, elapsed time is part of the work. Contextual revelation says the timer should appear exactly where it becomes relevant, which is here and nowhere else. DESIGN.md §2.14 has been amended so a future reader does not have to reconstruct this.
+
+**Why the objective stays on top.** The ring docks *below* the objective and at a reduced size. The hierarchy is load-bearing: a countdown given top billing turns into a monitoring task competing with the work it exists to support, which is the failure mode of clock-watching generally. The ring is a peripheral, pre-attentive channel — glanceable without being read — and the numeric readout is deliberately secondary to it. This is also why the mode does not switch the operator to Pomodoro or OPS on entry: mode choice is a planning decision, and the surface has just finished removing planning decisions.
+
+**Why it docks paused.** The timer appears open and ready, and the operator starts it. Auto-starting would make time accrual — and in OPS mode, XP accrual — contingent on merely opening a view, including a view opened just to look. Cognitive Evaluation Theory (Deci & Ryan, 1985) predicts the cost precisely: a reward the system initiates on the operator's behalf shifts the perceived locus of causality external and converts an *informational* signal about their own work into a *controlling* one. The existing Skip Break decision (§5) resolves an identical tension the same way, and for the same reason. `Space` starts and pauses, so the cost of the deliberate act is one keystroke.
+
+**Which controls survive the dock.** Session controls stay; window management and configuration go. Transport, break, `Finish OPS →` and the session-complete payout are all about the session in progress — intrinsic load, and removing any of them would strand the operator mid-session or hide the closing ritual (§5, *Session-Complete Animation*). The drag handle, resize grip, minimise button and Pomo/OPS tabs are about managing a floating window that no longer exists in this layout, or about a decision that belongs before the session, not during it. Both are extraneous load in Sweller's sense, and both are hidden.
+
+**Why the widget is moved, not rebuilt.** `focus-mode.js` relocates the real `#pomodoro-mount` node into its own layout and returns it on close. A second timer implementation would be a second payout path — banked units, the XP reel, the session-complete ritual — and the reward math has to have exactly one source or the disclosure guarantee (§6) is unenforceable. This is the same reasoning that has `complete()` dispatch the board's own click handler rather than reimplementing completion. If the operator has minimised the widget, Focus mode opens it and restores their choice on exit; if they have turned the timer off in settings, nothing docks.
+
+**Keyboard ownership.** While Focus or Match mode is open, the board's global shortcuts no longer fire. They acted on a board that is not on screen, and two collided outright: `S` skipped the objective *and* opened Settings, and `T` would have minimised the timer Focus mode had just docked. A mode that prints its own shortcut line has to be the surface those keys actually reach.
+
 ---
 
 ## 6. Gamification Design
@@ -266,6 +322,7 @@ Each audio tick steps up the D major pentatonic scale; the final note resolves a
 - Mark, G., Gudith, D., & Klocke, U. (2008). *The cost of interrupted work: More speed and stress.* CHI 2008.
 - Bailey, B. P., & Konstan, J. A. (2006). *On the need for attention-aware systems.* Computers in Human Behavior.
 - Adamczyk, P. D., & Bailey, B. P. (2004). *If not now, when? The effects of interruption at different moments within task execution.* CHI 2004.
+- Leroy, S. (2009). *Why is it so hard to do my work? The challenge of attention residue when switching between work tasks.* Organizational Behavior and Human Decision Processes.
 
 ### Motivation and Gamification
 - Csikszentmihalyi, M. (1990). *Flow: The Psychology of Optimal Experience.* Harper & Row.
@@ -294,6 +351,7 @@ Each audio tick steps up the D major pentatonic scale; the final note resolves a
 - Norman, D. A. (2013). *The Design of Everyday Things.* Basic Books.
 - Pirolli, P., & Card, S. K. (1999). *Information foraging.* Psychological Review.
 - Krug, S. (2000). *Don't Make Me Think.* New Riders.
+- Nielsen, J. (1994). *Usability Engineering.* Morgan Kaufmann. [Recognition vs. recall, heuristic #6]
 - Redish, J. (2007). *Letting Go of the Words.* Morgan Kaufmann.
 
 ### Productivity Research

@@ -211,6 +211,21 @@ const CuteRobotFace = ({
   const [glowIntensity, setGlowIntensity] = React.useState(1);
   const previousEmotionRef = React.useRef("");
 
+  // ── Beat channels (see buddy-beats.js) ───────────────────────────────────
+  // A beat overlays the mood; it never writes to currentEmotion. `beat` holds
+  // the six channel values the running gesture is currently asking for, or the
+  // neutral set when nothing is playing.
+  const NEUTRAL_BEAT = (window.BuddyBeats && window.BuddyBeats.NEUTRAL) || {
+    glyphL: null, glyphR: null, gaze: null, lid: 1, mouth: null,
+    tilt: 0, bodyX: 0, bodyY: 0, scale: 1,
+  };
+  const [beat, setBeat] = React.useState(NEUTRAL_BEAT);
+  // Measured eye bounding boxes, keyed `${emotion}:${side}`. Glyphs are
+  // authored normalized and mapped onto these, so a glyph lands correctly on
+  // whatever eye shape the current mood happens to be wearing.
+  const eyeBoxRef = React.useRef({});
+  const [eyeBoxTick, setEyeBoxTick] = React.useState(0);
+
   // In your component after initial mounting
   React.useEffect(() => {
     if (window.CraftedMotion && window.CraftedMotion.microAnimations) {
@@ -1402,6 +1417,15 @@ const CuteRobotFace = ({
     window.setRobotProcessing = (active) => {
       setIsProcessing(active);
       setCurrentEmotion(active ? "composing" : "neutral");
+      // "thinking" is system-directed (the buddy describing its own state,
+      // never the operator's) — the one case the panel cleared for a
+      // neutral/negative-reading glyph. Runs alongside "composing"'s own
+      // eye-scan rather than replacing it: mood and beat are independent
+      // layers, and this beat's frames never touch gaze.
+      if (window.BuddyBeats) {
+        if (active) window.BuddyBeats.hold("thinking");
+        else window.BuddyBeats.release("thinking");
+      }
     };
     // Set a named emotion; auto-returns to neutral after durationMs (0 = persistent)
     window.setRobotEmotion = function (emotion, durationMs) {
@@ -1445,6 +1469,73 @@ const CuteRobotFace = ({
       if (lookAwayTimerRef.current) clearTimeout(lookAwayTimerRef.current);
     };
   }, []);
+
+  // ── Beat driver registration ─────────────────────────────────────────────
+  // BuddyBeats owns *when* a gesture runs (priority, ceiling, flow-state
+  // suppression, reduced motion); this component owns *how* it looks. getMood
+  // reads the ref rather than the state so the queue always sees the live mood.
+  React.useEffect(function () {
+    if (!window.BuddyBeats) return;
+    window.BuddyBeats.attach({
+      setChannels: setBeat,
+      getMood: function () { return currentEmotionRef.current; },
+    });
+    return function () { window.BuddyBeats.detach(); };
+  }, []);
+
+  // ── Eye bounding-box measurement ─────────────────────────────────────────
+  // Measured from the live path rather than derived from the path data: the
+  // eye shapes are arcs whose bounding boxes are not obvious by inspection,
+  // and every expression's differ. Cached per emotion — one getBBox pair the
+  // first time a mood is seen, never again.
+  React.useLayoutEffect(function () {
+    if (isBlinking) return; // blink paths are flat; they'd measure as zero-height
+    var sides = [["left", "left-eye-path"], ["right", "right-eye-path"]];
+    var measured = false;
+    sides.forEach(function (pair) {
+      var key = currentEmotion + ":" + pair[0];
+      if (eyeBoxRef.current[key]) return;
+      var el = document.getElementById(pair[1]);
+      if (!el || typeof el.getBBox !== "function") return;
+      try {
+        var b = el.getBBox();
+        if (!b.width || !b.height) return;
+        eyeBoxRef.current[key] = {
+          cx: b.x + b.width / 2,
+          cy: b.y + b.height / 2,
+          r: Math.max(b.width, b.height) / 2,
+        };
+        measured = true;
+      } catch (e) { /* detached node mid-transition — retry on the next mood */ }
+    });
+    if (measured) setEyeBoxTick(function (t) { return t + 1; });
+  }, [currentEmotion, isBlinking]);
+
+  // Build the rendered glyph for one eye, or null when that eye is wearing its
+  // own shape. Normalized -1..1 glyph space is scaled by the measured radius,
+  // so stroke weights stay proportional to the eye at any expression.
+  const renderGlyph = function (side) {
+    var name = side === "left" ? beat.glyphL : beat.glyphR;
+    if (!name || !window.BuddyBeats) return null;
+    var glyph = window.BuddyBeats.GLYPHS[name];
+    var box = eyeBoxRef.current[currentEmotion + ":" + side];
+    if (!glyph || !box) return null;
+
+    var r = box.r * (glyph.fit || 1);
+    return (
+      <path
+        d={glyph.d}
+        className={"buddy-glyph" + (glyph.dash ? " buddy-glyph-dash" : "")}
+        transform={"translate(" + box.cx + "," + box.cy + ") scale(" + r + ")"}
+        fill={glyph.mode === "fill" ? "url(#eyeGlow)" : "none"}
+        stroke={glyph.mode === "stroke" ? "url(#eyeGlow)" : "none"}
+        strokeWidth={glyph.weight || 0}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        filter="url(#cuteGlow)"
+      />
+    );
+  };
 
   // ── Head tilt per emotional state ────────────────────────────────────────
   // Each value maps emotion → rotation degrees. Subtle but perceptible.
@@ -1503,6 +1594,12 @@ const CuteRobotFace = ({
   //################## SECTION 6: Render Logic ##################
   // Get current expression based on emotion
   const currentExpression = expressions[currentEmotion] || expressions.neutral;
+
+  // A beat's gaze frame, when present, overrides idle wander/tracking outright
+  // rather than adding to it — an anticipation look-down must land exactly,
+  // not on top of wherever the idle drift happened to be.
+  const gazeX = beat.gaze ? beat.gaze.x : eyePosition.x;
+  const gazeY = beat.gaze ? beat.gaze.y : eyePosition.y;
 
   // Helper function to safely get gradient colors
   const getGradientColors = (expr) => {
@@ -1580,7 +1677,10 @@ const CuteRobotFace = ({
           : { ease: "easeOut", duration: 0.5 }
       }
       style={{
-        transform: "rotate(" + (EMOTION_TILT[currentEmotion] || 0) + "deg)",
+        // translate/scale come from the running beat (body channel); at rest
+        // beat.bodyX/Y = 0 and beat.scale = 1, so this reduces to the plain
+        // rotate that was here before beats existed.
+        transform: "translate(" + beat.bodyX + "px," + beat.bodyY + "px) scale(" + beat.scale + ") rotate(" + ((EMOTION_TILT[currentEmotion] || 0) + beat.tilt) + "deg)",
         transition: "transform 0.55s cubic-bezier(0.34,1.56,0.64,1)",
         filter: "drop-shadow(0 0 6px " + (EMOTION_GLOW[currentEmotion] || "#00e6e6") + "22)",
       }}
@@ -1844,18 +1944,35 @@ const CuteRobotFace = ({
           id="left-eye"
           style={{
             transform: `translate(${
-              -25 + eyePosition.x + (isGlitching ? glitchOffset.x : 0)
-            }px, ${-10 + eyePosition.y + (isGlitching ? glitchOffset.y : 0)}px)`,
+              -25 + gazeX + (isGlitching ? glitchOffset.x : 0)
+            }px, ${-10 + gazeY + (isGlitching ? glitchOffset.y : 0)}px)`,
             transition: isGlitching
               ? "none"
               : "transform 0.5s cubic-bezier(0.22, 1, 0.36, 1)",
           }}
           className={currentExpression.isGlitched ? "glitching-element" : ""}
         >
-          {/* Inner wrapper receives squint — outer <g> keeps SVG transform positioning */}
-          <g className={isSpeaking ? "robot-eye-speaking" : ""}>
-          {/* Main eye path */}
+          {/* Inner wrapper receives squint + the beat's lid channel — the
+              outer group keeps SVG transform positioning. lid=1 is a no-op scaleY,
+              so an idle face renders identically to before beats existed.
+              Note: while isSpeaking, .robot-eye-speaking's own keyframe
+              animation owns `transform` and will override lid for the
+              beat's duration — an accepted overlap, not a bug to chase. */}
+          <g
+            className={isSpeaking ? "robot-eye-speaking" : ""}
+            style={{
+              transform: "scaleY(" + beat.lid + ")",
+              transformBox: "fill-box",
+              transformOrigin: "center",
+              transition: "transform 0.12s ease-out",
+            }}
+          >
+          {/* Main eye path — id'd so BuddyBeats can measure this shape's
+              bounding box and land a glyph on it. Stays mounted (opacity-only
+              hide) even while a glyph covers it: getBBox() on a display:none
+              node throws in Firefox, which this project tests in. */}
           <PathComponent
+            id="left-eye-path"
             d={
               typeof currentExpression.leftEye === "string"
                 ? currentExpression.leftEye
@@ -1872,13 +1989,17 @@ const CuteRobotFace = ({
                 ? {
                     transform: "scaleY(0.1)",
                     transition: "transform 0.1s ease",
+                    opacity: beat.glyphL ? 0 : 1,
                   }
                 : {
                     transition:
-                      "transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), d 0.4s ease",
+                      "transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), d 0.4s ease, opacity 0.1s ease",
+                    opacity: beat.glyphL ? 0 : 1,
                   }
             }
           />
+
+          {renderGlyph("left")}
 
           {/* Clipped group for pupil and shine to fix teardrop effect.
               Own transform + fast transition so the pupil leads the
@@ -1887,8 +2008,9 @@ const CuteRobotFace = ({
           <g
             clipPath="url(#leftEyeClip)"
             style={{
-              transform: `translate(${eyePosition.x * 0.35}px, ${eyePosition.y * 0.35}px)`,
-              transition: "transform 0.12s cubic-bezier(0.4, 0, 0.2, 1)",
+              transform: `translate(${gazeX * 0.35}px, ${gazeY * 0.35}px)`,
+              transition: "transform 0.12s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.1s ease",
+              opacity: beat.glyphL ? 0 : 1,
             }}
           >
             {/* Pupil with dilation effect - only visible when not blinking */}
@@ -1926,16 +2048,25 @@ const CuteRobotFace = ({
           id="right-eye"
           style={{
             transform: `translate(${
-              25 + eyePosition.x - (isGlitching ? glitchOffset.x : 0)
-            }px, ${-10 + eyePosition.y + (isGlitching ? glitchOffset.y : 0)}px)`,
+              25 + gazeX - (isGlitching ? glitchOffset.x : 0)
+            }px, ${-10 + gazeY + (isGlitching ? glitchOffset.y : 0)}px)`,
             transition: isGlitching
               ? "none"
               : "transform 0.5s cubic-bezier(0.22, 1, 0.36, 1)",
           }}
           className={currentExpression.isGlitched ? "glitching-element" : ""}
         >
-          <g className={isSpeaking ? "robot-eye-speaking" : ""}>
+          <g
+            className={isSpeaking ? "robot-eye-speaking" : ""}
+            style={{
+              transform: "scaleY(" + beat.lid + ")",
+              transformBox: "fill-box",
+              transformOrigin: "center",
+              transition: "transform 0.12s ease-out",
+            }}
+          >
           <PathComponent
+            id="right-eye-path"
             d={
               typeof currentExpression.rightEye === "string"
                 ? currentExpression.rightEye
@@ -1952,13 +2083,17 @@ const CuteRobotFace = ({
                 ? {
                     transform: "scaleY(0.1)",
                     transition: "transform 0.1s ease",
+                    opacity: beat.glyphR ? 0 : 1,
                   }
                 : {
                     transition:
-                      "transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), d 0.4s ease",
+                      "transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), d 0.4s ease, opacity 0.1s ease",
+                    opacity: beat.glyphR ? 0 : 1,
                   }
             }
           />
+
+          {renderGlyph("right")}
 
           {/* Clipped group for pupil and shine to fix teardrop effect.
               Own transform + fast transition so the pupil leads the
@@ -1967,8 +2102,9 @@ const CuteRobotFace = ({
           <g
             clipPath="url(#rightEyeClip)"
             style={{
-              transform: `translate(${eyePosition.x * 0.35}px, ${eyePosition.y * 0.35}px)`,
-              transition: "transform 0.12s cubic-bezier(0.4, 0, 0.2, 1)",
+              transform: `translate(${gazeX * 0.35}px, ${gazeY * 0.35}px)`,
+              transition: "transform 0.12s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.1s ease",
+              opacity: beat.glyphR ? 0 : 1,
             }}
           >
             {/* Pupil with dilation */}
@@ -2004,10 +2140,10 @@ const CuteRobotFace = ({
         {/* Enhanced Mouth with smoother transitions */}
         <PathComponent
           id="robot-mouth"
-          d={currentExpression.mouth}
+          d={beat.mouth || currentExpression.mouth}
           fill={currentExpression.color || "#86dfff"}
           className={`mouth ${currentExpression.isGlitched ? "glitching-element" : ""} ${isSpeaking ? "robot-speaking" : ""}`}
-          animate={motion ? { d: currentExpression.mouth } : undefined}
+          animate={motion ? { d: beat.mouth || currentExpression.mouth } : undefined}
           transition={
             window.CraftedMotion && window.CraftedMotion.EASING
               ? { ease: window.CraftedMotion.EASING.softBounce, duration: 0.4 }
@@ -3480,6 +3616,7 @@ const SettingsPanel = () => {
   const [autoCycle,    setAutoCycle]    = React.useState(false);
   const [demoActive,   setDemoActive]   = React.useState(null);
   const [debugMinutes, setDebugMinutes] = React.useState("25");
+  const [demoThinking, setDemoThinking] = React.useState(false); // "thinking" is held, not fire-and-forget
 
   // Directional navigation helper
   function navigateTo(v) {
@@ -3555,6 +3692,10 @@ const SettingsPanel = () => {
   React.useEffect(function() {
     return function() {
       if (typeof window.setRobotEmotion === "function") window.setRobotEmotion("neutral", 0);
+      // "thinking" is held rather than fire-and-forget — leaving the demo
+      // without releasing it would leave the buddy stuck mid-gesture.
+      if (window.BuddyBeats) window.BuddyBeats.release("thinking");
+      setDemoThinking(false);
     };
   }, [view]);
 
@@ -3700,6 +3841,7 @@ const SettingsPanel = () => {
       "Screen glare / panel reflection",
       "Proximity pupil dilation",
       "Micro-blink on transition (Breazeal)",
+      "Buddy Beats — eye-glyph reaction gestures (buddy-beats.js)",
     ];
 
     return (
@@ -3799,6 +3941,45 @@ const SettingsPanel = () => {
                 <span className="st-label">Auto-cycle</span>
                 <button className={"st-switch" + (autoCycle ? " st-switch-on" : "")}
                   onClick={() => setAutoCycle(function(a) { return !a; })} role="switch">
+                  <span className="st-thumb" />
+                </button>
+              </div>
+            </div>
+
+            {/* Buddy Beats — the eye-glyph reaction layer (buddy-beats.js).
+                Distinct from the emotion grid above: a beat overlays whatever
+                mood is currently active rather than replacing it, so firing
+                one here while, say, "Sleepy" is selected is the fastest way
+                to confirm a beat correctly hands control back to the mood
+                underneath instead of leaving the face stuck on its own state. */}
+            <div className="st-section">
+              <div className="st-section-title"><span>Trigger buddy beats</span><span className="st-badge">SIM</span></div>
+              <div className="st-desc st-sim-desc">Reactive eye-glyph gestures — layer over whichever emotion is active above</div>
+              <div className="demo-emotion-grid">
+                <button className="demo-emotion-btn"
+                  onClick={() => { if (window.BuddyBeats) window.BuddyBeats.play("taskComplete"); }}>
+                  Task complete
+                </button>
+                <button className="demo-emotion-btn"
+                  onClick={() => { if (window.BuddyBeats) window.BuddyBeats.play("levelUp"); }}>
+                  Level up
+                </button>
+                <button className="demo-emotion-btn"
+                  onClick={() => { if (window.BuddyBeats) window.BuddyBeats.play("streakSecured"); }}>
+                  Streak secured
+                </button>
+              </div>
+              <div className="st-row" style={{ marginTop: "0.6rem" }}>
+                <span className="st-label">Thinking (held)</span>
+                <button className={"st-switch" + (demoThinking ? " st-switch-on" : "")}
+                  onClick={() => setDemoThinking(function(t) {
+                    var next = !t;
+                    if (window.BuddyBeats) {
+                      if (next) window.BuddyBeats.hold("thinking");
+                      else window.BuddyBeats.release("thinking");
+                    }
+                    return next;
+                  })} role="switch">
                   <span className="st-thumb" />
                 </button>
               </div>
@@ -5138,7 +5319,9 @@ const PomodoroTimer = () => {
         )}
         <div className="pip-controls">
           <button className="pip-btn" onClick={reset} title="Reset">↺</button>
-          <button className="pip-btn"
+          {/* pip-btn-play so surfaces that dock the timer (Focus mode) can drive
+              the transport without reaching for a positional selector. */}
+          <button className="pip-btn pip-btn-play"
             style={{ width: 48, height: 48,
                      border: `2px solid ${mode === "break" ? "rgba(15,223,171,0.6)" : "#86dfff"}` }}
             onClick={() => setIsRunning((r) => !r)}>

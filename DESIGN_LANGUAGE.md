@@ -134,12 +134,31 @@ drawn as cyan line-art with glow**, not a humanoid, not a mascot.
 
 Implementation rules:
 - All affect lives in the **eyes and mouth**. Emotions are geometry changes (squint, scan,
-  curve), never added props, colors, or particle effects.
+  curve) — moods never add external props (hats, badges, floating stickers) or particle
+  decoration to the face. **Amendment (buddy-beats):** the eyes themselves may morph into a
+  glyph — a check, star, chevron, or similar — as a brief *reactive gesture* layered over the
+  current mood, distinct from a mood itself. This is not a loophole for props: the glyph
+  replaces the eye's own shape in the eye's own socket, drawn in the same stroke language as
+  everything else on the face — it is not an object added *near* the eye. `heart-eyes` (the
+  one prior instance of this) is retroactively covered by this reading rather than treated as
+  a grandfathered exception.
 - Stroke language matches the HUD: `currentColor` thin strokes + cyan drop-shadow glow —
-  the same vocabulary as the break icons and timer ring.
+  the same vocabulary as the break icons and timer ring. Eye-glyphs follow the same rule:
+  cyan line-art (`eyeGlow`/`cuteGlow`), never a filled emoji-style icon or an off-palette color.
+- Negative- or neutral-valence glyphs (e.g. a "thinking" indicator) may only describe the
+  **buddy's own state** — processing, uncertain, loading — never the operator's performance.
+  A glyph reacting to a missed streak or skipped task is out of bounds; that is the mood
+  system's "never guilt-tripping" rule applied to gestures.
 - Speaking = JS-driven mouth motion + `mouthGlow` filter pulse; processing (Ollama) = eye
   scan left-right; emotion states via `window.setRobotEmotion(name, ms)`:
   `neutral | flow | sleepy | curious | alert | composing`.
+- Reactive gestures (task complete, level up, streak secured, etc.) go through
+  `window.BuddyBeats.play(name)` (see `buddy-beats.js`), not through `setRobotEmotion` — a
+  beat overlays the current mood and hands control back to it when done, rather than
+  replacing it. Beats respect `prefers-reduced-motion`, a rolling frequency ceiling, and are
+  suppressed in `flow` state unless explicitly marked otherwise — this HUD sits in peripheral
+  vision beside the task list, and unrequested motion there is an attention cost paid whether
+  or not the operator wanted to look.
 - Tone: earnest and calm, never sarcastic, never guilt-tripping. The buddy is a teammate,
   not a supervisor. (Voice rules: DESIGN.md §3.4.)
 

@@ -101,6 +101,62 @@ function getCategoryKeyFromPrefixClass(prefixClass) {
 // ========================================
 
 // ========================================
+// TASK IDENTITY & DEADLINE TAGGING
+// ========================================
+// Phase 0 instrumentation for the prioritization model (see conversation
+// notes / mission_design.md): every mission needs a stable id and a real
+// creation timestamp so dwell (board-loads survived untouched) and
+// time-to-complete can be measured. Ranking itself is a later phase — this
+// only makes the data exist.
+
+function generateTaskId() {
+  return "t_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2, 7);
+}
+
+// Operators tag a deadline with [DUE-<value>], mirroring the existing
+// [AM]/[PM]/[EVE] time-slot convention. Dash, not colon: mission text gets
+// split on ":" in several places (category-prefix parsing) and a colon
+// inside the tag would get silently truncated there. Accepts a weekday
+// name, "today", "tomorrow", "eod", or an explicit M/D date. Day-granularity
+// only. Returns an ISO string or null if absent/unparseable.
+function parseTaskDeadline(text) {
+  var m = text.match(/\[DUE-([^\]]+)\]/i);
+  if (!m) return null;
+  var raw = m[1].trim().toLowerCase();
+  var now = new Date();
+  // Noon, not midnight — same fix as _streakDow(): toISOString() converts to
+  // UTC, and a midnight-local timestamp can roll to the previous UTC day in
+  // any positive-offset timezone, corrupting the calendar date.
+  var today = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 12);
+
+  if (raw === "today" || raw === "tod" || raw === "eod") return today.toISOString();
+  if (raw === "tomorrow" || raw === "tmrw") {
+    var t = new Date(today);
+    t.setDate(t.getDate() + 1);
+    return t.toISOString();
+  }
+
+  var WEEKDAYS = { sun: 0, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6 };
+  var wd = WEEKDAYS[raw.slice(0, 3)];
+  if (wd !== undefined) {
+    var d = new Date(today);
+    var delta = (wd - d.getDay() + 7) % 7; // 0 when today IS that weekday — deadline is today
+    d.setDate(d.getDate() + delta);
+    return d.toISOString();
+  }
+
+  var dm = raw.match(/^(\d{1,2})\/(\d{1,2})$/);
+  if (dm) {
+    var mo = parseInt(dm[1], 10) - 1, da = parseInt(dm[2], 10);
+    var d2 = new Date(now.getFullYear(), mo, da, 12);
+    if (d2 < today) d2.setFullYear(d2.getFullYear() + 1); // past date this year → assume next year
+    return d2.toISOString();
+  }
+
+  return null;
+}
+
+// ========================================
 // POMODORO ESTIMATOR — per-category time learning
 // ========================================
 const PomodoroEstimator = {
@@ -330,8 +386,15 @@ const AppSettings = (function () {
     try { return Object.assign({}, DEFAULTS, JSON.parse(localStorage.getItem(KEY) || "{}")); }
     catch (e) { return Object.assign({}, DEFAULTS); }
   }
+  function stored() {
+    try { return JSON.parse(localStorage.getItem(KEY) || "{}"); } catch (e) { return {}; }
+  }
+  // Persist only the key actually touched. Writing the full get() merge instead
+  // froze a snapshot of DEFAULTS into storage on the user's first-ever settings
+  // change, so every later default correction was dead on arrival — stored
+  // values outrank DEFAULTS in get(). Untouched keys now keep tracking DEFAULTS.
   function set(key, value) {
-    var s = get(); s[key] = value;
+    var s = stored(); s[key] = value;
     localStorage.setItem(KEY, JSON.stringify(s));
     applyOne(key, value);
     if (typeof window._onSettingsChange === "function") window._onSettingsChange();
@@ -356,6 +419,21 @@ const AppSettings = (function () {
     var s = get();
     Object.keys(s).forEach(function (k) { applyOne(k, s[k]); });
   }
+  // One-time repair for installs frozen by the bug above. projectTimeXP shipped
+  // off-by-default; that false got snapshotted into storage and kept outranking
+  // the corrected default, so finishing an OPS session silently skipped both the
+  // XP award and the payout reel. Clearing it lets DEFAULTS apply again. Runs
+  // once — an opt-out chosen after this point is a real choice and survives.
+  function repairFrozenProjectTimeXP() {
+    if (localStorage.getItem("settingsRepair_projectTimeXP")) return;
+    localStorage.setItem("settingsRepair_projectTimeXP", "1");
+    var s = stored();
+    if (s.projectTimeXP !== false) return;
+    delete s.projectTimeXP;
+    localStorage.setItem(KEY, JSON.stringify(s));
+  }
+  repairFrozenProjectTimeXP();
+
   return { get: get, set: set, applyAll: applyAll };
 })();
 
@@ -1337,16 +1415,13 @@ function undoLastCompletion() {
   newEl.appendChild(pomoSpan);
   newEl.className   = "mission";
   newEl.dataset.xp  = snap.xp;
-  newEl.draggable   = true;
-  newEl.addEventListener("dragstart",  handleDragStart);
-  newEl.addEventListener("dragend",    handleDragEnd);
-  newEl.addEventListener("dragover",   handleDragOver);
-  newEl.addEventListener("drop",       handleDrop);
-  newEl.addEventListener("touchstart", handleTouchStart);
-  newEl.addEventListener("touchmove",  handleTouchMove);
-  newEl.addEventListener("touchend",   handleTouchEnd);
-  createMissionClickHandler(newEl);
-  attachMissionEditHandlers(newEl);
+  newEl.dataset.id  = snap.id || generateTaskId();
+  newEl.dataset.createdAt = snap.createdAt || new Date().toISOString();
+  newEl.dataset.dwell = String(snap.dwell || 0);
+  newEl.dataset.deferCount = String(snap.deferCount || 0);
+  newEl.dataset.lastSeenDay = snap.lastSeenDay || getTodayKey();
+  if (snap.deadline) newEl.dataset.deadline = snap.deadline;
+  wireMissionInteractions(newEl);
 
   missionListEl.prepend(newEl);
   setTimeout(function() { newEl.classList.add("active"); }, 10);
@@ -1471,13 +1546,119 @@ document.addEventListener("keydown", function(e) {
   }
 });
 
+// ── Delete confirm — hover + D (desktop keyboard path, alongside the
+// swipe/drag gesture). Mirrors the E-key edit pattern above: same hover
+// tracking, same "not while typing" guard.
+window._pendingDeleteConfirm = null;
+
+function attachMissionDeleteConfirm(li) {
+  var pendingBar = null;
+
+  function enterDeleteConfirm() {
+    if (li.classList.contains("editing") || li.classList.contains("delete-confirm-pending")) return;
+    li.classList.add("delete-confirm-pending");
+    pendingBar = document.createElement("span");
+    pendingBar.className = "delete-confirm-bar";
+    pendingBar.innerHTML =
+      "Delete? " +
+      '<button class="delete-confirm-yes" type="button">Y</button>' +
+      '<button class="delete-confirm-no" type="button">N</button>';
+    li.appendChild(pendingBar);
+    window._pendingDeleteConfirm = li;
+
+    pendingBar.querySelector(".delete-confirm-yes").addEventListener("click", function(e) {
+      e.stopPropagation();
+      exitDeleteConfirm(true);
+    });
+    pendingBar.querySelector(".delete-confirm-no").addEventListener("click", function(e) {
+      e.stopPropagation();
+      exitDeleteConfirm(false);
+    });
+  }
+
+  function exitDeleteConfirm(confirmed) {
+    if (!li.classList.contains("delete-confirm-pending")) return;
+    li.classList.remove("delete-confirm-pending");
+    if (pendingBar && pendingBar.parentNode) pendingBar.remove();
+    pendingBar = null;
+    if (window._pendingDeleteConfirm === li) window._pendingDeleteConfirm = null;
+    if (confirmed) deleteMission(li);
+  }
+
+  li._missionEnterDeleteConfirm = enterDeleteConfirm;
+  li._missionExitDeleteConfirm  = exitDeleteConfirm;
+
+  // Walking away from a pending confirm without deciding cancels it — an
+  // orphaned "Delete?" bar on a task the operator isn't looking at anymore
+  // is a worse failure mode than making them re-trigger it.
+  li.addEventListener("mouseleave", function() {
+    if (li.classList.contains("delete-confirm-pending")) exitDeleteConfirm(false);
+  });
+}
+
+// Global D key (enters) / Enter+Escape (resolve) for the delete-confirm prompt
+document.addEventListener("keydown", function(e) {
+  var tag = (e.target.tagName || "").toLowerCase();
+  if (tag === "input" || tag === "textarea" || e.target.isContentEditable) return;
+
+  if (window._pendingDeleteConfirm) {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      window._pendingDeleteConfirm._missionExitDeleteConfirm(true);
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      window._pendingDeleteConfirm._missionExitDeleteConfirm(false);
+    }
+    return;
+  }
+
+  if ((e.key === "d" || e.key === "D") && window._hoveredMission &&
+      typeof window._hoveredMission._missionEnterDeleteConfirm === "function") {
+    e.preventDefault();
+    window._hoveredMission._missionEnterDeleteConfirm();
+  }
+});
+
+// Keyboard equivalent of the swipe gesture — Ctrl+Left/Right on the
+// hovered mission. Same commit actions as a swipe past threshold (left =
+// delete, right = promote to top), same visual exit animation, so the two
+// input paths feel like one gesture rather than two different features.
+document.addEventListener("keydown", function(e) {
+  if (!e.ctrlKey || (e.key !== "ArrowLeft" && e.key !== "ArrowRight")) return;
+  var tag = (e.target.tagName || "").toLowerCase();
+  if (tag === "input" || tag === "textarea" || e.target.isContentEditable) return;
+
+  var el = window._hoveredMission;
+  if (!el || el.classList.contains("editing") || el.classList.contains("delete-confirm-pending")) return;
+
+  e.preventDefault();
+  el.style.transition = "transform 0.22s ease";
+  var _el = el;
+  setTimeout(function() { _el.style.transition = ""; }, 230);
+
+  if (e.key === "ArrowLeft") {
+    el.style.transform = "translateX(-140%) rotate(-14deg)";
+    setTimeout(function() { deleteMission(el); }, 200);
+  } else {
+    el.style.transform = "translateX(12px)";
+    setTimeout(function() { el.style.transform = "translateX(0)"; promoteMissionToTop(el); }, 120);
+  }
+});
+
 function createMissionClickHandler(element) {
   element.addEventListener("click", function (e) {
     // Stop event propagation to prevent multiple triggers
     e.stopPropagation();
 
-    // Don't complete while editing task text
-    if (element.classList.contains("editing")) return;
+    // Don't complete while editing task text or mid delete-confirm
+    if (element.classList.contains("editing") || element.classList.contains("delete-confirm-pending")) return;
+
+    // A claimed drag/swipe gesture still fires a trailing click on release —
+    // suppress just that one click rather than let it complete the task.
+    if (element.dataset.justSwiped === "true") {
+      element.dataset.justSwiped = "false";
+      return;
+    }
 
     const xp = parseInt(element.dataset.xp);
 
@@ -1512,12 +1693,22 @@ function createMissionClickHandler(element) {
       : "normal";
 
     // Create task object
+    // persistentId/createdAt/dwell/deadline/timeToCompleteMs feed the
+    // prioritization model's event log — id above is the ephemeral
+    // completion-event id used for undo matching, not the task's identity.
     const taskDetails = {
       id: taskId,
       title: missionText,
       xp: xp,
       priority: priority,
       completedAt: new Date().toISOString(),
+      persistentId: element.dataset.id || null,
+      createdAt: element.dataset.createdAt || null,
+      dwell: parseInt(element.dataset.dwell) || 0,
+      deadline: element.dataset.deadline || null,
+      timeToCompleteMs: element.dataset.createdAt
+        ? Date.now() - new Date(element.dataset.createdAt).getTime()
+        : null,
     };
 
     // Track task for daily wrap
@@ -1714,6 +1905,12 @@ function createMissionClickHandler(element) {
       preXp:       parseInt(xpMeterEl.dataset.xp) || 0,
       taskId:      taskId,
       dailyDate:   new Date().toISOString().split("T")[0],
+      id:          element.dataset.id || null,
+      createdAt:   element.dataset.createdAt || null,
+      dwell:       parseInt(element.dataset.dwell) || 0,
+      deferCount:  parseInt(element.dataset.deferCount) || 0,
+      lastSeenDay: element.dataset.lastSeenDay || null,
+      deadline:    element.dataset.deadline || null,
     };
 
     addXp(xp);
@@ -1723,6 +1920,7 @@ function createMissionClickHandler(element) {
     saveMissions();
     displayRandomMessage(category);
     playCompletionSound();
+    if (window.BuddyBeats) window.BuddyBeats.play("taskComplete");
     scrollToXPMeter();
     // Check for newly unlocked achievements after each task
     setTimeout(function() {
@@ -1785,25 +1983,18 @@ function addMission(sanitizedInput) {
     newEl.innerHTML = `<span class="${prefixClass}">${modifiedMission.split(":")[0]}:</span><span class="mission-desc" contenteditable="false"> ${modifiedMission.split(":")[1] || ""}</span> — ${xpValue} XP<span class="pomo-estimate" title="Estimated duration">${pomoDisplay}</span>`;
     newEl.className = "mission";
     newEl.dataset.xp = xpValue;
+    newEl.dataset.id = generateTaskId();
+    newEl.dataset.createdAt = new Date().toISOString();
+    newEl.dataset.dwell = "0";
+    newEl.dataset.deferCount = "0";
+    newEl.dataset.lastSeenDay = getTodayKey();
+    const _deadline = parseTaskDeadline(modifiedMission);
+    if (_deadline) newEl.dataset.deadline = _deadline;
 
     // Implementation Intention — attach time-slot badge if task is tagged [AM/PM/EVE]
     attachTimeSlotBadge(newEl, modifiedMission);
 
-    // Add drag attributes
-    newEl.draggable = true;
-    newEl.addEventListener("dragstart", handleDragStart);
-    newEl.addEventListener("dragend", handleDragEnd);
-    newEl.addEventListener("dragover", handleDragOver);
-    newEl.addEventListener("drop", handleDrop);
-
-    // Add touch events for mobile support
-    newEl.addEventListener("touchstart", handleTouchStart);
-    newEl.addEventListener("touchmove", handleTouchMove);
-    newEl.addEventListener("touchend", handleTouchEnd);
-
-    // Use the new click handler function
-    createMissionClickHandler(newEl);
-    attachMissionEditHandlers(newEl);
+    wireMissionInteractions(newEl);
 
     missionListEl.appendChild(newEl);
     renderEmptyState(); // clears empty state when first task is added
@@ -2207,18 +2398,78 @@ function scheduleTimeSlotRefresh() {
   }, msToNextHour);
 }
 
-// ── Availability Heuristic — auto-sort by XP on load ─────────────────────
-// Tversky & Kahneman (1973): what is cognitively available feels most important.
-// Surfacing the highest-XP task to position 1 on load makes the most
-// important task the most salient without any operator effort. After load the
-// operator can drag-to-reorder as normal — the sort is a one-time initialisation.
-function sortMissionsByPriority() {
+// ── Ranking — surfaces what the operator has been avoiding ────────────────
+// Supersedes the old XP-only load sort. That sort rested on the Availability
+// Heuristic (Tversky & Kahneman, 1973) — put the highest-XP objective at
+// position 1 so the most important one is also the most cognitively available.
+// The heuristic still holds; XP alone was just too thin a proxy for
+// "important". Deferrals and dwell now carry most of the ordering, and XP
+// stays in as one term among several.
+// Transparent linear scorer, not a learned model: with one operator and a
+// handful of objectives a day there is nowhere near enough data to train
+// anything, and an opaque re-order would be a controlling mechanic in a
+// system built on autonomy (SDT — see DESIGN.md 9.3). Every term here can be
+// read off and explained in a sentence, which is the point.
+//
+// Deferral dominates deliberately. An objective the operator looked at in
+// Match mode and passed over is the strongest avoidance signal available —
+// stronger than passive dwell, because it was an active decision. Avoidance
+// is exactly what should rise, since the thing being avoided is usually the
+// thing that matters. Weights are hand-set; tuning them is a later phase.
+var RANK_WEIGHTS = {
+  defer:    28,  // per active pass-over — the dread signal
+  dwell:     9,  // per day survived untouched on the board
+  xp:      0.5,  // operator's own difficulty judgment
+  dueSoon:  40,  // deadline within 24h
+  dueWeek:  18,  // deadline within a week
+};
+
+function scoreMission(el) {
+  var score = 0;
+  score += (parseInt(el.dataset.deferCount) || 0) * RANK_WEIGHTS.defer;
+  score += (parseInt(el.dataset.dwell) || 0) * RANK_WEIGHTS.dwell;
+  score += (parseInt(el.dataset.xp) || 0) * RANK_WEIGHTS.xp;
+
+  if (el.dataset.deadline) {
+    var msLeft = new Date(el.dataset.deadline).getTime() - Date.now();
+    if (msLeft <= 86400000) score += RANK_WEIGHTS.dueSoon;
+    else if (msLeft <= 604800000) score += RANK_WEIGHTS.dueWeek;
+  }
+  return score;
+}
+
+// Returns the top two contributing terms as plain text, so the board can
+// always answer "why is this first?" without the operator having to trust it.
+function explainMissionRank(el) {
+  var parts = [];
+  var defers = parseInt(el.dataset.deferCount) || 0;
+  var dwell  = parseInt(el.dataset.dwell) || 0;
+  if (defers > 0) parts.push("passed over " + defers + "×");
+  if (dwell > 1)  parts.push(dwell + " days on the board");
+  if (el.dataset.deadline) {
+    var msLeft = new Date(el.dataset.deadline).getTime() - Date.now();
+    if (msLeft <= 86400000) parts.push("due today");
+    else if (msLeft <= 604800000) parts.push("due this week");
+  }
+  return parts.slice(0, 2).join(" · ");
+}
+
+function rankMissions() {
   var items = Array.from(missionListEl.querySelectorAll(".mission"));
   if (items.length <= 1) return;
-  items.sort(function(a, b) {
-    return (parseInt(b.dataset.xp) || 0) - (parseInt(a.dataset.xp) || 0);
-  });
-  items.forEach(function(item) { missionListEl.appendChild(item); });
+  items
+    .map(function (el) { return { el: el, score: scoreMission(el) }; })
+    .sort(function (a, b) { return b.score - a.score; })
+    .forEach(function (entry) {
+      // The board must always be able to answer "why is this one first?".
+      // A re-order the operator cannot interrogate is a controlling mechanic
+      // (CET — DESIGN.md 9.3); an explained one stays informational. Native
+      // title attribute deliberately: no new chrome, no layout cost.
+      var why = explainMissionRank(entry.el);
+      if (why) entry.el.title = why;
+      else entry.el.removeAttribute("title");
+      missionListEl.appendChild(entry.el);
+    });
   saveMissions();
 }
 
@@ -2238,7 +2489,9 @@ document.addEventListener("DOMContentLoaded", () => {
   loadMissions();
   renderStreakBar();
   updateSessionProgress(); // also calls renderEmptyState()
-  sortMissionsByPriority();
+  // Ranked, not just XP-sorted: deferrals and dwell now carry the ordering,
+  // so anything the operator has been passing over resurfaces at the top.
+  rankMissions();
   applyTimeSlotVisibility();
   scheduleTimeSlotRefresh();
 
@@ -2341,97 +2594,22 @@ inputEl.addEventListener("input", (e) => {
 
 // Lock in timer
 
-// Click dragging functionality
+// ── Unified gesture system — vertical drag reorders, horizontal drag/swipe
+// deletes (left) or promotes to top (right) ───────────────────────────────
+// One Pointer Events handler covers mouse, touch, and pen, and decides axis
+// from the first ~10px of movement. This replaced separate native-HTML5-DnD
+// (mouse) and raw-touch-event (touch) implementations: native drag claims a
+// pointer the instant it moves in ANY direction, which made it impossible to
+// tell "this is a reorder" from "this is a swipe" before the browser had
+// already committed to one. Pointer Events give that decision back to us.
 
-// Drag and Drop event handlers
-let draggedItem = null;
-
-function handleDragStart(e) {
-  draggedItem = e.target;
-  e.target.classList.add("dragging");
-
-  // Set ghost drag image
-  const ghost = e.target.cloneNode(true);
-  ghost.style.opacity = "0.5";
-  document.body.appendChild(ghost);
-  e.dataTransfer.setDragImage(ghost, 0, 0);
-  setTimeout(() => document.body.removeChild(ghost), 0);
-}
-
-function handleDragEnd(e) {
-  e.target.classList.remove("dragging");
-  draggedItem = null;
-}
-
-function handleDragOver(e) {
-  e.preventDefault();
-  const targetItem = e.target.closest("li");
-
-  if (!targetItem || !draggedItem || targetItem === draggedItem) return;
-
-  const boundingRect = targetItem.getBoundingClientRect();
-  const draggedRect = draggedItem.getBoundingClientRect();
-
-  if (e.clientY < boundingRect.top + boundingRect.height / 2) {
-    targetItem.parentNode.insertBefore(draggedItem, targetItem);
-  } else {
-    targetItem.parentNode.insertBefore(draggedItem, targetItem.nextSibling);
-  }
-
-  saveMissions();
-}
-
-function handleDrop(e) {
-  e.preventDefault();
-  saveMissions();
-}
-
-let touchDraggedItem = null;
-let touchStartY = 0;
-
-function handleTouchStart(e) {
-  const touch = e.touches[0];
-  touchStartY = touch.clientY;
-  touchDraggedItem = e.target.closest("li");
-  if (touchDraggedItem) {
-    touchDraggedItem.classList.add("dragging");
-  }
-}
+let _gesture = null; // { el, pointerId, startX, startY, axis: null|"h"|"v", dx }
+const GESTURE_CLAIM_PX = 10;
+const SWIPE_COMMIT_FRACTION = 0.32; // fraction of the row's width to commit a swipe
+const SWIPE_COMMIT_MAX_PX = 130;
 
 // Track previous priority mission
 let previousPriorityMission = null;
-
-function handleDragOver(e) {
-  e.preventDefault();
-  const targetItem = e.target.closest("li");
-
-  if (!targetItem || !draggedItem || targetItem === draggedItem) return;
-
-  const boundingRect = targetItem.getBoundingClientRect();
-
-  if (e.clientY < boundingRect.top + boundingRect.height / 2) {
-    targetItem.parentNode.insertBefore(draggedItem, targetItem);
-  } else {
-    targetItem.parentNode.insertBefore(draggedItem, targetItem.nextSibling);
-  }
-
-  // Check if priority mission changed
-  const currentPriorityMission = missionListEl.firstElementChild;
-  if (currentPriorityMission !== previousPriorityMission) {
-    // Remove priority class from previous
-    if (previousPriorityMission) {
-      previousPriorityMission.classList.remove("becoming-priority");
-    }
-    // Add priority class to new top mission
-    currentPriorityMission.classList.add("becoming-priority");
-    // Play priority change sound
-    playPriorityChangeSound();
-
-    previousPriorityMission = currentPriorityMission;
-  }
-
-  saveMissions();
-}
 
 // Add a subtle sound effect for priority changes
 function playPriorityChangeSound() {
@@ -2464,39 +2642,246 @@ function initializePrioritySystem() {
   }
 }
 
-// Touch dragging functionality
-
-function handleTouchMove(e) {
-  e.preventDefault();
-  if (!touchDraggedItem) return;
-
-  const touch = e.touches[0];
-  const currentY = touch.clientY;
-
-  // Get all mission items
-  const items = Array.from(document.querySelectorAll(".mission"));
-  const draggedIndex = items.indexOf(touchDraggedItem);
-
-  items.forEach((item, index) => {
-    if (item === touchDraggedItem) return;
-
-    const rect = item.getBoundingClientRect();
-    const centerY = rect.top + rect.height / 2;
-
-    if (currentY < centerY && index < draggedIndex) {
-      item.parentNode.insertBefore(touchDraggedItem, item);
-    } else if (currentY > centerY && index > draggedIndex) {
-      item.parentNode.insertBefore(touchDraggedItem, item.nextSibling);
-    }
-  });
+function _markPriorityChangeIfNeeded() {
+  const currentTop = missionListEl.firstElementChild;
+  if (currentTop === previousPriorityMission) return;
+  if (previousPriorityMission) previousPriorityMission.classList.remove("becoming-priority");
+  if (currentTop) currentTop.classList.add("becoming-priority");
+  playPriorityChangeSound();
+  previousPriorityMission = currentTop;
 }
 
-function handleTouchEnd(e) {
-  if (!touchDraggedItem) return;
+function _reorderByPointerY(el, currentY) {
+  const items = Array.from(missionListEl.querySelectorAll(".mission"));
+  const draggedIndex = items.indexOf(el);
+  items.forEach((item, index) => {
+    if (item === el) return;
+    const rect = item.getBoundingClientRect();
+    const centerY = rect.top + rect.height / 2;
+    if (currentY < centerY && index < draggedIndex) {
+      item.parentNode.insertBefore(el, item);
+    } else if (currentY > centerY && index > draggedIndex) {
+      item.parentNode.insertBefore(el, item.nextSibling);
+    }
+  });
+  _markPriorityChangeIfNeeded();
+}
 
-  touchDraggedItem.classList.remove("dragging");
-  touchDraggedItem = null;
+function _swipeCommitDistance(el) {
+  return Math.min(el.offsetWidth * SWIPE_COMMIT_FRACTION, SWIPE_COMMIT_MAX_PX);
+}
+
+function handlePointerDown(e) {
+  if (e.pointerType === "mouse" && e.button !== 0) return;
+  const el = e.currentTarget;
+  if (el.classList.contains("editing") || el.classList.contains("delete-confirm-pending")) return;
+  _gesture = { el, pointerId: e.pointerId, startX: e.clientX, startY: e.clientY, axis: null, dx: 0 };
+}
+
+function handlePointerMove(e) {
+  if (!_gesture || e.pointerId !== _gesture.pointerId) return;
+  const g = _gesture;
+  const dx = e.clientX - g.startX;
+  const dy = e.clientY - g.startY;
+
+  if (!g.axis) {
+    if (Math.abs(dx) < GESTURE_CLAIM_PX && Math.abs(dy) < GESTURE_CLAIM_PX) return;
+    g.axis = Math.abs(dx) > Math.abs(dy) ? "h" : "v";
+    g.el.setPointerCapture(e.pointerId);
+    g.el.style.transition = "none";
+    if (g.axis === "v") g.el.classList.add("dragging");
+    else g.el.classList.add("mission-swiping");
+  }
+
+  e.preventDefault();
+  g.dx = dx;
+
+  if (g.axis === "h") {
+    const commit = _swipeCommitDistance(g.el);
+    g.el.style.transform = `translateX(${dx}px) rotate(${dx / 24}deg)`;
+    g.el.classList.toggle("swipe-commit-delete", dx <= -commit);
+    g.el.classList.toggle("swipe-commit-promote", dx >= commit);
+  } else {
+    _reorderByPointerY(g.el, e.clientY);
+  }
+}
+
+function handlePointerUp(e) {
+  if (!_gesture || e.pointerId !== _gesture.pointerId) return;
+  const g = _gesture;
+  _gesture = null;
+  const el = g.el;
+
+  if (!g.axis) return; // never moved enough to claim a direction — treat as a plain click
+
+  el.style.transition = "transform 0.22s ease";
+  // Clear the inline transition once the release animation finishes — left
+  // set, it would permanently narrow this element's CSS `transition: all`
+  // rules (hover color fade, etc.) down to just `transform` from now on.
+  setTimeout(() => { el.style.transition = ""; }, 230);
+  el.dataset.justSwiped = "true"; // any claimed gesture suppresses the trailing click
+
+  if (g.axis === "v") {
+    el.classList.remove("dragging");
+    el.style.transform = "";
+    saveMissions();
+    return;
+  }
+
+  const commit = _swipeCommitDistance(el);
+  el.classList.remove("mission-swiping", "swipe-commit-delete", "swipe-commit-promote");
+
+  if (g.dx <= -commit) {
+    el.style.transform = "translateX(-140%) rotate(-14deg)";
+    setTimeout(() => deleteMission(el), 200);
+  } else if (g.dx >= commit) {
+    el.style.transform = "translateX(0) rotate(0deg)";
+    promoteMissionToTop(el);
+  } else {
+    el.style.transform = "translateX(0) rotate(0deg)";
+  }
+}
+
+function handlePointerCancel(e) {
+  if (!_gesture || e.pointerId !== _gesture.pointerId) return;
+  const g = _gesture;
+  _gesture = null;
+  if (!g.axis) return;
+  g.el.classList.remove("dragging", "mission-swiping", "swipe-commit-delete", "swipe-commit-promote");
+  g.el.style.transition = "transform 0.22s ease";
+  g.el.style.transform = "";
+  const _el = g.el;
+  setTimeout(() => { _el.style.transition = ""; }, 230);
+}
+
+function promoteMissionToTop(el) {
+  if (missionListEl.firstElementChild === el) return;
+  missionListEl.prepend(el);
+  _markPriorityChangeIfNeeded();
   saveMissions();
+}
+
+// ── Delete — swipe-left commit or the D-key confirm prompt both land here.
+// Reversible for a few seconds via the same undo-toast pattern used for task
+// completion (Norman action/evaluation gulf — see undoLastCompletion above),
+// kept as an independent snapshot/timer so completion-undo (Ctrl+Z) and
+// deletion-undo never contend for the same pending state.
+window._lastDeletion = null;
+window._deleteUndoTimer = null;
+
+function deleteMission(el) {
+  if (!el || !el.parentNode) return;
+  const prefixSpan = el.querySelector("span[class^='prefix']") || el.querySelector("span");
+  const descSpan = el.querySelector(".mission-desc");
+
+  window._lastDeletion = {
+    prefixClass: prefixSpan ? prefixSpan.className : "prefix-default",
+    prefixText:  prefixSpan ? prefixSpan.textContent : "",
+    descText:    descSpan ? descSpan.textContent : "",
+    xp:          el.dataset.xp,
+    id:          el.dataset.id || null,
+    createdAt:   el.dataset.createdAt || null,
+    dwell:       parseInt(el.dataset.dwell) || 0,
+    deferCount:  parseInt(el.dataset.deferCount) || 0,
+    lastSeenDay: el.dataset.lastSeenDay || null,
+    deadline:    el.dataset.deadline || null,
+    index:       Array.prototype.indexOf.call(missionListEl.children, el),
+  };
+
+  el.remove();
+  renderEmptyState();
+  updateSessionProgress();
+  saveMissions();
+  showDeleteUndoToast();
+}
+
+function showDeleteUndoToast() {
+  const existing = document.getElementById("undo-toast");
+  if (existing) existing.remove();
+  if (window._deleteUndoTimer) clearTimeout(window._deleteUndoTimer);
+
+  const toast = document.createElement("div");
+  toast.id = "undo-toast";
+  toast.innerHTML =
+    '<span class="undo-toast-label">Op removed.</span>' +
+    '<button class="undo-toast-btn" type="button">UNDO</button>';
+  document.body.appendChild(toast);
+  requestAnimationFrame(() => toast.classList.add("undo-toast-visible"));
+
+  toast.querySelector(".undo-toast-btn").addEventListener("click", (e) => {
+    e.stopPropagation();
+    undoLastDeletion();
+  });
+
+  window._deleteUndoTimer = setTimeout(() => {
+    window._lastDeletion = null;
+    dismissDeleteUndoToast();
+  }, 8000);
+}
+
+function dismissDeleteUndoToast() {
+  if (window._deleteUndoTimer) { clearTimeout(window._deleteUndoTimer); window._deleteUndoTimer = null; }
+  const toast = document.getElementById("undo-toast");
+  if (!toast) return;
+  toast.classList.remove("undo-toast-visible");
+  setTimeout(() => { if (toast.parentNode) toast.remove(); }, 250);
+}
+
+function undoLastDeletion() {
+  const snap = window._lastDeletion;
+  if (!snap) return;
+  window._lastDeletion = null;
+  dismissDeleteUndoToast();
+
+  const newEl = document.createElement("li");
+  const prefixSpan = document.createElement("span");
+  prefixSpan.className   = snap.prefixClass;
+  prefixSpan.textContent = snap.prefixText;
+  const descSpan = document.createElement("span");
+  descSpan.className      = "mission-desc";
+  descSpan.contentEditable = "false";
+  descSpan.textContent    = snap.descText;
+  const metaText = document.createTextNode(" — " + snap.xp + " XP");
+  const pomoCategory = getCategoryKeyFromPrefixClass(snap.prefixClass);
+  const pomoSpan = document.createElement("span");
+  pomoSpan.className  = "pomo-estimate";
+  pomoSpan.title      = "Estimated duration";
+  pomoSpan.textContent = pomoToMinutes(PomodoroEstimator.getEstimate(pomoCategory), PomodoroEstimator.getSampleCount(pomoCategory));
+  newEl.appendChild(prefixSpan);
+  newEl.appendChild(descSpan);
+  newEl.appendChild(metaText);
+  newEl.appendChild(pomoSpan);
+  newEl.className  = "mission";
+  newEl.dataset.xp = snap.xp;
+  newEl.dataset.id = snap.id || generateTaskId();
+  newEl.dataset.createdAt = snap.createdAt || new Date().toISOString();
+  newEl.dataset.dwell = String(snap.dwell || 0);
+  newEl.dataset.deferCount = String(snap.deferCount || 0);
+  newEl.dataset.lastSeenDay = snap.lastSeenDay || getTodayKey();
+  if (snap.deadline) newEl.dataset.deadline = snap.deadline;
+  attachTimeSlotBadge(newEl, snap.prefixText + snap.descText);
+  wireMissionInteractions(newEl);
+
+  const refNode = missionListEl.children[snap.index] || null;
+  missionListEl.insertBefore(newEl, refNode);
+  setTimeout(() => newEl.classList.add("active"), 10);
+  renderEmptyState();
+  updateSessionProgress();
+  saveMissions();
+}
+
+// Attaches every interaction a mission row needs — gesture (reorder/swipe),
+// tap-to-complete, hover+E edit, hover+D delete-confirm. One call site per
+// place a <li> is created or restored, so a future addition only needs to
+// land here once instead of being copy-pasted at every creation site.
+function wireMissionInteractions(el) {
+  el.addEventListener("pointerdown", handlePointerDown);
+  el.addEventListener("pointermove", handlePointerMove);
+  el.addEventListener("pointerup", handlePointerUp);
+  el.addEventListener("pointercancel", handlePointerCancel);
+  createMissionClickHandler(el);
+  attachMissionEditHandlers(el);
+  attachMissionDeleteConfirm(el);
 }
 
 function saveMissions() {
@@ -2509,7 +2894,23 @@ function saveMissions() {
       ? (prefixSpan.textContent + descSpan.textContent).trim()
       : missionEl.textContent.split(" — ")[0].trim();
     const xp = missionEl.dataset.xp;
-    return { text: missionText, prefixClass: prefixClass, xp: xp };
+    // Write fallbacks back onto the element itself — a bare `||` fallback
+    // returned but never assigned would mint a fresh id/createdAt on every
+    // single save instead of once, breaking the identity continuity this
+    // field exists to provide.
+    if (!missionEl.dataset.id) missionEl.dataset.id = generateTaskId();
+    if (!missionEl.dataset.createdAt) missionEl.dataset.createdAt = new Date().toISOString();
+    return {
+      text: missionText,
+      prefixClass: prefixClass,
+      xp: xp,
+      id: missionEl.dataset.id,
+      createdAt: missionEl.dataset.createdAt,
+      dwell: parseInt(missionEl.dataset.dwell) || 0,
+      deferCount: parseInt(missionEl.dataset.deferCount) || 0,
+      lastSeenDay: missionEl.dataset.lastSeenDay || null,
+      deadline: missionEl.dataset.deadline || null,
+    };
   });
   localStorage.setItem("missions", JSON.stringify(missionsData));
 }
@@ -2550,24 +2951,30 @@ function loadMissions() {
       newEl.className = "mission";
       newEl.dataset.xp = mission.xp;
 
+      // Task identity — backfills id/createdAt for missions saved before
+      // this field existed.
+      newEl.dataset.id = mission.id || generateTaskId();
+      newEl.dataset.createdAt = mission.createdAt || new Date().toISOString();
+
+      // dwell increments only across a real calendar-day boundary, gated by
+      // lastSeenDay — NOT once per loadMissions() call. This function can run
+      // several times in one day (any page refresh), and counting loads
+      // instead of days would make every task look avoided after a single
+      // afternoon of reloads, corrupting the one signal Phase 1 leans on
+      // hardest to detect real avoidance.
+      const _todayKey = getTodayKey();
+      const _priorDwell = mission.dwell || 0;
+      newEl.dataset.dwell = String(
+        mission.lastSeenDay && mission.lastSeenDay !== _todayKey ? _priorDwell + 1 : _priorDwell
+      );
+      newEl.dataset.lastSeenDay = _todayKey;
+      newEl.dataset.deferCount = String(mission.deferCount || 0);
+      if (mission.deadline) newEl.dataset.deadline = mission.deadline;
+
       // Implementation Intention — attach time-slot badge if task is tagged [AM/PM/EVE]
       attachTimeSlotBadge(newEl, mission.text);
 
-      // Add drag functionality
-      newEl.draggable = true;
-      newEl.addEventListener("dragstart", handleDragStart);
-      newEl.addEventListener("dragend", handleDragEnd);
-      newEl.addEventListener("dragover", handleDragOver);
-      newEl.addEventListener("drop", handleDrop);
-
-      // Add touch events for mobile support
-      newEl.addEventListener("touchstart", handleTouchStart);
-      newEl.addEventListener("touchmove", handleTouchMove);
-      newEl.addEventListener("touchend", handleTouchEnd);
-
-      // Use the new click handler function
-      createMissionClickHandler(newEl);
-      attachMissionEditHandlers(newEl);
+      wireMissionInteractions(newEl);
 
       missionListEl.appendChild(newEl);
 
@@ -2575,6 +2982,11 @@ function loadMissions() {
         newEl.classList.add("active");
       }, 10);
     });
+
+    // Persist dwell increments / backfilled ids immediately. Needed here
+    // (not left to rankMissions' own save) because that function no-ops on
+    // 0-1 missions and would silently drop this session's dwell tick.
+    saveMissions();
   }
 
   // Load current XP, level, and high score from localStorage
@@ -2653,6 +3065,7 @@ function checkXP(totalXp) {
   // Level up condition with visual reset
   if (xpForCurrentLevel === 0 && totalXp > 0) {
     playLevelUpSound();
+    if (window.BuddyBeats) window.BuddyBeats.play("levelUp");
     // Reset visual bar but maintain total XP
     xpMeterEl.style.width = "0%";
     xpMeterEl.textContent = "0/100 XP";
@@ -2802,6 +3215,10 @@ function readyButtonClickHandler() {
   // Always record today's ready time
   localStorage.setItem(todayReadyKey, currentTime.toString());
   renderStreakBar(); // update dot immediately — don't wait for separate listener
+
+  // Weekday signals after 10am are recorded but don't earn the day (see
+  // isDayEarned) — only fire the beat when this signal actually secures it.
+  if (isDayEarned(today) && window.BuddyBeats) window.BuddyBeats.play("streakSecured");
 
   // Create the signal flare animation
   createSignalFlare();
@@ -3838,24 +4255,17 @@ function addMissionFromDistraction(text, xpValue) {
       // Add necessary attributes and event listeners
       newEl.className = "mission";
       newEl.dataset.xp = xpValue;
+      newEl.dataset.id = generateTaskId();
+      newEl.dataset.createdAt = new Date().toISOString();
+      newEl.dataset.dwell = "0";
+      newEl.dataset.deferCount = "0";
+      newEl.dataset.lastSeenDay = getTodayKey();
+      const _deadline = parseTaskDeadline(modifiedMission);
+      if (_deadline) newEl.dataset.deadline = _deadline;
 
-      // Add drag functionality if handleDragStart exists
-      if (typeof handleDragStart === "function") {
-        newEl.draggable = true;
-        newEl.addEventListener("dragstart", handleDragStart);
-        newEl.addEventListener("dragend", handleDragEnd);
-        newEl.addEventListener("dragover", handleDragOver);
-        newEl.addEventListener("drop", handleDrop);
-
-        // Add touch events for mobile
-        newEl.addEventListener("touchstart", handleTouchStart);
-        newEl.addEventListener("touchmove", handleTouchMove);
-        newEl.addEventListener("touchend", handleTouchEnd);
-      }
-
-      // Set up click handler if available
-      if (typeof createMissionClickHandler === "function") {
-        createMissionClickHandler(newEl);
+      // Wire gesture/click/edit/delete-confirm interactions if available
+      if (typeof wireMissionInteractions === "function") {
+        wireMissionInteractions(newEl);
       }
 
       // Add to mission list
@@ -5637,6 +6047,15 @@ document.addEventListener("keydown", (e) => {
   const tag = document.activeElement && document.activeElement.tagName;
   if (tag === "INPUT" || tag === "TEXTAREA") return;
   if (document.activeElement && document.activeElement.isContentEditable) return;
+
+  // These are the *board's* shortcuts, and the board is not on screen while a
+  // full-screen mode is open — every one of them acts on something the operator
+  // cannot see. They also collide outright: S skips the objective in Focus mode
+  // and opens Settings here, so both fired; T would minimise the timer Focus
+  // mode has docked into its own layout. The modes own the keyboard while they
+  // are up, which is also what makes their on-screen hint line truthful.
+  if ((window.FocusMode && window.FocusMode.isOpen()) ||
+      (window.MatchMode && window.MatchMode.isOpen())) return;
 
   // Ctrl/Cmd+Z — undo last task completion (checked before modifier guard)
   if ((e.ctrlKey || e.metaKey) && (e.key === "z" || e.key === "Z")) {
