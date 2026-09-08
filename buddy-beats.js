@@ -146,6 +146,55 @@
       ],
       exitDuration: 200,
     },
+
+    // Falling asleep. Slow and heavy on purpose — every other beat in this
+    // table is a reaction to something that just happened; this is the only
+    // one performing a decision the buddy is making on its own. The frames
+    // are a small three-act structure, not a linear droop: catch (fight it,
+    // recover half a beat), relapse (lose that fight for good), land (settle
+    // with a soft head-bob rather than stopping dead). CuteRobotFace holds
+    // `currentEmotion` on the *previous* mood for this whole duration and
+    // only swaps to "asleep" once it ends — beats never write to mood, and
+    // here that rule is what makes the droop read at all: lid is closing the
+    // eye shape the buddy was already wearing, not scaling an eye that is
+    // shut from frame one.
+    dozeOff: {
+      priority: 3,
+      duration: 1400,
+      allowInFlow: true, // must never be dropped for being in flow — sleep is what's overriding it
+      frames: [
+        { at: 0,    lid: 0.78, tilt: -1,   body: { y: 0.5, scale: 0.995 } },
+        { at: 260,  lid: 0.38, tilt: -3,   body: { y: 1.5, scale: 0.985 } },
+        // The catch: half-opens again for a moment, caught nodding off —
+        // secondary action, not a straight line to shut.
+        { at: 430,  lid: 0.58, tilt: -1.8 },
+        { at: 620,  lid: 0.22, tilt: -4.5, body: { y: 2.4, scale: 0.972 } },
+        { at: 950,  lid: 0.06, tilt: -6.2, body: { y: 3.1, scale: 0.965 } },
+        // Land: a soft overshoot past rest, then settle — the head "sets
+        // down" rather than arriving and stopping.
+        { at: 1180, lid: 0,    tilt: -5.3, body: { y: 2.7, scale: 0.975 } },
+        { at: 1400, lid: 0,    tilt: -4,   body: { y: 2.5, scale: 0.975 } },
+      ],
+    },
+
+    // Waking. The mirror image in every respect: fast where dozeOff is slow,
+    // one motion instead of three acts, overshoot past alert rather than past
+    // rest. Plays while currentEmotion is still "asleep" — lid overshooting
+    // past 1 stretches that mood's own (deliberately not-quite-flat) shut eye
+    // back open, which is the reason that shape keeps a sliver of curvature
+    // at rest instead of going perfectly flat. Priority 5 outranks dozeOff
+    // (3) on purpose: an operator interacting mid-doze must be able to cut
+    // the falling-asleep performance off cleanly, not queue behind it.
+    wakeUp: {
+      priority: 5,
+      duration: 480,
+      allowInFlow: true,
+      frames: [
+        { at: 0,   lid: 1.22, tilt: 4.5,  body: { y: -3.2, scale: 1.08 } },
+        { at: 230, lid: 1.05, tilt: -1.2, body: { y: -0.6, scale: 1.02 } },
+        { at: 420, lid: 1,    tilt: 0,    body: { y: 0,    scale: 1 } },
+      ],
+    },
   };
 
   var NEUTRAL = {

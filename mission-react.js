@@ -475,6 +475,8 @@ const CuteRobotFace = ({
             { duration: 100, interval: 700 }, // Double-blink pattern
             { duration: 100, interval: 5000 },
           ];
+        case "asleep":
+          return []; // already shut — blinking a closed eye is a no-op that isn't worth the timers
         default:
           return [{ duration: 100, interval: 4000 }]; // Normal pattern
       }
@@ -964,12 +966,17 @@ const CuteRobotFace = ({
   React.useEffect(() => { isProcessingRef.current = isProcessing; }, [isProcessing]);
 
   // ── Sleep — dozing through idle stretches ────────────────────────────────
-  // `sleepy` was already reachable by a 6% random roll (above); this wires the
-  // same mood to a real signal instead of leaving it to chance. A paused
-  // session with a buddy still performing alertness is the "a still clock
-  // with moving parts reads as broken" problem (DESIGN_LANGUAGE §5) applied to
-  // a face instead of a ring — so it dozes off when the *session* pauses, not
-  // when the operator merely stops moving the mouse.
+  // A real mood ("asleep" — see the expressions dict), not the old 6% random
+  // "sleepy" roll's shape reused. A paused session with a buddy still
+  // performing alertness is the "a still clock with moving parts reads as
+  // broken" problem (DESIGN_LANGUAGE §5) applied to a face instead of a ring —
+  // so it dozes off when the *session* pauses, not when the operator merely
+  // stops moving the mouse.
+  //
+  // The mood swap is timed to land, not to trigger: dozeOff/wakeUp
+  // (buddy-beats.js) are the performance, and currentEmotion only changes
+  // once each has finished playing, so the eyes are shown actually closing
+  // and actually opening rather than cutting straight to the end state.
   React.useEffect(() => {
     const tick = setInterval(() => {
       if (isAsleepRef.current || isProcessingRef.current) return;
@@ -982,11 +989,16 @@ const CuteRobotFace = ({
       const shouldDoze =
         (pomo.mode === "work" && !pomo.isRunning) ||
         (pomo.mode === "break" && Math.random() < 0.12);
-      if (shouldDoze) {
-        setIsAsleep(true);
-        setCurrentEmotion("sleepy");
-        setEyePosition({ x: 0, y: 0 });
-      }
+      if (!shouldDoze) return;
+
+      setIsAsleep(true);
+      setEyePosition({ x: 0, y: 0 });
+      if (window.BuddyBeats) window.BuddyBeats.play("dozeOff");
+      setTimeout(() => {
+        // Re-check: an interaction during the ~1.4s doze-off performance
+        // already woke the buddy back up, and this must not overwrite that.
+        if (isAsleepRef.current) setCurrentEmotion("asleep");
+      }, 1400); // matches dozeOff's duration in buddy-beats.js — keep in sync
     }, 4000);
     return () => clearInterval(tick);
   }, []);
@@ -998,7 +1010,12 @@ const CuteRobotFace = ({
     function wake() {
       if (!isAsleepRef.current) return;
       setIsAsleep(false);
-      setCurrentEmotion(getBaseEmotion());
+      // wakeUp plays *over* the still-current "asleep" mood — its lid
+      // overshoot is what stretches that mood's own shut-eye shape back open.
+      if (window.BuddyBeats) window.BuddyBeats.play("wakeUp");
+      setTimeout(() => {
+        setCurrentEmotion(getBaseEmotion());
+      }, 480); // matches wakeUp's duration in buddy-beats.js — keep in sync
     }
     function onFocusIn(e) {
       const t = e.target;
@@ -1358,6 +1375,28 @@ const CuteRobotFace = ({
       opacity: 0.88,
       emotional_metadata: { energy_level: 0.82, cognitive_state: "deep_focus", tension: 0.08, blink_interval: { min: 7000, max: 12000 } },
     },
+
+    // Genuinely asleep, not a passing sleepy blip — deterministic (session
+    // paused / occasional break), driven by the dozeOff/wakeUp beats in
+    // buddy-beats.js. The eyes keep a little curvature rather than going
+    // perfectly flat: dozeOff plays over the *previous* mood's open eyes, so
+    // it can droop them shut on its own, but wakeUp's startle scales *this*
+    // shape back open — a mathematically flat line has no curvature left for
+    // scaleY to open back up, so it stays gently arced even at rest.
+    asleep: {
+      leftEye: {
+        path: "M-22,-5 A15,1.5 0 1,1 -3,-5",
+        blinkPath: "M-22,-5 A15,1.5 0 1,1 -3,-5",
+      },
+      rightEye: {
+        path: "M3,-5 A15,1.5 0 1,1 22,-5",
+        blinkPath: "M3,-5 A15,1.5 0 1,1 22,-5",
+      },
+      mouth: "M-18,22 Q0,25 18,22",
+      color: "#005e80",
+      opacity: 0.6,
+      emotional_metadata: { energy_level: 0.02, cognitive_state: "dormant", tension: 0.01 },
+    },
   };
 
   // Add this helper function after the expressions object
@@ -1636,6 +1675,9 @@ const CuteRobotFace = ({
     neutral: 0, happy: 1, excited: 1.5, glitched: -1,
     curious: 3, playful: 2.5, perplexed: -3, sleepy: -2,
     "heart-eyes": 1.5, alert: 0, composing: -2, flow: -1,
+    // Matches where the dozeOff beat settles (buddy-beats.js) — no jump when
+    // the beat ends and this static resting tilt takes over.
+    asleep: -4,
   };
 
   // ── Glow temperature per emotional state ─────────────────────────────────
@@ -1653,6 +1695,7 @@ const CuteRobotFace = ({
     alert:        "#6699ff",   // cooler, blue-shifted
     composing:    "#5588ee",   // coolest, focused
     flow:         "#4477cc",   // dim blue, deep concentration
+    asleep:       "#004e6e",   // dimmest of all — glow marks live things (§2); this is the least live state on screen
   };
 
   // ── Micro-blink on emotion transition — masks path snap, creates continuity ─
@@ -1776,6 +1819,10 @@ const CuteRobotFace = ({
         transform: "translate(" + beat.bodyX + "px," + beat.bodyY + "px) scale(" + beat.scale + ") rotate(" + ((EMOTION_TILT[currentEmotion] || 0) + beat.tilt) + "deg)",
         transition: "transform 0.55s cubic-bezier(0.34,1.56,0.64,1)",
         filter: "drop-shadow(0 0 6px " + (EMOTION_GLOW[currentEmotion] || "#00e6e6") + "22)",
+        // The sleep Z's (below) drift past the viewBox edge as they rise —
+        // the root <svg> clips its own content by default, and without this
+        // they'd vanish mid-animation instead of fading out on schedule.
+        overflow: "visible",
       }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
@@ -1833,7 +1880,18 @@ const CuteRobotFace = ({
       15% { transform: translate(0, -5px) scale(1); opacity: 1; }
       100% { transform: translate(0, -40px) scale(0.5); opacity: 0; }
     }
-    
+
+    /* Sleep Z's — rise, drift sideways per --z-drift, grow slightly as they
+       go (a soft "puff" rather than a flat rise), gently rotate for wobble.
+       Same family as particleFloat/heartFloat above, tuned slower to match
+       the buddy's asleep pace rather than a celebration's. */
+    @keyframes sleepZFloat {
+      0%   { transform: translate(0, 0) scale(0.5) rotate(-4deg); opacity: 0; }
+      12%  { opacity: 0.9; }
+      55%  { transform: translate(calc(var(--z-drift, 1) * 4px), -13px) scale(0.9) rotate(2deg); opacity: 0.85; }
+      100% { transform: translate(calc(var(--z-drift, 1) * 9px), -26px) scale(1.15) rotate(6deg); opacity: 0; }
+    }
+
 
        
     /* Glitch animations */
@@ -2406,6 +2464,34 @@ const CuteRobotFace = ({
         transform="rotate(-20 -22 -28)"
         style={{ pointerEvents: "none" }}
       />
+
+      {/* Sleep indicator — the one animated, legible signal on an otherwise
+          dim, still face, which is exactly why it needs to exist: nothing
+          else on screen distinguishes "asleep" from "broken." Three, not one
+          — each on its own delay and its own --z-drift, so they rise as a
+          loose scatter instead of identical clones stacked in lockstep
+          (secondary motion, same reasoning as the sparkle/heart particles
+          above). Reuses this component's own particle idiom rather than
+          inventing a new mechanism. */}
+      {currentEmotion === "asleep" && (
+        <g style={{ pointerEvents: "none" }} aria-hidden="true">
+          <text x="24" y="-26" fontFamily="'Courier New', monospace" fontWeight="700"
+                fontSize="9" fill="#86dfff"
+                style={{ filter: "drop-shadow(0 0 3px rgba(134,223,255,0.75))",
+                         animation: "sleepZFloat 3.2s ease-in-out infinite",
+                         "--z-drift": 1 }}>Z</text>
+          <text x="29" y="-32" fontFamily="'Courier New', monospace" fontWeight="700"
+                fontSize="7" fill="#86dfff" opacity="0.85"
+                style={{ filter: "drop-shadow(0 0 3px rgba(134,223,255,0.75))",
+                         animation: "sleepZFloat 3.2s ease-in-out infinite",
+                         animationDelay: "1.05s", "--z-drift": 1.4 }}>z</text>
+          <text x="20" y="-19" fontFamily="'Courier New', monospace" fontWeight="700"
+                fontSize="11" fill="#86dfff" opacity="0.7"
+                style={{ filter: "drop-shadow(0 0 3px rgba(134,223,255,0.75))",
+                         animation: "sleepZFloat 3.2s ease-in-out infinite",
+                         animationDelay: "2.1s", "--z-drift": 0.6 }}>Z</text>
+        </g>
+      )}
     </SVGComponent>
   );
 };
@@ -3769,7 +3855,7 @@ const SettingsPanel = () => {
   // React requires all hooks to be called unconditionally on every render.
   // Placing useEffect after an early return violates the Rules of Hooks and
   // causes React to throw + unmount the component when that branch is taken.
-  var DEMO_EMOTIONS = ["neutral","happy","excited","alert","composing","flow","curious","perplexed","playful","sleepy","glitched"];
+  var DEMO_EMOTIONS = ["neutral","happy","excited","alert","composing","flow","curious","perplexed","playful","sleepy","asleep","glitched"];
   React.useEffect(function() {
     if (view !== "diagnostics" || !autoCycle) return;
     var idx = 0;

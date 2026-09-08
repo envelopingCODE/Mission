@@ -142,6 +142,15 @@ Implementation rules:
   everything else on the face — it is not an object added *near* the eye. `heart-eyes` (the
   one prior instance of this) is retroactively covered by this reading rather than treated as
   a grandfathered exception.
+  **Amendment (asleep):** the `asleep` mood adds three small floating "Z" characters near the
+  face — this one genuinely is what the base rule prohibits (decoration *near* the face, not a
+  change to the face itself), kept as a deliberate, explicitly-directed exception rather than
+  quietly folded into the reading above. The justification the rule otherwise protects against
+  — a mascot prop with no functional reason to exist — doesn't apply here: without it, a still,
+  dim face and a *broken* one are visually identical, and there is no eye/mouth geometry that
+  reads as "asleep, not frozen" at a glance. Kept inside the house visual language regardless
+  (monospace, `currentColor`-style cyan glow, drawn with the component's own existing particle
+  mechanism rather than a new one) so it reads as this face's idiom and not a bolted-on sticker.
 - Stroke language matches the HUD: `currentColor` thin strokes + cyan drop-shadow glow —
   the same vocabulary as the break icons and timer ring. Eye-glyphs follow the same rule:
   cyan line-art (`eyeGlow`/`cuteGlow`), never a filled emoji-style icon or an off-palette color.
@@ -151,7 +160,7 @@ Implementation rules:
   system's "never guilt-tripping" rule applied to gestures.
 - Speaking = JS-driven mouth motion + `mouthGlow` filter pulse; processing (Ollama) = eye
   scan left-right; emotion states via `window.setRobotEmotion(name, ms)`:
-  `neutral | flow | sleepy | curious | alert | composing`.
+  `neutral | flow | sleepy | curious | alert | composing | asleep`.
 - Reactive gestures (task complete, level up, streak secured, etc.) go through
   `window.BuddyBeats.play(name)` (see `buddy-beats.js`), not through `setRobotEmotion` — a
   beat overlays the current mood and hands control back to it when done, rather than
@@ -159,6 +168,11 @@ Implementation rules:
   suppressed in `flow` state unless explicitly marked otherwise — this HUD sits in peripheral
   vision beside the task list, and unrequested motion there is an attention cost paid whether
   or not the operator wanted to look.
+- `asleep` is distinct from `sleepy` (the latter a passing idle blip): it is driven
+  deterministically by a paused session or, occasionally, a break, and only exits on operator
+  interaction (a click, or a textfield taking focus) — never on a timer. The transition in and
+  out of it is itself a beat (`dozeOff` / `wakeUp`), not an instant swap: the eyes are shown
+  actually closing and actually opening rather than cutting between two static states.
 - Tone: earnest and calm, never sarcastic, never guilt-tripping. The buddy is a teammate,
   not a supervisor. (Voice rules: DESIGN.md §3.4.)
 
