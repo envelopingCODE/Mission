@@ -2608,6 +2608,47 @@ const GESTURE_CLAIM_PX = 10;
 const SWIPE_COMMIT_FRACTION = 0.32; // fraction of the row's width to commit a swipe
 const SWIPE_COMMIT_MAX_PX = 130;
 
+// ── Mechanical click — synthesized UI confirmation ──────────────────────
+// DESIGN_LANGUAGE §6: "All interaction audio is Web-Audio-synthesized." Two
+// call sites (the Neural Capture Store confirmation and the 3D carousel
+// rotation) were routed through sampled ui-click/swipe .mp3 files instead —
+// the one place that rule wasn't actually followed. A filtered noise burst
+// with a fast decay reads as a physical switch rather than a tone, which a
+// sine/square blip (used elsewhere for ticks and alarms) can't do — this is
+// deliberately a different synthesis shape, not a copy of playPriorityChangeSound.
+let _mechClickBuffer = null;
+function _mechClickNoise() {
+  if (_mechClickBuffer) return _mechClickBuffer;
+  const n = Math.round(audioContext.sampleRate * 0.03); // 30ms source; the envelope trims it further
+  const buf = audioContext.createBuffer(1, n, audioContext.sampleRate);
+  const data = buf.getChannelData(0);
+  for (let i = 0; i < n; i++) data[i] = Math.random() * 2 - 1;
+  _mechClickBuffer = buf;
+  return buf;
+}
+
+function playMechClick(strength) {
+  if (!AppSettings.get().soundEnabled) return; // no <audio> element behind this one to mute for us
+  strength = strength || 1;
+
+  const src = audioContext.createBufferSource();
+  src.buffer = _mechClickNoise();
+
+  const bandpass = audioContext.createBiquadFilter();
+  bandpass.type = "bandpass";
+  bandpass.frequency.value = 2600;
+  bandpass.Q.value = 1.1;
+
+  const gain = audioContext.createGain();
+  const now = audioContext.currentTime;
+  gain.gain.setValueAtTime(0.14 * strength, now);
+  gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.045);
+
+  src.connect(bandpass).connect(gain).connect(audioContext.destination);
+  src.start(now);
+  src.stop(now + 0.05);
+}
+
 // Track previous priority mission
 let previousPriorityMission = null;
 
@@ -3970,18 +4011,9 @@ function formatTimestamp(timestamp) {
 }
 
 function playAddNeuralSound() {
-  // Ensure swipeSound is an audio element and exists
-  if (swipeSound && typeof addNeuralSound.play === "function") {
-    try {
-      // Reset the sound to the beginning and play
-      addNeuralSound.currentTime = 0;
-      addNeuralSound.play().catch((error) => {
-        console.warn("Error playing addNeural sound:", error);
-      });
-    } catch (error) {
-      console.warn("Error playing addNeuralsound:", error);
-    }
-  }
+  // Was a sampled ui-click .mp3; now the synthesized mechanical click
+  // (DESIGN_LANGUAGE §6 — see playMechClick above).
+  playMechClick();
 }
 
 // ===== DATA MANAGEMENT =====
@@ -5168,24 +5200,11 @@ class DistractionCarousel {
   }
 
   playRotationFeedback() {
-    // Ensure swipeSound is an audio element and exists
-    if (swipeSound && typeof swipeSound.play === "function") {
-      try {
-        // Reset the sound to the beginning
-        swipeSound.currentTime = 0;
-
-        // Set the volume to a lower level (0.3 = 30% volume)
-        // You can adjust this value between 0.0 (silent) and 1.0 (full volume)
-        swipeSound.volume = 0.4;
-
-        // Play the sound
-        swipeSound.play().catch((error) => {
-          console.warn("Error playing swipe sound:", error);
-        });
-      } catch (error) {
-        console.warn("Error playing swipe sound:", error);
-      }
-    }
+    // Was a sampled swipe .mp3; now the synthesized mechanical click
+    // (DESIGN_LANGUAGE §6). Quieter than the default — this fires on every
+    // card the rotation passes, and a full-strength click repeated rapidly
+    // would read as chattering rather than as a sequence of soft stops.
+    playMechClick(0.6);
   }
 
   // Enhanced touch/swipe handling

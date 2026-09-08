@@ -49,9 +49,13 @@
     },
     // Level up. Four-point sparkle rather than a five-point star — the concave
     // waist survives downscaling, where a five-point star turns to mush.
+    // Stroke, not fill: a filled shape this size blooms into a solid glowing
+    // blob under the same blur filter that makes check/chevron read as crisp
+    // line-art — confirmed by eye in-app, not just reasoned about up front.
     star: {
       d: "M0,-1 Q0.16,-0.16 1,0 Q0.16,0.16 0,1 Q-0.16,0.16 -1,0 Q-0.16,-0.16 0,-1 Z",
-      mode: "fill",
+      mode: "stroke",
+      weight: 0.22,
       fit: 0.92,
     },
     // The day is secured — streak advanced.

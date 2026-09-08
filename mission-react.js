@@ -198,6 +198,12 @@ const CuteRobotFace = ({
   const [pupilSize,     setPupilSize]     = React.useState(1);
   const [isSpeaking,    setIsSpeaking]    = React.useState(false);
   const [isProcessing,  setIsProcessing]  = React.useState(false);
+  // Sleep is a mood like any other (reuses the existing "sleepy" expression),
+  // but driven deterministically rather than by the 6% idle roll below — see
+  // the doze/wake effects further down.
+  const [isAsleep,      setIsAsleep]      = React.useState(false);
+  const isAsleepRef        = React.useRef(false);
+  const isProcessingRef    = React.useRef(false);
   const lookAwayTimerRef   = React.useRef(null);
   const mouthRafRef        = React.useRef(null);
   const currentEmotionRef  = React.useRef("curious");
@@ -488,10 +494,36 @@ const CuteRobotFace = ({
 
     return () => blinkIntervals.forEach(clearInterval);
   }, [currentEmotion]);
+  // A running timer is the one other thing on screen worth a glance —
+  // computed live off the two elements' actual positions (same delta/clamp
+  // approach as the mouse-tracking handler below) rather than an assumed
+  // corner, so it still points the right way if the widget has been dragged.
+  // Returns null far more often than not: this is a bias on the ambient
+  // wander, not a lock — a buddy that stares at the timer isn't idling, it's
+  // watching it, which is a different (and unearned) read.
+  const timerGazeBias = () => {
+    var pomo = window.PomodoroState;
+    if (!pomo || !pomo.isRunning) return null;
+    if (Math.random() > 0.35) return null;
+    var wrapper = document.querySelector(".minimalist-face-wrapper");
+    var pip = document.querySelector("#pomodoro-mount .pomodoro-pip, #pomodoro-mount .pomodoro-minimized");
+    if (!wrapper || !pip) return null;
+    var wb = wrapper.getBoundingClientRect();
+    var pb = pip.getBoundingClientRect();
+    if (!pb.width || !pb.height) return null;
+    var dx = (pb.left + pb.width / 2)  - (wb.left + wb.width / 2);
+    var dy = (pb.top  + pb.height / 2) - (wb.top  + wb.height / 2);
+    var mag = Math.sqrt(dx * dx + dy * dy) || 1;
+    return { x: (dx / mag) * 5, y: (dy / mag) * 3.5 }; // same order of magnitude as the ambient wander below
+  };
+
   // Add natural eye movement
   React.useEffect(() => {
     const moveEyesRandomly = () => {
+      if (isAsleepRef.current) return;
       if (!isTracking) {
+        const biased = timerGazeBias();
+        if (biased) { setEyePosition(biased); return; }
         const randomX = (Math.random() - 0.5) * 6;
         const randomY = (Math.random() - 0.5) * 4;
         setEyePosition({ x: randomX, y: randomY });
@@ -519,6 +551,10 @@ const CuteRobotFace = ({
   // Add mouse tracking for eye movement
   React.useEffect(() => {
     const handleMouseMove = (e) => {
+      // A sleeping buddy doesn't track the cursor — the sleepy eyes sliding
+      // around under the pointer would undercut the one visual cue ("closed",
+      // low-arc eyes) that reads as asleep at all.
+      if (isAsleepRef.current) return;
       const wrapper = document.querySelector(".minimalist-face-wrapper");
       if (!wrapper) return;
 
@@ -853,25 +889,27 @@ const CuteRobotFace = ({
     };
   }, []);
 
+  // Hoisted out of the effect below so the sleep/wake effects further down
+  // can also reach for it when picking a resting mood to wake back up into.
+  const getBaseEmotion = () => {
+    if (currentLevel >= 2) {
+      return "happy";
+    } else if (taskCompletionLevel >= 70) {
+      return "excited";
+    } else if (taskCompletionLevel >= 30) {
+      return "happy";
+    } else {
+      return "neutral";
+    }
+  };
+
   // Update this useEffect in your CuteRobotFace component
   React.useEffect(() => {
-    // Function to determine base emotion
-    const getBaseEmotion = () => {
-      if (currentLevel >= 2) {
-        return "happy";
-      } else if (taskCompletionLevel >= 70) {
-        return "excited";
-      } else if (taskCompletionLevel >= 30) {
-        return "happy";
-      } else {
-        return "neutral";
-      }
-    };
-
     // Function to trigger random emotion
     const triggerRandomEmotion = () => {
-      // Never interrupt a processing state
-      if (isProcessing) return;
+      // Never interrupt a processing state, and never fight the deliberate
+      // sleep state below — it has its own exit condition (interaction).
+      if (isProcessing || isAsleepRef.current) return;
       // Only show random emotions if we're in a base state
       if (
         !isTaskCompleted &&
@@ -918,6 +956,61 @@ const CuteRobotFace = ({
       clearInterval(intervalId);
     };
   }, [currentLevel, taskCompletionLevel, isTaskCompleted, currentEmotion]);
+
+  // Keep the refs mirrored for use inside intervals/listeners below, which
+  // close over them once at mount and would otherwise read stale values —
+  // the same pattern already used for currentEmotionRef further down.
+  React.useEffect(() => { isAsleepRef.current = isAsleep; }, [isAsleep]);
+  React.useEffect(() => { isProcessingRef.current = isProcessing; }, [isProcessing]);
+
+  // ── Sleep — dozing through idle stretches ────────────────────────────────
+  // `sleepy` was already reachable by a 6% random roll (above); this wires the
+  // same mood to a real signal instead of leaving it to chance. A paused
+  // session with a buddy still performing alertness is the "a still clock
+  // with moving parts reads as broken" problem (DESIGN_LANGUAGE §5) applied to
+  // a face instead of a ring — so it dozes off when the *session* pauses, not
+  // when the operator merely stops moving the mouse.
+  React.useEffect(() => {
+    const tick = setInterval(() => {
+      if (isAsleepRef.current || isProcessingRef.current) return;
+      const pomo = window.PomodoroState;
+      if (!pomo) return;
+      // Paused mid-session: the wait is open-ended, so sleep is the honest
+      // read. On a break, the operator is deliberately not working — the
+      // buddy naps *sometimes*, not every break, so it still reads as a
+      // choice rather than a rule firing.
+      const shouldDoze =
+        (pomo.mode === "work" && !pomo.isRunning) ||
+        (pomo.mode === "break" && Math.random() < 0.12);
+      if (shouldDoze) {
+        setIsAsleep(true);
+        setCurrentEmotion("sleepy");
+        setEyePosition({ x: 0, y: 0 });
+      }
+    }, 4000);
+    return () => clearInterval(tick);
+  }, []);
+
+  // Waking is interaction-driven only, on purpose — never on a timer or a
+  // state change the buddy decides for itself. The operator put it to sleep
+  // by stepping away; only the operator coming back wakes it.
+  React.useEffect(() => {
+    function wake() {
+      if (!isAsleepRef.current) return;
+      setIsAsleep(false);
+      setCurrentEmotion(getBaseEmotion());
+    }
+    function onFocusIn(e) {
+      const t = e.target;
+      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) wake();
+    }
+    document.addEventListener("click", wake);
+    document.addEventListener("focusin", onFocusIn);
+    return () => {
+      document.removeEventListener("click", wake);
+      document.removeEventListener("focusin", onFocusIn);
+    };
+  }, []);
 
   // Add at the end of SECTION 4: Emotion Logic (around line 480-490)
   // After all your other useEffect hooks related to emotions
@@ -4270,6 +4363,15 @@ const PomodoroTimer = () => {
     window.togglePomodoroTimer = () => setExpanded((e) => !e);
     return () => { delete window.togglePomodoroTimer; };
   }, []);
+
+  // Read-only bridge for consumers on the *other* React root — the buddy
+  // (DESIGN.md "Two-Mode Architecture": standalone roots talk through window,
+  // never a shared framework). A plain object rather than a callback: the
+  // buddy polls this on its own idle timers, so nothing depends on mount
+  // order between the two roots.
+  React.useEffect(() => {
+    window.PomodoroState = { isRunning: isRunning, mode: mode };
+  }, [isRunning, mode]);
 
   React.useEffect(() => { localStorage.setItem("timerType", timerType); }, [timerType]);
 

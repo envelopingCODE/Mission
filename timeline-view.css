@@ -450,62 +450,32 @@
 }
 
 /* ── Launcher ─────────────────────────────────────────────────────────── */
-#tl-fab {
-  position: fixed;
-  right: 1rem;
-  bottom: 1rem;
-  z-index: 9985;
-  width: 2.9rem;
-  height: 2.9rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  border-radius: 50%;
-  background: rgba(10, 22, 32, 0.62);
-  border: 1px solid rgba(134, 223, 255, 0.24);
-  backdrop-filter: blur(16px) saturate(1.3);
-  -webkit-backdrop-filter: blur(16px) saturate(1.3);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.42);
-  cursor: pointer;
-  transition: transform 0.28s var(--tl-spring), border-color 0.2s ease,
-    box-shadow 0.2s ease;
-}
-#tl-fab:hover {
-  transform: scale(1.06);
-  border-color: rgba(134, 223, 255, 0.5);
-  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.45), 0 0 18px rgba(134, 223, 255, 0.16);
-}
-#tl-fab:active {
-  transform: scale(0.93);
-}
+/* #timelineViewButton sits in the header next to #matchModeButton /
+   #focusModeButton (index.html, .grid-item-1) and is styled to match them
+   exactly — same recipe as #matchModeButton in mission.css (quiet bordered
+   monospace chip, DESIGN_LANGUAGE §7), not a new pill treatment. This file
+   only adds the new button's own rule; it does not touch or override
+   #matchModeButton / #focusModeButton in mission.css.
 
-/* Glyph — a time axis in miniature: a rule with two marks on it. Drawn in
-   CSS so the launcher carries no image dependency. */
-.tl-fab-glyph {
-  position: relative;
-  width: 1.05rem;
-  height: 1.05rem;
+   Margin mirrors #focusModeButton's own top+left margin (mission.css) so the
+   three buttons continue the same inline spacing rhythm — nothing in
+   .grid-item-1's layout is touched, so nothing already working can break. */
+#timelineViewButton {
+  font-family: "Courier New", monospace;
+  font-size: 0.62rem;
+  letter-spacing: 0.12em;
+  padding: 0.3rem 0.7rem;
+  margin: 0.4rem 0 0 0.4rem;
+  background: none;
+  border: 1px solid rgba(134, 223, 255, 0.3);
+  color: rgba(134, 223, 255, 0.75);
+  border-radius: 3px;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
 }
-.tl-fab-glyph::before {
-  content: "";
-  position: absolute;
-  left: 0.16rem;
-  top: 0;
-  bottom: 0;
-  width: 1px;
-  background: rgba(134, 223, 255, 0.55);
-}
-.tl-fab-glyph::after {
-  content: "";
-  position: absolute;
-  left: 0.42rem;
-  top: 0.16rem;
-  width: 0.55rem;
-  height: 2px;
-  border-radius: 1px;
-  background: #86dfff;
-  box-shadow: 0 0.34rem 0 rgba(134, 223, 255, 0.45);
+#timelineViewButton:hover {
+  background: rgba(134, 223, 255, 0.08);
+  border-color: rgba(134, 223, 255, 0.65);
 }
 
 @media (max-width: 600px) {
@@ -526,7 +496,6 @@
 @media (prefers-reduced-motion: reduce) {
   #timeline-view,
   .tl-block,
-  #tl-fab,
   .tl-check-ring {
     transition-duration: 0.01ms !important;
   }
