@@ -3574,14 +3574,19 @@ function updateXpMeter(totalXp) {
   xpMeterEl.textContent = `${xpForCurrentLevel}/100 XP`;
 }
 
+// One click, no confirmation, so it clears only the active mission list and
+// XP/level. Everything else (settings, history, project time totals) is left
+// for Purge Memory Banks, which has a confirmation sequence.
 function clearData() {
   playResetDataSound();
   typeAdditionalMessage(3);
-  localStorage.clear(); // Clear all data from local storage
-  missionListEl.textContent = ""; // Clear the mission list
-  resetXpMeter(); // Reset the XP meter
-  //  resetStreak(); // Reset the streak count
-  console.log("Data has been wiped . . ");
+  localStorage.removeItem("missions");
+  missionListEl.textContent = "";
+  localStorage.setItem("currentXp", 0);
+  localStorage.setItem("currentLevel", 1);
+  xpMeterEl.dataset.xp = 0;
+  updateXpMeter(0);
+  updateWrapButtonHUD();
 }
 
 function clearXP() {
