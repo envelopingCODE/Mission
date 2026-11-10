@@ -1,2 +1,3 @@
 .ollama-bridge-token
 node_modules/
+*.local.json
