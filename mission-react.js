@@ -204,6 +204,10 @@ const CuteRobotFace = ({
   const [isAsleep,      setIsAsleep]      = React.useState(false);
   const isAsleepRef        = React.useRef(false);
   const isProcessingRef    = React.useRef(false);
+  // One dispel roll per "sleepy" blip (below), not one per mousemove event —
+  // otherwise a single mouse gesture fires the check dozens of times and the
+  // "most of the time" probability effectively becomes "instantly, always".
+  const sleepyDispelRolledRef = React.useRef(false);
   const lookAwayTimerRef   = React.useRef(null);
   const mouthRafRef        = React.useRef(null);
   const currentEmotionRef  = React.useRef("curious");
@@ -557,6 +561,17 @@ const CuteRobotFace = ({
       // around under the pointer would undercut the one visual cue ("closed",
       // low-arc eyes) that reads as asleep at all.
       if (isAsleepRef.current) return;
+
+      // Ordinary mouse movement anywhere on the app rouses the light "sleepy"
+      // blip most — not all — of the time; deep sleep has its own explicit
+      // exit (click/textfield focus) and is deliberately untouched by this.
+      // Rolled once per blip (the ref reset lives where "sleepy" is set,
+      // above) rather than re-rolled on every event a single gesture fires.
+      if (currentEmotionRef.current === "sleepy" && !sleepyDispelRolledRef.current) {
+        sleepyDispelRolledRef.current = true;
+        if (Math.random() < 0.8) setCurrentEmotion(getBaseEmotion());
+      }
+
       const wrapper = document.querySelector(".minimalist-face-wrapper");
       if (!wrapper) return;
 
@@ -931,7 +946,14 @@ const CuteRobotFace = ({
             // 8% chance for playful
             randomEmotion = "playful";
           } else if (chance < 0.14) {
-            // 6% chance for sleepy
+            // 6% chance for sleepy — but not while a Pomodoro/OPS session is
+            // actually running. A buddy that looks like it's nodding off
+            // during active work reads as broken, not idle; this bucket
+            // simply goes unclaimed for the tick rather than being handed to
+            // another emotion, so it doesn't inflate playful/glitched's odds.
+            var pomo = window.PomodoroState;
+            var sessionRunning = !!(pomo && pomo.isRunning && pomo.mode === "work");
+            if (sessionRunning) return;
             randomEmotion = "sleepy";
           } else {
             // 6% chance for glitched
@@ -939,6 +961,7 @@ const CuteRobotFace = ({
           }
 
           setCurrentEmotion(randomEmotion);
+          if (randomEmotion === "sleepy") sleepyDispelRolledRef.current = false;
 
           // Different durations for different emotions
           const duration = randomEmotion === "glitched" ? 1500 : 3000; // Glitch state is shorter
