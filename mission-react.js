@@ -3565,7 +3565,7 @@ const PurgeConfirmModal = ({ onClose }) => {
         clearInterval(piv);
         clearInterval(giv);
         Object.keys(localStorage).forEach(function(k) {
-          if (k !== "appSettings") {
+          if (k !== "appSettings" && k !== "projectDailyTotals" && k !== "projectLabel") {
             localStorage.removeItem(k);
           }
         });
@@ -3819,6 +3819,11 @@ const SettingsPanel = () => {
   const [demoActive,   setDemoActive]   = React.useState(null);
   const [debugMinutes, setDebugMinutes] = React.useState("25");
   const [demoThinking, setDemoThinking] = React.useState(false); // "thinking" is held, not fire-and-forget
+  // Project-time rows are read from localStorage at render; this counter only
+  // forces a re-read when the panel opens or a bridge sync lands.
+  const [, bumpProjectTime] = React.useState(0);
+  const [editingDay, setEditingDay] = React.useState(null); // { project, date }
+  const cancelEditRef = React.useRef(false); // Escape unmounts the input; its blur must not commit
 
   // Directional navigation helper
   function navigateTo(v) {
@@ -3831,6 +3836,7 @@ const SettingsPanel = () => {
     window._onSettingsChange   = () => setCfg(window.AppSettings.get());
     window.openSettingsView    = (v) => { setOpen(true); setView(v); };
     window._onConditionChange  = () => setCfg(window.AppSettings.get()); // triggers re-render
+    window._onTaskTimeSync     = () => bumpProjectTime((n) => n + 1);
     window.toggleSettingsView  = (v) => {
       setOpen((o) => {
         if (!o) { setView(v); viewRef.current = v; return true; }
@@ -3843,8 +3849,14 @@ const SettingsPanel = () => {
       delete window._onSettingsChange;
       delete window.openSettingsView;
       delete window.toggleSettingsView;
+      delete window._onTaskTimeSync;
     };
   }, []);
+
+  React.useEffect(() => {
+    if (open) bumpProjectTime((n) => n + 1);
+    else setEditingDay(null);
+  }, [open]);
 
   React.useEffect(() => {
     if (!open) return;
@@ -3868,6 +3880,101 @@ const SettingsPanel = () => {
     setOllamaStatus("checking");
     const ok = await window.OllamaClient.checkAvailable();
     setOllamaStatus(ok ? "ok" : "fail");
+  };
+
+  const fmtHM = (s) => {
+    const m = Math.floor(s / 60);
+    return Math.floor(m / 60) + ":" + (m % 60 < 10 ? "0" : "") + (m % 60);
+  };
+
+  const projectSyncLine = (name) => {
+    if (!cfg.tasktimeSend) return null;
+    let st = null;
+    try { st = JSON.parse(localStorage.getItem("projectTimeSyncStatus") || "null"); } catch (e) {}
+    if (!st || !st.bridge) return null;
+    if (st.bridge !== "ok") return "Bridge not reached";
+    const p = st.projects && Object.prototype.hasOwnProperty.call(st.projects, name) ? st.projects[name] : null;
+    if (!p) return "Not configured on the bridge";
+    if (p.error === "unreadable") return "File unreadable";
+    if (p.error) return "Bridge not reached";
+    return "Sent " + fmtHM(p.seconds) + " for " + p.day;
+  };
+
+  // Lower-only: a correction can shrink a day, never grow it. The same rule
+  // is enforced in TaskTime.lowerDay.
+  const commitDayEdit = (project, date, value) => {
+    setEditingDay(null);
+    const minutes = Number(value);
+    if (value === "" || !isFinite(minutes)) return;
+    const totals = window.TaskTime.parseTotals(localStorage.getItem("projectDailyTotals"));
+    const current = totals[project] && totals[project][date];
+    if (typeof current !== "number" || !(minutes < Math.floor(current / 60))) return;
+    const next = window.TaskTime.lowerDay(totals, project, date, Math.round(minutes * 60));
+    if (next === totals) return;
+    localStorage.setItem("projectDailyTotals", JSON.stringify(next));
+    bumpProjectTime((n) => n + 1);
+    if (window.TaskTimeSync) window.TaskTimeSync.send();
+  };
+
+  const setSendToBridge = () => {
+    toggle("tasktimeSend");
+    if (!cfg.tasktimeSend && window.TaskTimeSync) window.TaskTimeSync.send();
+  };
+
+  const renderProjectTime = () => {
+    const totals = window.TaskTime.parseTotals(localStorage.getItem("projectDailyTotals"));
+    const names = Object.keys(totals).sort();
+    const shown = names.map((name) => ({
+      name,
+      days: Object.keys(totals[name]).filter((d) => totals[name][d] > 0).sort().reverse().slice(0, 14),
+    })).filter((p) => p.days.length > 0);
+    if (shown.length === 0) return <div className="st-row"><span className="st-desc">No project time yet.</span></div>;
+    return shown.map((p) => {
+      const line = projectSyncLine(p.name);
+      return (
+        <div key={p.name}>
+          <div className="st-row">
+            <div className="st-info">
+              <span className="st-label">{p.name}</span>
+              {line && <span className="st-desc">{line}</span>}
+            </div>
+          </div>
+          {p.days.map((d) => {
+            const secs = totals[p.name][d];
+            const editing = editingDay && editingDay.project === p.name && editingDay.date === d;
+            return (
+              <div key={d} className="st-row st-row-action">
+                <span className="st-desc">{d}</span>
+                {editing ? (
+                  <input
+                    className="st-input"
+                    type="number"
+                    min="0"
+                    max={Math.floor(secs / 60)}
+                    defaultValue={Math.floor(secs / 60)}
+                    autoFocus
+                    style={{ flex: "none", width: "4.5rem" }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") commitDayEdit(p.name, d, e.target.value);
+                      if (e.key === "Escape") { e.stopPropagation(); cancelEditRef.current = true; setEditingDay(null); }
+                    }}
+                    onBlur={(e) => {
+                      if (cancelEditRef.current) { cancelEditRef.current = false; return; }
+                      commitDayEdit(p.name, d, e.target.value);
+                    }}
+                  />
+                ) : (
+                  <button className="st-btn" title="Lower this day (minutes)"
+                    onClick={() => { cancelEditRef.current = false; setEditingDay({ project: p.name, date: d }); }}>
+                    {fmtHM(secs)}
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      );
+    });
   };
 
   const DOT   = { idle: "rgba(134,223,255,0.2)", checking: "rgba(244,197,66,0.8)", ok: "#0fdfab", fail: "#ff6b6b" };
@@ -4243,6 +4350,33 @@ const SettingsPanel = () => {
           </div>
 
           <div className="st-section">
+            <div className="st-section-title">Project time</div>
+            <StToggle label="Send to local bridge" checked={cfg.tasktimeSend === true} onChange={setSendToBridge} desc="Daily totals per project only. Stays on this machine." />
+            {renderProjectTime()}
+          </div>
+
+          {(cfg.ollamaEnabled || cfg.tasktimeSend) && (
+            <div className="st-section">
+              <div className="st-section-title">Local bridge</div>
+              <div className="st-row st-row-input">
+                <span className="st-label">URL</span>
+                <input className="st-input" value={cfg.ollamaUrl}
+                  onChange={(e) => setText("ollamaUrl", e.target.value)}
+                  placeholder="http://localhost:11435" spellCheck={false} />
+              </div>
+              <div className="st-row">
+                <span className="st-desc">Bridge default: http://localhost:11435</span>
+              </div>
+              <div className="st-row st-row-input">
+                <span className="st-label">Token</span>
+                <input className="st-input" type="password" value={cfg.ollamaToken || ""}
+                  onChange={(e) => setText("ollamaToken", e.target.value)}
+                  placeholder="from .ollama-bridge-token" spellCheck={false} autoComplete="off" />
+              </div>
+            </div>
+          )}
+
+          <div className="st-section">
             <div className="st-section-title">
               <span>Buddy AI</span>
               <span className="st-badge">Ollama</span>
@@ -4255,18 +4389,6 @@ const SettingsPanel = () => {
                   <input className="st-input" value={cfg.ollamaModel}
                     onChange={(e) => setText("ollamaModel", e.target.value)}
                     placeholder="llama3.2:3b" spellCheck={false} />
-                </div>
-                <div className="st-row st-row-input">
-                  <span className="st-label">URL</span>
-                  <input className="st-input" value={cfg.ollamaUrl}
-                    onChange={(e) => setText("ollamaUrl", e.target.value)}
-                    placeholder="http://localhost:11434" spellCheck={false} />
-                </div>
-                <div className="st-row st-row-input">
-                  <span className="st-label">Token</span>
-                  <input className="st-input" type="password" value={cfg.ollamaToken || ""}
-                    onChange={(e) => setText("ollamaToken", e.target.value)}
-                    placeholder="only if using ollama-bridge.js" spellCheck={false} autoComplete="off" />
                 </div>
                 <div className="st-row st-row-action">
                   <div style={{ display: "flex", alignItems: "center", gap: "0.45rem" }}>
@@ -4497,6 +4619,103 @@ const PomodoroTimer = () => {
     parseInt(localStorage.getItem("projectElapsed") || "0", 10)
   );
   const projectXpBankedRef = React.useRef(0);
+
+  // Wall-clock counting for OPS work time: each tick credits the real time
+  // since the previous tick, so a throttled background tab or a brief stall
+  // loses nothing. A jump over TaskTime.GAP_MS is treated as the machine
+  // having been suspended and is only counted if the operator says so.
+  const lastTickRef = React.useRef(null);
+  const [pendingGap, setPendingGap] = React.useState(null); // { from, to, project }
+  const [projectLabel, setProjectLabel] = React.useState(
+    () => localStorage.getItem("projectLabel") || ""
+  );
+  const labelRef = React.useRef(projectLabel);
+  const [labelPickerOpen, setLabelPickerOpen] = React.useState(false);
+  const counting = isRunning && timerType === "project" && mode === "work";
+
+  React.useEffect(() => {
+    labelRef.current = projectLabel;
+    if (projectLabel) localStorage.setItem("projectLabel", projectLabel);
+    else localStorage.removeItem("projectLabel");
+  }, [projectLabel]);
+
+  // The one place counting stops (pause, break, reset, mode switch, finish)
+  // — the cleanup hands the new totals to the bridge sync. Re-anchoring on
+  // every start is what keeps paused time out of the totals.
+  React.useEffect(() => {
+    if (!counting) return;
+    lastTickRef.current = Date.now();
+    return () => {
+      lastTickRef.current = null;
+      if (window.TaskTimeSync) window.TaskTimeSync.send();
+    };
+  }, [counting]);
+
+  function creditProjectTime(project, fromMs, toMs) {
+    if (!project || !window.TaskTime) return;
+    var totals = window.TaskTime.parseTotals(localStorage.getItem("projectDailyTotals"));
+    var next = window.TaskTime.creditSpan(totals, project, fromMs, toMs);
+    localStorage.setItem("projectDailyTotals", JSON.stringify(next));
+  }
+
+  // Adds whole seconds to the OPS stopwatch; fires the unit flourish when the
+  // addition crosses a 25-min boundary, wherever it lands.
+  function advanceProjectStopwatch(seconds) {
+    if (seconds <= 0) return;
+    var before = projectElapsedRef.current;
+    projectElapsedRef.current = before + seconds;
+    localStorage.setItem("projectElapsed", projectElapsedRef.current);
+    syncDisplay();
+    setHasProjectTime(true);
+    if (Math.floor(before / PROJECT_XP_INCREMENT_SECONDS) <
+        Math.floor(projectElapsedRef.current / PROJECT_XP_INCREMENT_SECONDS)) bankUnit();
+  }
+
+  function answerGap(count) {
+    var gap = pendingGap;
+    setPendingGap(null);
+    if (!gap || !count) return;
+    creditProjectTime(gap.project, gap.from, gap.to);
+    advanceProjectStopwatch(window.TaskTime.spanSeconds(gap.from, gap.to));
+    if (window.TaskTimeSync) window.TaskTimeSync.send();
+  }
+
+  function clockText(ms) {
+    var d = new Date(ms);
+    return (d.getHours() < 10 ? "0" : "") + d.getHours() + ":" + (d.getMinutes() < 10 ? "0" : "") + d.getMinutes();
+  }
+
+  // Names on the bridge come first because they must match its config
+  // exactly — picking beats typing. Recent local labels follow, newest day first.
+  const [labelOptions, setLabelOptions] = React.useState({ configured: [], recent: [], sending: false });
+
+  function openLabelPicker() {
+    var sending = !!(window.AppSettings && window.AppSettings.get().tasktimeSend && window.TaskTimeSync);
+    var totals = window.TaskTime.parseTotals(localStorage.getItem("projectDailyTotals"));
+    var latest = function (p) { return Object.keys(totals[p]).sort().pop(); };
+    var recent = Object.keys(totals).sort(function (a, b) { return latest(b) < latest(a) ? -1 : latest(b) > latest(a) ? 1 : 0; });
+    setLabelOptions({ configured: sending ? window.TaskTimeSync.projects() : [], recent: recent, sending: sending });
+    setLabelPickerOpen(true);
+    if (sending) {
+      window.TaskTimeSync.refreshProjects().then(function (names) {
+        setLabelOptions(function (o) { return { configured: names, recent: o.recent, sending: o.sending }; });
+      });
+    }
+  }
+
+  function labelChoices() {
+    var configured = labelOptions.configured;
+    var recent = labelOptions.recent.filter(function (n) { return configured.indexOf(n) === -1; }).slice(0, 5);
+    var dim = labelOptions.sending && configured.length > 0;
+    return configured.map(function (n) { return { name: n, dim: false }; })
+      .concat(recent.map(function (n) { return { name: n, dim: dim }; }));
+  }
+
+  function pickLabel(name) {
+    setProjectLabel(name);
+    setLabelPickerOpen(false);
+  }
+
   // Refs for the finish-session celebration: the spinning XP reel drum and the
   // readout-panel container (border-glow intensity + comet sweep are driven
   // directly on it). scCtrlRef holds the active run's coordinated teardown so
@@ -4806,12 +5025,16 @@ const PomodoroTimer = () => {
       if (timerType === "project") {
         if (mode === "work") {
           // Open-ended stopwatch — never auto-transitions on its own.
-          projectElapsedRef.current++;
-          localStorage.setItem("projectElapsed", projectElapsedRef.current);
-          syncDisplay();
-          setHasProjectTime(true); // no-op re-render once already true — see declaration
-          // A 25-min unit just banked — fire the collapse-to-pip flourish.
-          if (projectElapsedRef.current % PROJECT_XP_INCREMENT_SECONDS === 0) bankUnit();
+          var now  = Date.now();
+          var last = lastTickRef.current;
+          lastTickRef.current = now;
+          if (last == null) return;
+          if (window.TaskTime.isGap(last, now)) {
+            setPendingGap({ from: last, to: now, project: labelRef.current });
+            return;
+          }
+          creditProjectTime(labelRef.current, last, now);
+          advanceProjectStopwatch(window.TaskTime.spanSeconds(last, now));
           return;
         }
         // On a structured break — fixed-length countdown, same mechanics
@@ -4913,6 +5136,7 @@ const PomodoroTimer = () => {
   const switchTimerType = React.useCallback((newType) => {
     setIsRunning(false);
     setBreakPickerOpen(false);
+    setLabelPickerOpen(false);
     setActiveBreakGroup(null);
     setTimerType(newType);
     setMode("work");
@@ -4988,6 +5212,7 @@ const PomodoroTimer = () => {
   const finishProjectSession = React.useCallback(() => {
     if (projectElapsedRef.current === 0) return;
     setIsRunning(false);
+    if (window.TaskTimeSync) window.TaskTimeSync.send();
     clearBankAnim(); // a unit-bank flourish may be mid-flight — cancel it cleanly
 
     var elapsed    = projectElapsedRef.current;
@@ -5570,7 +5795,63 @@ const PomodoroTimer = () => {
           </div>
         )}
 
-        {timerType === "project" && mode === "work" && !breakPickerOpen && !sessionComplete && (
+        {timerType === "project" && !sessionComplete && pendingGap && (
+          <div className="pip-gap-note">
+            <span>{"Timer was suspended " + clockText(pendingGap.from) + "–" + clockText(pendingGap.to) + ". Count it?"}</span>
+            <div className="pip-break-picker-row">
+              <button className="pip-break-chip" onClick={() => answerGap(true)}>Count</button>
+              <button className="pip-break-chip" onClick={() => answerGap(false)}>Skip</button>
+            </div>
+          </div>
+        )}
+
+        {timerType === "project" && mode === "work" && !sessionComplete && !breakPickerOpen && !labelPickerOpen && (
+          <button
+            className={"pip-ops-label" + (projectLabel ? "" : " pip-ops-label-empty")}
+            title="Project this time counts toward"
+            onClick={openLabelPicker}
+          >
+            {"OPS · " + (projectLabel || "no project")}
+          </button>
+        )}
+
+        {timerType === "project" && mode === "work" && labelPickerOpen && !breakPickerOpen && !sessionComplete && (
+          <div className="pip-break-picker">
+            <div className="pip-break-picker-row">
+              {labelChoices().map((c) => (
+                <button
+                  key={c.name}
+                  className={"pip-break-chip" + (c.name === projectLabel ? " pip-break-chip-active" : "") + (c.dim ? " pip-break-chip-dim" : "")}
+                  title={c.dim ? "Not configured on the bridge — kept on this device only" : c.name}
+                  onClick={() => pickLabel(c.name)}
+                >
+                  {c.name}
+                </button>
+              ))}
+              <button
+                className={"pip-break-chip" + (projectLabel ? "" : " pip-break-chip-active")}
+                onClick={() => pickLabel("")}
+              >
+                No project
+              </button>
+            </div>
+            <input
+              className="st-input pip-label-input"
+              type="text"
+              maxLength={80}
+              placeholder="New project…"
+              onKeyDown={(e) => {
+                var v = e.target.value.trim().slice(0, 80);
+                if (e.key === "Enter" && v) pickLabel(v);
+              }}
+            />
+            <button className="pip-break-picker-cancel" onClick={() => setLabelPickerOpen(false)}>
+              Cancel
+            </button>
+          </div>
+        )}
+
+        {timerType === "project" && mode === "work" && !breakPickerOpen && !labelPickerOpen && !sessionComplete && (
           <div className="pip-ops-actions">
             <button className="pip-take-break" onClick={() => setBreakPickerOpen(true)}>
               Take a break

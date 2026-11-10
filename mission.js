@@ -381,6 +381,7 @@ const AppSettings = (function () {
     ollamaModel:          "llama3.2:3b",
     ollamaUrl:            "http://localhost:11434",
     ollamaToken:          "",  // X-Bridge-Token, only needed when URL points at ollama-bridge.js
+    tasktimeSend:         false, // opt-in: copy daily project totals to the local bridge
   };
   function get() {
     try { return Object.assign({}, DEFAULTS, JSON.parse(localStorage.getItem(KEY) || "{}")); }
@@ -519,9 +520,106 @@ const OllamaClient = (function () {
   };
 })();
 
+// ========================================
+// TASK-TIME SYNC
+// ========================================
+// Opt-in copy of the per-project daily totals to the local bridge, which
+// writes them to files on disk (TASKTIME_CONTRACT.md). localStorage stays the
+// app's store; this only ever sends {project: {date: seconds}}. Deliberately
+// silent: no console output, no buddy messages, no toasts.
+const TaskTimeSync = (function () {
+  var STATUS_KEY = "projectTimeSyncStatus";
+  var _chain = Promise.resolve();
+  var _projects = [];
+  function cfg() {
+    var s = AppSettings.get();
+    return {
+      enabled: !!s.tasktimeSend,
+      url:     (s.ollamaUrl || "").replace(/\/$/, ""),
+      token:   s.ollamaToken || "",
+    };
+  }
+  function headers(c, extra) {
+    var h = Object.assign({}, extra);
+    if (c.token) h["X-Bridge-Token"] = c.token;
+    return h;
+  }
+  function loadStatus() {
+    try {
+      var s = JSON.parse(localStorage.getItem(STATUS_KEY) || "{}");
+      if (s && typeof s === "object" && s.projects && typeof s.projects === "object") return s;
+    } catch (e) {}
+    return { bridge: null, projects: {} };
+  }
+  function saveStatus(status) {
+    localStorage.setItem(STATUS_KEY, JSON.stringify(status));
+    if (typeof window._onTaskTimeSync === "function") window._onTaskTimeSync();
+  }
+  async function fetchList(c) {
+    try {
+      var res = await fetch(c.url + "/api/tasktime/projects", { headers: headers(c), signal: AbortSignal.timeout(2000) });
+      if (!res.ok) return null;
+      var d = await res.json();
+      return Array.isArray(d.projects) ? d.projects.filter(function (n) { return typeof n === "string"; }) : null;
+    } catch (e) { return null; }
+  }
+  async function run() {
+    var c = cfg();
+    if (!c.enabled) return;
+    var prev = loadStatus();
+    var names = await fetchList(c);
+    if (!names) {
+      saveStatus({ bridge: "unreachable", projects: prev.projects });
+      return;
+    }
+    _projects = names;
+    var totals = window.TaskTime.parseTotals(localStorage.getItem("projectDailyTotals"));
+    var out = { bridge: "ok", projects: {} };
+    for (var i = 0; i < names.length; i++) {
+      var name = names[i];
+      if (!Object.prototype.hasOwnProperty.call(totals, name)) continue;
+      var days = totals[name];
+      var latest = Object.keys(days).sort().pop();
+      var entry = prev.projects[name] || { day: null, seconds: null };
+      try {
+        var res = await fetch(c.url + "/api/tasktime", {
+          method: "POST",
+          headers: headers(c, { "Content-Type": "application/json" }),
+          body: JSON.stringify({ v: 1, project: name, days: days }),
+          signal: AbortSignal.timeout(3000),
+        });
+        if (res.ok) entry = { day: latest, seconds: days[latest], error: null };
+        else entry = { day: entry.day, seconds: entry.seconds, error: res.status === 409 ? "unreadable" : "failed" };
+      } catch (e) {
+        entry = { day: entry.day, seconds: entry.seconds, error: "unreachable" };
+      }
+      out.projects[name] = entry;
+    }
+    saveStatus(out);
+  }
+  function send() {
+    _chain = _chain.then(run).catch(function () {});
+    return _chain;
+  }
+  async function refreshProjects() {
+    var c = cfg();
+    if (!c.enabled) return [];
+    var names = await fetchList(c);
+    if (names) _projects = names;
+    return names || [];
+  }
+  return {
+    send: send,
+    refreshProjects: refreshProjects,
+    projects: function () { return _projects.slice(); },
+  };
+})();
+
 // Expose on window — top-level const is NOT auto-added to window in browser scripts
 window.AppSettings  = AppSettings;
 window.OllamaClient = OllamaClient;
+window.TaskTimeSync = TaskTimeSync;
+TaskTimeSync.send();
 
 // ── AffectInference — behavioral state engine ─────────────────────────────
 // Infers operator psychological state from completion rhythm, task addition

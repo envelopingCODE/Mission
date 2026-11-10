@@ -1082,6 +1082,66 @@
   color: rgba(134, 223, 255, 0.7);
 }
 
+/* Project label chip — one quiet line above the actions row; opens the
+   label picker (which reuses the break-picker recipes above). */
+.pip-ops-label {
+  display: block;
+  max-width: 100%;
+  box-sizing: border-box;
+  margin-top: 0.3rem;
+  padding: 0.15rem 0.5rem;
+  background: none;
+  border: none;
+  font-family: "Courier New", monospace;
+  font-size: 0.62rem;
+  letter-spacing: 0.04em;
+  color: rgba(134, 223, 255, 0.55);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.pip-ops-label:hover {
+  color: rgba(134, 223, 255, 0.9);
+}
+
+.pip-ops-label-empty {
+  color: rgba(134, 223, 255, 0.35);
+}
+
+.pip-break-chip-active {
+  background: rgba(134, 223, 255, 0.16);
+  border-color: rgba(134, 223, 255, 0.5);
+  color: #fff;
+}
+
+.pip-break-chip-dim {
+  opacity: 0.55;
+}
+
+.pip-label-input {
+  width: 100%;
+  box-sizing: border-box;
+  flex: none;
+}
+
+/* Suspension question — inline, answered once, never a modal. */
+.pip-gap-note {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  margin-top: 0.4rem;
+  font-family: "Courier New", monospace;
+  font-size: 0.6rem;
+  letter-spacing: 0.04em;
+  text-align: center;
+  color: rgba(134, 223, 255, 0.55);
+  animation: pipSkipFadeIn 0.2s ease;
+}
+
 /* Cycle dots + session label row */
 .pip-cycle-row {
   display: flex;

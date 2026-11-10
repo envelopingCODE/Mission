@@ -209,12 +209,14 @@ The interface minimizes extraneous load through:
 
 ```
 index.html
+├── tasktime.js (pure ES5 module — project-time rules; also `require`d by the bridge and tests)
 ├── mission.js (vanilla JS — DOM, localStorage, behavioral systems)
 │   ├── CATEGORY_CONFIG (1=Financial, 2=Academic, 3=Life Optimization)
 │   ├── PomodoroEstimator (per-category rolling average)
 │   ├── StreakSystem (daily dots, repair mechanic)
 │   ├── AppSettings (localStorage singleton)
 │   ├── OllamaClient (local LLM — lore generation, task briefings)
+│   ├── TaskTimeSync (opt-in copy of daily project totals to the local bridge; silent)
 │   ├── AffectInference (behavioral state inference — flow/avoidance/depletion)
 │   ├── createMissionClickHandler (task completion)
 │   ├── attachMissionEditHandlers (E-to-edit, double-tap)
@@ -230,6 +232,11 @@ index.html
     ├── SettingsPanel (own React root — themes/achievements/Ollama config)
     ├── PurgePortal (own React root — memory wipe confirmation)
     └── PomodoroTimer (own React root — PIP Pomodoro widget)
+
+ollama-bridge.js (optional local Node server, not loaded by the page)
+├── Ollama proxy (CORS + token in front of a local Ollama)
+└── Task-time routes (GET /api/tasktime/projects, POST /api/tasktime — merge daily totals
+    into per-project JSON files; format in TASKTIME_CONTRACT.md)
 ```
 
 ### 3.2 Standalone React Root Pattern
@@ -260,8 +267,13 @@ The five overlay systems each mount on their own `ReactDOM.createRoot()` on a de
 | `timerSkinUnlocked` / `timerSkinActive` | Achievement-unlocked timer skin state |
 | `streakRepairProgress_*` | Repair mechanic progress per day |
 | `streakRepairComplete_*` | Completed repair marker |
+| `projectDailyTotals` | JSON `{project: {YYYY-MM-DD: seconds}}` — OPS work time per project per local day, floored (preserved across purge) |
+| `projectLabel` | Project name the OPS timer currently credits; empty = none (a preference, preserved across purge) |
+| `projectTimeSyncStatus` | JSON `{bridge, projects: {name: {day, seconds, error}}}` — last bridge sync result; rebuilt by the next send, cleared by purge |
 
-**Purge mechanic**: the memory wipe (Purge Memory Banks) deletes everything except `appSettings`. The blacklist approach (delete all keys except the whitelist) was chosen because a whitelist approach leaves orphaned keys that cause achievements to remain unlocked — achievements are live computations against historical task data, not flags.
+**Purge mechanic**: the memory wipe (Purge Memory Banks) deletes everything except `appSettings`, `projectDailyTotals` and `projectLabel`. The blacklist approach (delete all keys except the whitelist) was chosen because a whitelist approach leaves orphaned keys that cause achievements to remain unlocked — achievements are live computations against historical task data, not flags.
+
+**Documented departure from "localStorage is the only persistent store"**: localStorage remains the app's store. When the operator turns on Settings > Project time > "Send to local bridge" (off by default), a copy of `projectDailyTotals` — and nothing else — is sent to the local `ollama-bridge.js`, which merges it into per-project JSON files on disk for other local tools to read. Nothing leaves the machine; no timestamps, task text or per-session records are sent. Rules and file format: `TASKTIME_CONTRACT.md`. Because the files outlive a purge, the purge keeps `projectDailyTotals` too, so the app's copy and the files do not diverge.
 
 ### 3.4 M-VI Voice System
 
@@ -453,6 +465,7 @@ This is the narrative equivalent of progressive disclosure: the lore reveals its
 - Purge Memory Banks (standalone root, blacklist deletion, lore-aware confirmation)
 - Partner depth system (tier 0/1/2 based on cumulative completions)
 - Story codex (60-fragment localStorage, seen-tracking, deduplication)
+- Project time totals — OPS work time credited per project per local day by wall clock (`tasktime.js`), optional opt-in export to the local bridge (`TASKTIME_CONTRACT.md`); informational only (§9.11)
 
 ### In Development
 - Campaign system (Operation → Objectives hierarchy — design phase)
@@ -644,6 +657,14 @@ Two residual risks are real and currently unmitigated:
 **Current state**: Match mode ships as a third view alongside the list board (`match-mode.js`, opened from `#matchModeButton`, closed on `ESC`; `←`/`→` and the two buttons mirror the swipe for keyboard and pointer parity). It never deletes. Card copy follows §9.9's framing rule on a new surface — "High-resistance · passed over 3 times" attributes to the objective, never to the operator. `deferCount` and `lastDeferredAt` persist per objective through `saveMissions()`. `rankMissions()` orders the board on load and on deck close, superseding the older XP-only `sortMissionsByPriority()`. `explainMissionRank()` is implemented but is not yet rendered on any surface — the accountability hook exists; the board does not yet display it.
 
 **Future expansion**: Surface `explainMissionRank()` inline on the top-ranked objective, which is where an unexplained re-order is most likely to read as controlling. Add decay to `deferCount` (or cap its contribution) once there is enough real usage to see whether inflation actually occurs. Speculatively, a run of deferrals with no completions has the same behavioural shape as the existing `AffectInference` avoidance state (adding without completing, §2.5) and could feed it — not implemented, and it would need §9.8's false-positive discipline before it changed M-VI's behaviour at all.
+
+---
+
+### 9.11 Project Time Totals ↔ Informational Feedback
+
+**The friction**: Per-project daily totals invite being turned into a score, a streak or a target. In CET terms (§2.2, §9.3) a number the operator can read is informational; the same number wired to a reward or a prompt becomes controlling and starts to measure the operator instead of serving them.
+
+**The constraint**: project time totals are informational only. No XP, streaks, scores, achievements, buddy messages or prompts are derived from them. The only questions the app asks about them are practical: which project time counts toward, and — once, never repeated — whether a long suspension of the timer should be counted. OPS XP stays tied to finished 25-minute units. The OPS stopwatch itself now counts wall-clock time (time in a throttled background tab is no longer lost), so a unit can bank sooner in real time than it used to; a suspension over five minutes counts toward the stopwatch only if the operator answers "Count".
 
 ---
 
