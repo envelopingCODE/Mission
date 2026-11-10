@@ -382,6 +382,7 @@ const AppSettings = (function () {
     ollamaUrl:            "http://localhost:11434",
     ollamaToken:          "",  // X-Bridge-Token, only needed when URL points at ollama-bridge.js
     tasktimeSend:         false, // opt-in: copy daily project totals to the local bridge
+    tasktimeExports:      [],    // [{ name, folder }] — the only projects ever sent
   };
   function get() {
     try { return Object.assign({}, DEFAULTS, JSON.parse(localStorage.getItem(KEY) || "{}")); }
@@ -524,13 +525,20 @@ const OllamaClient = (function () {
 // TASK-TIME SYNC
 // ========================================
 // Opt-in copy of the per-project daily totals to the local bridge, which
-// writes them to files on disk (TASKTIME_CONTRACT.md). localStorage stays the
-// app's store; this only ever sends {project: {date: seconds}}. Deliberately
-// silent: no console output, no buddy messages, no toasts.
+// writes <folder>/.tasktime.local.json (TASKTIME_CONTRACT.md). Only projects
+// listed under Settings > Project time > Exported projects are sent, each to
+// its own folder. localStorage stays the app's store. Deliberately silent: no
+// console output, no buddy messages, no toasts.
 const TaskTimeSync = (function () {
   var STATUS_KEY = "projectTimeSyncStatus";
   var _chain = Promise.resolve();
-  var _projects = [];
+  function exportsList() {
+    var list = AppSettings.get().tasktimeExports;
+    if (!Array.isArray(list)) return [];
+    return list.filter(function (e) {
+      return e && typeof e.name === "string" && e.name && typeof e.folder === "string" && e.folder;
+    });
+  }
   function cfg() {
     var s = AppSettings.get();
     return {
@@ -549,47 +557,35 @@ const TaskTimeSync = (function () {
       var s = JSON.parse(localStorage.getItem(STATUS_KEY) || "{}");
       if (s && typeof s === "object" && s.projects && typeof s.projects === "object") return s;
     } catch (e) {}
-    return { bridge: null, projects: {} };
+    return { projects: {} };
   }
   function saveStatus(status) {
     localStorage.setItem(STATUS_KEY, JSON.stringify(status));
     if (typeof window._onTaskTimeSync === "function") window._onTaskTimeSync();
   }
-  async function fetchList(c) {
-    try {
-      var res = await fetch(c.url + "/api/tasktime/projects", { headers: headers(c), signal: AbortSignal.timeout(2000) });
-      if (!res.ok) return null;
-      var d = await res.json();
-      return Array.isArray(d.projects) ? d.projects.filter(function (n) { return typeof n === "string"; }) : null;
-    } catch (e) { return null; }
-  }
+  var ERRORS = { 404: "nofolder", 409: "unreadable" };
   async function run() {
     var c = cfg();
     if (!c.enabled) return;
     var prev = loadStatus();
-    var names = await fetchList(c);
-    if (!names) {
-      saveStatus({ bridge: "unreachable", projects: prev.projects });
-      return;
-    }
-    _projects = names;
     var totals = window.TaskTime.parseTotals(localStorage.getItem("projectDailyTotals"));
-    var out = { bridge: "ok", projects: {} };
-    for (var i = 0; i < names.length; i++) {
-      var name = names[i];
-      if (!Object.prototype.hasOwnProperty.call(totals, name)) continue;
+    var out = { projects: {} };
+    var list = exportsList();
+    for (var i = 0; i < list.length; i++) {
+      var name = list[i].name;
+      var entry = prev.projects[name] || { day: null, seconds: null, error: null };
+      if (!Object.prototype.hasOwnProperty.call(totals, name)) { out.projects[name] = entry; continue; }
       var days = totals[name];
       var latest = Object.keys(days).sort().pop();
-      var entry = prev.projects[name] || { day: null, seconds: null };
       try {
         var res = await fetch(c.url + "/api/tasktime", {
           method: "POST",
           headers: headers(c, { "Content-Type": "application/json" }),
-          body: JSON.stringify({ v: 1, project: name, days: days }),
+          body: JSON.stringify({ v: 1, project: name, folder: list[i].folder, days: days }),
           signal: AbortSignal.timeout(3000),
         });
         if (res.ok) entry = { day: latest, seconds: days[latest], error: null };
-        else entry = { day: entry.day, seconds: entry.seconds, error: res.status === 409 ? "unreadable" : "failed" };
+        else entry = { day: entry.day, seconds: entry.seconds, error: ERRORS[res.status] || "failed" };
       } catch (e) {
         entry = { day: entry.day, seconds: entry.seconds, error: "unreachable" };
       }
@@ -601,17 +597,9 @@ const TaskTimeSync = (function () {
     _chain = _chain.then(run).catch(function () {});
     return _chain;
   }
-  async function refreshProjects() {
-    var c = cfg();
-    if (!c.enabled) return [];
-    var names = await fetchList(c);
-    if (names) _projects = names;
-    return names || [];
-  }
   return {
     send: send,
-    refreshProjects: refreshProjects,
-    projects: function () { return _projects.slice(); },
+    projects: function () { return exportsList().map(function (e) { return e.name; }); },
   };
 })();
 

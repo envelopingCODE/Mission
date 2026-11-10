@@ -5855,6 +5855,79 @@ svg.minimalist-face {
   gap: 5px;
   margin-bottom: 0.55rem;
 }
+
+/* Project time > Exported projects — one recessed card per project, plus a
+   dashed "add" card. Inputs go full width because the panel can be as narrow
+   as the sidebar HUD. */
+.st-subtitle {
+  font-family: "Courier New", monospace;
+  font-size: 0.56rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(134, 223, 255, 0.3);
+  margin: 0.6rem 0 0.4rem;
+}
+.st-exports-empty {
+  display: block;
+  margin-bottom: 0.45rem;
+}
+.st-export-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.5rem 0.55rem;
+  margin-bottom: 0.45rem;
+  background: rgba(134, 223, 255, 0.03);
+  border: 1px solid rgba(134, 223, 255, 0.1);
+  border-radius: 6px;
+}
+.st-export-add {
+  background: transparent;
+  border-style: dashed;
+}
+.st-export-card .st-input {
+  flex: none;
+  width: 100%;
+  box-sizing: border-box;
+}
+.st-export-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-width: 0;
+}
+.st-export-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.st-export-remove {
+  background: none;
+  border: none;
+  color: rgba(134, 223, 255, 0.35);
+  font-size: 0.9rem;
+  line-height: 1;
+  padding: 0 0.2rem;
+  cursor: pointer;
+  transition: color 0.15s;
+}
+.st-export-remove:hover {
+  color: rgba(134, 223, 255, 0.9);
+}
+.st-export-suggest {
+  flex-wrap: wrap;
+  margin-bottom: 0;
+}
+.st-export-suggest .st-sim-chip {
+  flex: none;
+  max-width: 100%;
+  padding: 0.28rem 0.5rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .st-sim-chip {
   flex: 1;
   font-family: "Courier New", monospace;

@@ -9,8 +9,9 @@
 //    forwards only the two endpoints the app actually calls. Ollama itself
 //    never has to be reconfigured or exposed beyond localhost.
 // 2. Task-time file writer. Merges the app's per-project daily totals into
-//    JSON files on disk that other local tools read. Opt-in on the app side;
-//    the format and rules are in TASKTIME_CONTRACT.md.
+//    <folder>/.tasktime.local.json, where the folder is the one set for that
+//    project in the app's Settings. Opt-in on the app side; the format and
+//    rules are in TASKTIME_CONTRACT.md.
 //
 // Run:   node ollama-bridge.js
 // Then in the app's Local bridge settings, set URL to http://localhost:11435
@@ -29,9 +30,6 @@
 //                    writing .ollama-bridge-token
 //   ALLOWED_ORIGINS  comma-separated extra origins to trust, beyond the
 //                    GitHub Pages origin below and localhost/127.0.0.1/file:
-//
-// Task-time targets are read on every request from
-// tasktime-projects.local.json next to this script (git-ignored).
 
 const http = require("http");
 const fs = require("fs");
@@ -61,7 +59,7 @@ const TOKEN = loadToken();
 // Only these app-called endpoints are proxied — nothing else on Ollama's
 // API surface is reachable through the bridge.
 const ALLOWED_ROUTES = { "/api/tags": "GET", "/api/chat": "POST" };
-const TASKTIME_ROUTES = { "/api/tasktime/projects": "GET", "/api/tasktime": "POST" };
+const TASKTIME_ROUTES = { "/api/tasktime": "POST" };
 
 function allowedOrigin(origin) {
   if (!origin) return null;
@@ -85,24 +83,20 @@ function applyCors(req, res, origin) {
 // ── Task-time file writer ───────────────────────────────────────────────────
 // Rules and file format: tasktime.js and TASKTIME_CONTRACT.md. Payloads are
 // never logged.
+//
+// The folder comes from the browser, so the write scope is pinned here: only
+// a file with this exact name, only inside a local folder that already
+// exists, and an existing file is only replaced if it is already ours
+// (TaskTime.mergeFile refuses anything else).
 
-const TASKTIME_CONFIG = path.join(__dirname, "tasktime-projects.local.json");
+const TASKTIME_FILE = ".tasktime.local.json";
 const TASKTIME_MAX_BODY = 128 * 1024;
 
-// A Map, not an object, so a crafted name like "__proto__" is just a key.
-function tasktimeProjects() {
-  const out = new Map();
-  let cfg;
-  try { cfg = JSON.parse(fs.readFileSync(TASKTIME_CONFIG, "utf8")); } catch (e) { return out; }
-  if (!cfg || typeof cfg !== "object" || Array.isArray(cfg)) return out;
-  for (const name of Object.keys(cfg)) {
-    const p = cfg[name];
-    if (!name || typeof p !== "string" || !path.isAbsolute(p)) continue;
-    if (path.extname(p).toLowerCase() !== ".json") continue;
-    try { if (!fs.statSync(path.dirname(p)).isDirectory()) continue; } catch (e) { continue; }
-    out.set(name, p);
-  }
-  return out;
+function tasktimeTarget(folder) {
+  if (!path.isAbsolute(folder)) return null;
+  const dir = path.resolve(folder);
+  try { if (!fs.statSync(dir).isDirectory()) return null; } catch (e) { return null; }
+  return path.join(dir, TASKTIME_FILE);
 }
 
 function sendJson(req, res, origin, status, body) {
@@ -135,13 +129,6 @@ function writeFileAtomic(file, text) {
 }
 
 function handleTasktime(req, res, origin) {
-  const projects = tasktimeProjects();
-
-  if (req.method === "GET") {
-    sendJson(req, res, origin, 200, { v: TaskTime.V, projects: Array.from(projects.keys()) });
-    return;
-  }
-
   if (!origin) {
     req.resume();
     sendJson(req, res, origin, 400, { error: "origin required" });
@@ -164,10 +151,11 @@ function handleTasktime(req, res, origin) {
     try { body = JSON.parse(Buffer.concat(chunks).toString("utf8")); } catch (e) {
       return sendJson(req, res, origin, 400, { error: "invalid json" });
     }
-    const verdict = TaskTime.validateRequest(body, Array.from(projects.keys()));
+    const verdict = TaskTime.validateRequest(body);
     if (!verdict.ok) return sendJson(req, res, origin, verdict.status, { error: verdict.error });
 
-    const file = projects.get(body.project);
+    const file = tasktimeTarget(body.folder);
+    if (!file) return sendJson(req, res, origin, 404, { error: "folder not found" });
     let existing = null;
     try { existing = fs.readFileSync(file, "utf8"); } catch (e) {
       if (e.code !== "ENOENT") return sendJson(req, res, origin, 409, { error: "unreadable" });
@@ -240,7 +228,7 @@ const server = http.createServer((req, res) => {
 
 server.listen(BRIDGE_PORT, "127.0.0.1", () => {
   console.log(`Local bridge listening on http://localhost:${BRIDGE_PORT}`);
-  console.log(`Task-time config: ${TASKTIME_CONFIG} (${tasktimeProjects().size} usable project(s))`);
+  console.log(`Task-time: writes ${TASKTIME_FILE} into the folders set in the app's Settings`);
   console.log(`Forwarding to Ollama at ${OLLAMA_URL.origin}`);
   console.log(`Trusted origins: ${[...EXPLICIT_ORIGINS].join(", ")}, plus localhost/127.0.0.1/file:`);
   console.log(`Token (paste into the app's Local bridge settings): ${TOKEN}`);

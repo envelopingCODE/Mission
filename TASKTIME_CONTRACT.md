@@ -14,30 +14,42 @@ The whole payload is **one number per project per local day**: whole seconds, fl
 overstated. Nothing else is sent or stored. Nothing leaves the machine: the only destination is
 the local bridge.
 
-## Routes
+## Which projects, and where
 
-Both need the `X-Bridge-Token` header (the contents of `.ollama-bridge-token`). Any `Origin` sent
-must be allowed by the bridge's origin rules (`file://` pages send `null`).
+The operator lists the projects to export in the app (Settings > Project time > Exported
+projects), each with a local folder. Only listed projects are sent. The bridge writes exactly one
+file per project: `<folder>/.tasktime.local.json`. A reader finds its file there; git-ignore it
+(`*.local.json`).
 
-- `GET /api/tasktime/projects` returns `{"v":1,"projects":["name", ...]}`, the usable configured names.
-- `POST /api/tasktime` with body `{"v":1,"project":"<name>","days":{"YYYY-MM-DD":seconds}}`.
-  An `Origin` header is required.
+## Route
+
+`POST /api/tasktime` with body
+`{"v":1,"project":"<name>","folder":"<absolute local folder>","days":{"YYYY-MM-DD":seconds}}`.
+It needs the `X-Bridge-Token` header (the contents of `.ollama-bridge-token`) and an `Origin`
+header that the bridge's origin rules allow (`file://` pages send `null`).
+
+Because the folder comes from the browser, the write scope is pinned in the bridge: only the file
+name `.tasktime.local.json`, only inside a local folder that already exists, and an existing file
+is only replaced if it is already in this format.
 
 | Code | Meaning |
 |------|---------|
 | 200 | `{"ok":true,"written":"YYYY-MM-DD"}` |
 | 400 | invalid request (see validation) |
 | 403 | wrong or missing token, or origin not allowed |
-| 404 | project not configured on the bridge |
+| 404 | folder does not exist |
 | 409 | `{"error":"unreadable"}`: the existing file is not ours or is damaged; left untouched |
 | 413 | body larger than 128 KB |
 | 503 | write blocked (file locked, disk error); the sender retries on its next send |
 
 ## Validation
 
-- Body is a plain object with exactly the keys `v`, `project`, `days`.
+- Body is a plain object with exactly the keys `v`, `project`, `folder`, `days`.
 - `v` is `1`.
-- `project` is a string equal to a configured name.
+- `project` is a string of 1 to 80 characters.
+- `folder` is an absolute local path: a drive path (`K:\Projects\Name`) or a POSIX path
+  (`/home/me/name`). Network paths (`\\server\share`, `//host`) are refused, since nothing may
+  leave the machine.
 - `days` is a plain object; every key is a real calendar date `YYYY-MM-DD` (`2026-02-30` is invalid)
   and every value is an integer from 0 to 86400.
 
@@ -67,21 +79,10 @@ from zero and replaces the stored value. This understates, and is correctable.
 If the existing file cannot be parsed or is not exactly this shape (version, source, project,
 unit, valid days), the bridge answers 409 and never overwrites it.
 
-## Bridge config
-
-`tasktime-projects.local.json`, next to the bridge, read on every request:
-
-```json
-{"<exact project name>": "<absolute path ending .json>"}
-```
-
-An entry is skipped unless the path is absolute, ends in `.json` and its folder exists. The file
-is git-ignored (`*.local.json`).
-
 ## Non-goals
 
 Each of these needs an explicit operator decision before it is added: timestamps or session
-start/end, task or objective text, per-session records, categories, unconfigured projects, any
+start/end, task or objective text, per-session records, categories, projects not listed for export, any
 destination other than the local bridge.
 
 ## Versioning

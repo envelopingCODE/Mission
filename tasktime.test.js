@@ -85,27 +85,36 @@ test("sub-5-minute throttle gaps lose no seconds", () => {
 });
 
 test("invalid payloads are rejected", () => {
-  const names = ["P"];
-  const ok = { v: 1, project: "P", days: { "2026-01-01": 60 } };
-  assert.deepStrictEqual(TT.validateRequest(ok, names), { ok: true });
-  const bad = (body, status) => {
-    const r = TT.validateRequest(body, names);
+  const F = "K:\\Projects\\P";
+  const ok = { v: 1, project: "P", folder: F, days: { "2026-01-01": 60 } };
+  assert.deepStrictEqual(TT.validateRequest(ok), { ok: true });
+  assert.deepStrictEqual(TT.validateRequest(Object.assign({}, ok, { folder: "/home/me/p" })), { ok: true });
+  const bad = (body) => {
+    const r = TT.validateRequest(body);
     assert.strictEqual(r.ok, undefined);
-    assert.strictEqual(r.status, status);
+    assert.strictEqual(r.status, 400);
   };
-  bad({ v: 2, project: "P", days: {} }, 400);
-  bad({ v: 1, project: "Nope", days: {} }, 404);
-  bad({ v: 1, project: "P", days: {}, extra: 1 }, 400);
-  bad({ v: 1, project: "P", days: [] }, 400);
-  bad({ v: 1, project: "P", days: { "2026-13-01": 5 } }, 400);
-  bad({ v: 1, project: "P", days: { "2026-02-30": 5 } }, 400);
-  bad({ v: 1, project: "P", days: { "2026-01-01": 86401 } }, 400);
-  bad({ v: 1, project: "P", days: { "2026-01-01": -1 } }, 400);
-  bad({ v: 1, project: "P", days: { "2026-01-01": 1.5 } }, 400);
-  bad({ v: 1, project: "P", days: { "2026-01-01": "60" } }, 400);
-  bad({ v: 1, days: {} }, 400);
-  bad([], 400);
-  bad(null, 400);
+  bad({ v: 2, project: "P", folder: F, days: {} });
+  bad({ v: 1, project: "", folder: F, days: {} });
+  bad({ v: 1, project: "x".repeat(81), folder: F, days: {} });
+  bad({ v: 1, project: "P", days: {} });
+  bad({ v: 1, project: "P", folder: F, days: {}, extra: 1 });
+  bad({ v: 1, project: "P", folder: F, days: [] });
+  bad({ v: 1, project: "P", folder: F, days: { "2026-13-01": 5 } });
+  bad({ v: 1, project: "P", folder: F, days: { "2026-02-30": 5 } });
+  bad({ v: 1, project: "P", folder: F, days: { "2026-01-01": 86401 } });
+  bad({ v: 1, project: "P", folder: F, days: { "2026-01-01": -1 } });
+  bad({ v: 1, project: "P", folder: F, days: { "2026-01-01": 1.5 } });
+  bad({ v: 1, project: "P", folder: F, days: { "2026-01-01": "60" } });
+  bad({ v: 1, folder: F, days: {} });
+  bad([]);
+  bad(null);
+});
+
+test("only local absolute folders are accepted", () => {
+  ["K:\\Projects\\P", "c:/x", "/home/me"].forEach((f) => assert.ok(TT.isLocalFolder(f), f));
+  ["\\\\server\\share", "//host/share", "\\\\?\\C:\\x", "relative\\p", "K:", "", "C:\\a\0b", 5, null]
+    .forEach((f) => assert.ok(!TT.isLocalFolder(f), String(f)));
 });
 
 test("unreadable existing file is never overwritten", () => {

@@ -235,8 +235,8 @@ index.html
 
 ollama-bridge.js (optional local Node server, not loaded by the page)
 ├── Ollama proxy (CORS + token in front of a local Ollama)
-└── Task-time routes (GET /api/tasktime/projects, POST /api/tasktime — merge daily totals
-    into per-project JSON files; format in TASKTIME_CONTRACT.md)
+└── Task-time route (POST /api/tasktime — merges daily totals into
+    <folder>/.tasktime.local.json for each exported project; format in TASKTIME_CONTRACT.md)
 ```
 
 ### 3.2 Standalone React Root Pattern
@@ -269,11 +269,11 @@ The five overlay systems each mount on their own `ReactDOM.createRoot()` on a de
 | `streakRepairComplete_*` | Completed repair marker |
 | `projectDailyTotals` | JSON `{project: {YYYY-MM-DD: seconds}}` — OPS work time per project per local day, floored (preserved across purge) |
 | `projectLabel` | Project name the OPS timer currently credits; empty = none (a preference, preserved across purge) |
-| `projectTimeSyncStatus` | JSON `{bridge, projects: {name: {day, seconds, error}}}` — last bridge sync result; rebuilt by the next send, cleared by purge |
+| `projectTimeSyncStatus` | JSON `{projects: {name: {day, seconds, error}}}` — last bridge send result per exported project; rebuilt by the next send, cleared by purge |
 
 **Purge mechanic**: the memory wipe (Purge Memory Banks) deletes everything except `appSettings`, `projectDailyTotals` and `projectLabel`. The blacklist approach (delete all keys except the whitelist) was chosen because a whitelist approach leaves orphaned keys that cause achievements to remain unlocked — achievements are live computations against historical task data, not flags.
 
-**Documented departure from "localStorage is the only persistent store"**: localStorage remains the app's store. When the operator turns on Settings > Project time > "Send to local bridge" (off by default), a copy of `projectDailyTotals` — and nothing else — is sent to the local `ollama-bridge.js`, which merges it into per-project JSON files on disk for other local tools to read. Nothing leaves the machine; no timestamps, task text or per-session records are sent. Rules and file format: `TASKTIME_CONTRACT.md`. Because the files outlive a purge, the purge keeps `projectDailyTotals` too, so the app's copy and the files do not diverge.
+**Documented departure from "localStorage is the only persistent store"**: localStorage remains the app's store. When the operator turns on Settings > Project time > "Send to local bridge" (off by default), a copy of the daily totals of the projects listed under "Exported projects" (each with a local folder, stored in `appSettings.tasktimeExports`) — and nothing else — is sent to the local `ollama-bridge.js`, which merges each into `<folder>/.tasktime.local.json` for other local tools to read. The bridge only ever writes that one file name, only into folders that already exist, and only replaces a file already in its own format. Nothing leaves the machine; no timestamps, task text or per-session records are sent. Rules and file format: `TASKTIME_CONTRACT.md`. Because the files outlive a purge, the purge keeps `projectDailyTotals` too, so the app's copy and the files do not diverge.
 
 ### 3.4 M-VI Voice System
 

@@ -3824,6 +3824,9 @@ const SettingsPanel = () => {
   const [, bumpProjectTime] = React.useState(0);
   const [editingDay, setEditingDay] = React.useState(null); // { project, date }
   const cancelEditRef = React.useRef(false); // Escape unmounts the input; its blur must not commit
+  const [newExportName,   setNewExportName]   = React.useState("");
+  const [newExportFolder, setNewExportFolder] = React.useState("");
+  const [exportHint,      setExportHint]      = React.useState(null); // { name: "" for the add form, text }
 
   // Directional navigation helper
   function navigateTo(v) {
@@ -3887,17 +3890,109 @@ const SettingsPanel = () => {
     return Math.floor(m / 60) + ":" + (m % 60 < 10 ? "0" : "") + (m % 60);
   };
 
-  const projectSyncLine = (name) => {
-    if (!cfg.tasktimeSend) return null;
+  const projectSyncLine = (name, hasTime) => {
     let st = null;
     try { st = JSON.parse(localStorage.getItem("projectTimeSyncStatus") || "null"); } catch (e) {}
-    if (!st || !st.bridge) return null;
-    if (st.bridge !== "ok") return "Bridge not reached";
-    const p = st.projects && Object.prototype.hasOwnProperty.call(st.projects, name) ? st.projects[name] : null;
-    if (!p) return "Not configured on the bridge";
-    if (p.error === "unreadable") return "File unreadable";
-    if (p.error) return "Bridge not reached";
-    return "Sent " + fmtHM(p.seconds) + " for " + p.day;
+    const p = st && st.projects && Object.prototype.hasOwnProperty.call(st.projects, name) ? st.projects[name] : null;
+    if (p && p.error === "nofolder")   return "Folder not found";
+    if (p && p.error === "unreadable") return "File unreadable — left untouched";
+    if (p && p.error)                  return "Bridge not reached";
+    if (p && p.day)                    return "Sent " + fmtHM(p.seconds) + " for " + p.day;
+    return hasTime ? "Not sent yet" : "No time recorded yet";
+  };
+
+  // Only projects listed here are ever sent, each to <folder>/.tasktime.local.json.
+  // The name must match the timer's project label exactly, so suggestions
+  // come from labels already used.
+  const FOLDER_HINT = "Use a full local folder path, e.g. K:\\Projects\\Name";
+  const exportsList = () => (Array.isArray(cfg.tasktimeExports) ? cfg.tasktimeExports : []);
+  const saveExports = (list) => {
+    setText("tasktimeExports", list);
+    if (window.TaskTimeSync) window.TaskTimeSync.send();
+  };
+  const addExport = () => {
+    const name = newExportName.trim();
+    const folder = newExportFolder.trim();
+    if (!name || name.length > 80) { setExportHint({ name: "", text: "Name a project (up to 80 characters)." }); return; }
+    if (exportsList().some((e) => e.name === name)) { setExportHint({ name: "", text: name + " is already exported." }); return; }
+    if (!window.TaskTime.isLocalFolder(folder)) { setExportHint({ name: "", text: FOLDER_HINT }); return; }
+    saveExports(exportsList().concat([{ name: name, folder: folder }]));
+    setNewExportName("");
+    setNewExportFolder("");
+    setExportHint(null);
+  };
+  const setExportFolder = (name, input) => {
+    const folder = input.value.trim();
+    const cur = exportsList().find((e) => e.name === name);
+    if (!cur || folder === cur.folder) return;
+    if (!window.TaskTime.isLocalFolder(folder)) {
+      input.value = cur.folder;
+      setExportHint({ name: name, text: FOLDER_HINT });
+      return;
+    }
+    setExportHint(null);
+    saveExports(exportsList().map((e) => (e.name === name ? { name: name, folder: folder } : e)));
+  };
+  const removeExport = (name) => {
+    setExportHint(null);
+    saveExports(exportsList().filter((e) => e.name !== name));
+  };
+
+  const renderExports = () => {
+    const totals = window.TaskTime.parseTotals(localStorage.getItem("projectDailyTotals"));
+    const list = exportsList();
+    const exported = list.map((e) => e.name);
+    const suggestions = Object.keys(totals).filter((n) => exported.indexOf(n) === -1).sort().slice(0, 6);
+    return (
+      <div className="st-exports">
+        <div className="st-subtitle">Exported projects</div>
+        {list.length === 0 && (
+          <div className="st-desc st-exports-empty">None yet. Only projects listed here are sent.</div>
+        )}
+        {list.map((e) => (
+          <div key={e.name} className="st-export-card">
+            <div className="st-export-head">
+              <span className="st-label st-export-name" title={e.name}>{e.name}</span>
+              <button className="st-export-remove" title={"Stop exporting " + e.name + " (the file is kept)"}
+                onClick={() => removeExport(e.name)}>×</button>
+            </div>
+            <input className="st-input st-export-folder" defaultValue={e.folder} spellCheck={false}
+              aria-label={"Folder for " + e.name}
+              onBlur={(ev) => setExportFolder(e.name, ev.target)}
+              onKeyDown={(ev) => { if (ev.key === "Enter") ev.target.blur(); }} />
+            <span className="st-desc">
+              {exportHint && exportHint.name === e.name
+                ? exportHint.text
+                : projectSyncLine(e.name, Object.prototype.hasOwnProperty.call(totals, e.name))}
+            </span>
+          </div>
+        ))}
+        <div className="st-export-card st-export-add">
+          {suggestions.length > 0 && (
+            <div className="st-sim-presets st-export-suggest">
+              {suggestions.map((n) => (
+                <button key={n} className={"st-sim-chip" + (newExportName === n ? " st-sim-chip-active" : "")}
+                  title={n} onClick={() => setNewExportName(n)}>{n}</button>
+              ))}
+            </div>
+          )}
+          <input className="st-input" value={newExportName} maxLength={80} spellCheck={false}
+            placeholder="Project name (as on the timer)"
+            onChange={(ev) => setNewExportName(ev.target.value)}
+            onKeyDown={(ev) => { if (ev.key === "Enter") addExport(); }} />
+          <input className="st-input" value={newExportFolder} spellCheck={false}
+            placeholder="Folder, e.g. K:\Projects\Name"
+            onChange={(ev) => setNewExportFolder(ev.target.value)}
+            onKeyDown={(ev) => { if (ev.key === "Enter") addExport(); }} />
+          <div className="st-export-head">
+            <span className="st-desc">
+              {exportHint && exportHint.name === "" ? exportHint.text : "Writes .tasktime.local.json in that folder"}
+            </span>
+            <button className="st-btn" onClick={addExport}>Add</button>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   // Lower-only: a correction can shrink a day, never grow it. The same rule
@@ -3928,16 +4023,13 @@ const SettingsPanel = () => {
       name,
       days: Object.keys(totals[name]).filter((d) => totals[name][d] > 0).sort().reverse().slice(0, 14),
     })).filter((p) => p.days.length > 0);
-    if (shown.length === 0) return <div className="st-row"><span className="st-desc">No project time yet.</span></div>;
-    return shown.map((p) => {
-      const line = projectSyncLine(p.name);
+    const heading = <div key="heading" className="st-subtitle">Recorded time</div>;
+    if (shown.length === 0) return <div>{heading}<div className="st-row"><span className="st-desc">No project time yet. Pick a project on the OPS timer.</span></div></div>;
+    return [heading].concat(shown.map((p) => {
       return (
         <div key={p.name}>
           <div className="st-row">
-            <div className="st-info">
-              <span className="st-label">{p.name}</span>
-              {line && <span className="st-desc">{line}</span>}
-            </div>
+            <span className="st-label">{p.name}</span>
           </div>
           {p.days.map((d) => {
             const secs = totals[p.name][d];
@@ -3974,7 +4066,7 @@ const SettingsPanel = () => {
           })}
         </div>
       );
-    });
+    }));
   };
 
   const DOT   = { idle: "rgba(134,223,255,0.2)", checking: "rgba(244,197,66,0.8)", ok: "#0fdfab", fail: "#ff6b6b" };
@@ -4351,7 +4443,8 @@ const SettingsPanel = () => {
 
           <div className="st-section">
             <div className="st-section-title">Project time</div>
-            <StToggle label="Send to local bridge" checked={cfg.tasktimeSend === true} onChange={setSendToBridge} desc="Daily totals per project only. Stays on this machine." />
+            <StToggle label="Send to local bridge" checked={cfg.tasktimeSend === true} onChange={setSendToBridge} desc="Daily totals for the projects you list. Stays on this machine." />
+            {cfg.tasktimeSend && renderExports()}
             {renderProjectTime()}
           </div>
 
@@ -4685,22 +4778,18 @@ const PomodoroTimer = () => {
     return (d.getHours() < 10 ? "0" : "") + d.getHours() + ":" + (d.getMinutes() < 10 ? "0" : "") + d.getMinutes();
   }
 
-  // Names on the bridge come first because they must match its config
-  // exactly — picking beats typing. Recent local labels follow, newest day first.
+  // Exported project names come first because only an exact match is sent —
+  // picking beats typing. Recent local labels follow, newest day first.
   const [labelOptions, setLabelOptions] = React.useState({ configured: [], recent: [], sending: false });
 
   function openLabelPicker() {
-    var sending = !!(window.AppSettings && window.AppSettings.get().tasktimeSend && window.TaskTimeSync);
+    var sending = !!(window.AppSettings && window.AppSettings.get().tasktimeSend);
     var totals = window.TaskTime.parseTotals(localStorage.getItem("projectDailyTotals"));
     var latest = function (p) { return Object.keys(totals[p]).sort().pop(); };
     var recent = Object.keys(totals).sort(function (a, b) { return latest(b) < latest(a) ? -1 : latest(b) > latest(a) ? 1 : 0; });
-    setLabelOptions({ configured: sending ? window.TaskTimeSync.projects() : [], recent: recent, sending: sending });
+    var exported = window.TaskTimeSync ? window.TaskTimeSync.projects() : [];
+    setLabelOptions({ configured: exported, recent: recent, sending: sending });
     setLabelPickerOpen(true);
-    if (sending) {
-      window.TaskTimeSync.refreshProjects().then(function (names) {
-        setLabelOptions(function (o) { return { configured: names, recent: o.recent, sending: o.sending }; });
-      });
-    }
   }
 
   function labelChoices() {
@@ -5822,7 +5911,7 @@ const PomodoroTimer = () => {
                 <button
                   key={c.name}
                   className={"pip-break-chip" + (c.name === projectLabel ? " pip-break-chip-active" : "") + (c.dim ? " pip-break-chip-dim" : "")}
-                  title={c.dim ? "Not configured on the bridge — kept on this device only" : c.name}
+                  title={c.dim ? "Not in Exported projects — kept on this device only" : c.name}
                   onClick={() => pickLabel(c.name)}
                 >
                   {c.name}

@@ -103,15 +103,26 @@
     return out;
   }
 
-  function validateRequest(body, configuredNames) {
+  // A local absolute folder: a drive path (K:\...) or a POSIX path (/...).
+  // Network paths (\\server\share, //host) are refused: nothing leaves the
+  // machine.
+  function isLocalFolder(s) {
+    if (typeof s !== "string" || s.length < 1 || s.length > 260 || s.indexOf("\0") !== -1) return false;
+    if (/^[\\\/]{2}/.test(s)) return false;
+    return /^[A-Za-z]:[\\\/]/.test(s) || /^\//.test(s);
+  }
+
+  function validateRequest(body) {
     if (!isPlain(body)) return { status: 400, error: "invalid body" };
     var keys = Object.keys(body);
-    if (keys.length !== 3 || !has(body, "v") || !has(body, "project") || !has(body, "days")) {
+    if (keys.length !== 4 || !has(body, "v") || !has(body, "project") || !has(body, "folder") || !has(body, "days")) {
       return { status: 400, error: "invalid keys" };
     }
     if (body.v !== V) return { status: 400, error: "unsupported version" };
-    if (typeof body.project !== "string") return { status: 400, error: "invalid project" };
-    if (configuredNames.indexOf(body.project) === -1) return { status: 404, error: "unknown project" };
+    if (typeof body.project !== "string" || body.project.length < 1 || body.project.length > 80) {
+      return { status: 400, error: "invalid project" };
+    }
+    if (!isLocalFolder(body.folder)) return { status: 400, error: "invalid folder" };
     if (!isPlain(body.days)) return { status: 400, error: "invalid days" };
     var dates = Object.keys(body.days);
     for (var i = 0; i < dates.length; i++) {
@@ -175,7 +186,8 @@
     V: V, GAP_MS: GAP_MS, MAX_DAY: MAX_DAY,
     localDateKey: localDateKey, isDateKey: isDateKey, isDaySeconds: isDaySeconds,
     parseTotals: parseTotals, creditSpan: creditSpan, spanSeconds: spanSeconds,
-    isGap: isGap, lowerDay: lowerDay, validateRequest: validateRequest, mergeFile: mergeFile
+    isGap: isGap, lowerDay: lowerDay, isLocalFolder: isLocalFolder,
+    validateRequest: validateRequest, mergeFile: mergeFile
   };
 
   if (typeof module === "object" && module.exports) module.exports = api;
